@@ -55,7 +55,8 @@ class Program:
 
   /**
   Runs the program as a separate process in a new process group with
-  the given group id. Returns the id of the newly spawned process.
+    the given group id.
+  Returns the id of the newly spawned process.
   */
   run gid -> int:
     return programs_registry_spawn_ offset_ size_ gid
