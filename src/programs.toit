@@ -47,7 +47,8 @@ class Program:
     // Do nothing.
 
   /**
-  Returns if this program is currently running. If a program isn't running, it will only be started with a call to $run.
+  Whether this program is currently running.
+  If a program isn't running, it will only be started with a call to $run.
   */
   is_running -> bool:
     return programs_registry_is_running_ offset_ size_
