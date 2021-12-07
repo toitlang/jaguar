@@ -1,6 +1,6 @@
-// Copyright (C) 2021 Toitware ApS.
-// Use of this source code is governed by a Zero-Clause BSD license that can
-// be found in the EXAMPLES_LICENSE file.
+// Copyright (C) 2021 Toitware ApS. All rights reserved.
+// Use of this source code is governed by an MIT-style license that can be
+// found in the LICENSE file.
 
 import http
 import encoding.json
