@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -33,4 +34,23 @@ func (d Device) Ping() bool {
 	}
 
 	return res.StatusCode == http.StatusOK
+}
+
+func (d Device) Run(image io.Reader) error {
+	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/code", image)
+	if err != nil {
+		return err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("Got non OK from device: %d", res.StatusCode)
+	}
+
+	return nil
 }

@@ -2,11 +2,11 @@ BUILD_DIR := build
 
 GO_SOURCE := $(shell find . -name '*.go')
 
-.PHONY: shag
-shag: $(BUILD_DIR)/shag
+.PHONY: jag
+jag: $(BUILD_DIR)/jag
 
-$(BUILD_DIR)/shag: $(GO_SOURCE)
-	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/shaguar
+$(BUILD_DIR)/jag: $(GO_SOURCE)
+	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/jaguar
 
 clean:
 	rm -rf $(BUILD_DIR)

@@ -10,7 +10,7 @@ import (
 func PingCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping",
-		Short: "Ping a Shaguar device to see if it's active",
+		Short: "Ping a Jaguar device to see if it's active",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := GetConfig()
 			if err != nil {

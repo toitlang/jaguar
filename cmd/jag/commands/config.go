@@ -10,8 +10,11 @@ import (
 )
 
 const (
-	ConfigPathEnv = "SHAG_CONFIG_PATH"
-	configFile    = ".shaguar"
+	ConfigPathEnv         = "JAG_CONFIG_PATH"
+	configFile            = ".shaguar"
+	ToitvmPathEnv         = "TOITVM_PATH"
+	ToitcPathEnv          = "TOITC_PATH"
+	ToitSnap2ImagePathEnv = "TOIT_SNAP_TO_IMAGE_PATH"
 )
 
 func GetConfigPath() (string, error) {
@@ -62,7 +65,12 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, 
 		if err := cfg.UnmarshalKey("device", &d); err != nil {
 			return nil, err
 		}
-		if !checkPing || d.Ping() {
+		if checkPing {
+			if d.Ping() {
+				return &d, nil
+			}
+			fmt.Println("Couldn't ping the device, select a new device")
+		} else {
 			return &d, nil
 		}
 	}
