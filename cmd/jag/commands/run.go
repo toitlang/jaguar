@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -67,13 +68,15 @@ func RunCmd() *cobra.Command {
 			buildImage := exec.CommandContext(ctx, toitvm, toits2i, "--binary", snapshot.Name(), image.Name())
 			buildImage.Stderr = os.Stderr
 			buildImage.Stdout = os.Stdout
+			if err := buildImage.Run(); err != nil {
+				return err
+			}
 
-			image, err = os.Open(image.Name())
+			b, err := ioutil.ReadFile(image.Name())
 			if err != nil {
 				return err
 			}
-			defer image.Close()
-			return device.Run(image)
+			return device.Run(ctx, b)
 		},
 	}
 

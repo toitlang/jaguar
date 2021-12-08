@@ -29,8 +29,11 @@ main:
   server.listen HTTP_PORT:: | request/http.Request writer/http.ResponseWriter |
     if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
+      writer.write
+        json.encode {"status": "success"}
     if request.path == "/ping" and request.method == "GET":
-      writer.write_headers 200
+      writer.write
+        json.encode {"status": "OK"}
 
 install_program program_size/int reader/reader.Reader -> none:
   print "Installing program with size: $program_size"
@@ -49,10 +52,13 @@ identify address/string -> none:
   socket := network.udp_open
   socket.broadcast = true
   msg := udp.Datagram
-    """shaguar.identify
-name: $NAME
-address: $address
-""".to_byte_array
+    json.encode {
+      "method": "jaguar.identify",
+      "payload": {
+        "name": NAME,
+        "address": address,
+      }
+    }
     net.SocketAddress
       IDENTIFY_ADDRESS
       IDENTIFY_PORT

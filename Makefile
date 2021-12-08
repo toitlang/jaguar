@@ -6,7 +6,7 @@ GO_SOURCE := $(shell find . -name '*.go')
 jag: $(BUILD_DIR)/jag
 
 $(BUILD_DIR)/jag: $(GO_SOURCE)
-	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/jaguar
+	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/jag
 
 clean:
 	rm -rf $(BUILD_DIR)

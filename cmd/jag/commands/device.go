@@ -1,9 +1,9 @@
 package commands
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 )
@@ -18,7 +18,7 @@ func (d Device) String() string {
 }
 
 const (
-	pingTimeout = 100 * time.Millisecond
+	pingTimeout = 200 * time.Millisecond
 )
 
 func (d Device) Ping() bool {
@@ -36,10 +36,8 @@ func (d Device) Ping() bool {
 	return res.StatusCode == http.StatusOK
 }
 
-func (d Device) Run(image io.Reader) error {
-	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/code", image)
+func (d Device) Run(ctx context.Context, b []byte) error {
+	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/code", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

@@ -1,15 +1,12 @@
 package commands
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
 	"time"
-
-	"regexp"
 
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -39,6 +36,7 @@ func ScanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			cmd.SilenceUsage = true
 
 			device, err := scanAndPickDevice(context.Background(), timeout, port)
 			if err != nil {
@@ -88,6 +86,11 @@ func scan(ctx context.Context, port uint) ([]Device, error) {
 		return nil, err
 	}
 	defer pc.Close()
+	if deadline, ok := ctx.Deadline(); ok {
+		if err := pc.SetDeadline(deadline); err != nil {
+			return nil, err
+		}
+	}
 
 	devices := map[string]Device{}
 looping:
@@ -105,18 +108,17 @@ looping:
 		buf := make([]byte, 1024)
 		n, _, err := pc.ReadFrom(buf)
 		if err != nil {
+			if isTimeoutError(err) {
+				break looping
+			}
 			return nil, err
 		}
 
-		if bytes.HasPrefix(buf[:n], []byte("shaguar.identify")) {
-			dev, err := parseDevice(buf[:n])
-			if err != nil {
-				fmt.Println("Failed to parse identify", err)
-			} else {
-				devices[dev.Name] = dev
-			}
-		} else {
-			fmt.Println("got random message", string(buf[:n]))
+		dev, err := parseDevice(buf[:n])
+		if err != nil {
+			fmt.Println("Failed to parse identify", err)
+		} else if dev != nil {
+			devices[dev.Name] = *dev
 		}
 	}
 
@@ -128,15 +130,29 @@ looping:
 	return res, nil
 }
 
-var matchDeviceRegexp = regexp.MustCompile("shaguar\\.identify\nname: ([^\n]+)\naddress: ([^\n]+)\n")
+type udpMessage struct {
+	Method  string          `json:"method"`
+	Payload json.RawMessage `json:"payload"`
+}
 
-func parseDevice(b []byte) (Device, error) {
+func parseDevice(b []byte) (*Device, error) {
 	var res Device
-	if !matchDeviceRegexp.Match(b) {
-		return res, fmt.Errorf("message did not match regexp: %s", base64.RawStdEncoding.EncodeToString(b))
+
+	var msg udpMessage
+	if err := json.Unmarshal(b, &msg); err != nil {
+		return nil, fmt.Errorf("could not parse message: %s. Reason: %w", string(b), err)
 	}
-	matches := matchDeviceRegexp.FindSubmatch(b)
-	res.Name = string(matches[1])
-	res.Address = string(matches[2])
-	return res, nil
+	if msg.Method != "jaguar.identify" {
+		return nil, nil
+	}
+
+	if err := json.Unmarshal(msg.Payload, &res); err != nil {
+		return nil, fmt.Errorf("failed to parse payload of jaguar.identify: %s. reason: %w", string(b), err)
+	}
+	return &res, nil
+}
+
+func isTimeoutError(err error) bool {
+	e, ok := err.(net.Error)
+	return ok && e.Timeout()
 }
