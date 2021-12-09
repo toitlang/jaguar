@@ -14,16 +14,19 @@ import (
 )
 
 const (
-	ConfigPathEnv         = "JAG_CONFIG_PATH"
-	configFile            = ".jaguar"
-	ToitvmPathEnv         = "JAGUAR_TOITVM_PATH"
-	ToitcPathEnv          = "JAGUAR_TOITC_PATH"
-	ToitSnap2ImagePathEnv = "JAGUAR_TOIT_SNAP_TO_IMAGE_PATH"
-	JaguarEntryPointEnv   = "JAGUAR_ENTRY_POINT"
+	WorkspacePathEnv         = "JAG_WORKSPACE_PATH"
+	SnapshotCachePathEnv     = "JAG_SNAPSHOT_CACHE_PATH"
+	configFile               = ".jaguar"
+	ToitvmPathEnv            = "JAG_TOITVM_PATH"
+	ToitcPathEnv             = "JAG_TOITC_PATH"
+	ToitSnap2ImagePathEnv    = "JAG_TOIT_SNAP_TO_IMAGE_PATH"
+	ToitSystemMessagePathEnv = "JAG_TOIT_SYSTEM_MESSAGE_PATH"
+	// EntryPointEnv snapshot of the jaguar program
+	EntryPointEnv = "JAG_ENTRY_POINT"
 )
 
-func GetConfigPath() (string, error) {
-	path, ok := os.LookupEnv(ConfigPathEnv)
+func GetWorkspacePath() (string, error) {
+	path, ok := os.LookupEnv(WorkspacePathEnv)
 	if ok {
 		return path, nil
 	}
@@ -37,15 +40,41 @@ func GetConfigPath() (string, error) {
 	for {
 		candidate := filepath.Join(dir, configFile)
 		if stat, err := os.Stat(candidate); err == nil && !stat.IsDir() {
-			return candidate, nil
+			return dir, nil
 		}
 
 		next := filepath.Dir(dir)
 		if next == dir {
-			return filepath.Join(cwd, configFile), os.ErrNotExist
+			return cwd, os.ErrNotExist
 		}
 		dir = next
 	}
+}
+
+func GetConfigPath() (string, error) {
+	ws, err := GetWorkspacePath()
+	return filepath.Join(ws, configFile), err
+}
+
+func GetSnapshotCachePath() (string, error) {
+	path, ok := os.LookupEnv(SnapshotCachePathEnv)
+	if ok {
+		return path, nil
+	}
+
+	home, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+
+	return ensureDirectory(filepath.Join(home, "jaguar", "snapshots"), nil)
+}
+
+func ensureDirectory(dir string, err error) (string, error) {
+	if err != nil {
+		return dir, err
+	}
+	return dir, os.MkdirAll(dir, 0755)
 }
 
 func GetConfig() (*viper.Viper, error) {

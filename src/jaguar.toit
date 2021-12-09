@@ -27,7 +27,7 @@ main args:
   port := HTTP_PORT
   if args.size == 1:
     port = int.parse args[0]
-  install_system_message_handler
+  install_system_message_handler logger
   network := net.open
   socket := network.tcp_listen port
   address := "http://$network.address:$socket.local_address.port"
