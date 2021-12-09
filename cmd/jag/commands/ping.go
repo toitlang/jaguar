@@ -32,7 +32,7 @@ func PingCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().UintP("port", "p", scanPort, "UDP Port to scan for devices on")
+	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "How long to scan")
 	return cmd
 }

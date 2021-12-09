@@ -9,12 +9,13 @@ import (
 )
 
 type Device struct {
-	Name    string `mapstructure:"name" yaml:"name" json:"name"`
-	Address string `mapstructure:"address" yaml:"address" json:"address"`
+	Name     string `mapstructure:"name" yaml:"name" json:"name"`
+	Address  string `mapstructure:"address" yaml:"address" json:"address"`
+	WordSize int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
 }
 
 func (d Device) String() string {
-	return fmt.Sprintf("%s (address: %s)", d.Name, d.Address)
+	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name, d.Address, d.WordSize * 8)
 }
 
 const (
