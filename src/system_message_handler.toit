@@ -4,6 +4,8 @@
 
 import core.message_manual_decoding_ show print_for_manually_decoding_
 
+import .jaguar
+
 install_system_message_handler:
   handler := MessageHandler
   set_system_message_handler_ SYSTEM_TERMINATED_ handler
@@ -17,4 +19,4 @@ class MessageHandler implements SystemMessageHandler_:
       print_for_manually_decoding_ args
     else if type == SYSTEM_TERMINATED_:
       value := args
-      print_ "Process terminated with exit code $value"
+      logger.info "program $gid terminated with exit code $value"
