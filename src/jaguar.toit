@@ -2,13 +2,15 @@
 // Use of this source code is governed by a Zero-Clause BSD license that can
 // be found in the EXAMPLES_LICENSE file.
 
-import http
 import encoding.json
+import http
+import log
 import net
-import reader
 import net.udp
-import .programs
+import reader
+
 import .aligned_reader
+import .programs
 import .system_message_handler
 
 IDENTIFY_PORT ::= 1990
@@ -19,6 +21,7 @@ NAME ::= "Hest"
 
 HTTP_PORT ::= 9000
 manager ::= ProgramManager
+logger ::= log.default
 
 main args:
   port := HTTP_PORT
@@ -28,7 +31,7 @@ main args:
   network := net.open
   socket := network.tcp_listen port
   address := "http://$network.address:$socket.local_address.port"
-  print "Running jaguar on: $address"
+  logger.info "Running jaguar on: $address"
   task::
     identify address
   server := http.Server
@@ -42,16 +45,19 @@ main args:
         json.encode {"status": "OK"}
 
 install_program program_size/int reader/reader.Reader -> none:
-  print "Installing program with size: $program_size"
+  logger.debug "installing program with $program_size bytes"
   manager.new program_size
-  length := 0
+  written_size := 0
   image_reader := AlignedReader reader IMAGE_CHUNK_SIZE
   while data := image_reader.read:
-    length += data.size
+    written_size += data.size
     manager.write data
   program := manager.commit
-  print "Running program... WROOOM!!! written: $length/$program_size"
-  program.run programs_registry_next_gid_
+  logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
+
+  gid ::= programs_registry_next_gid_
+  logger.info "program $gid starting"
+  program.run gid
 
 identify address/string -> none:
   network := net.open

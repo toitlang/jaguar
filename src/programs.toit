@@ -68,7 +68,7 @@ class Program:
       result := programs_registry_kill_ offset_ size_
       if result: attempts++
       sleep --ms=10
-    if attempts > 0: log.info "killed processes for" --tags={"program": "$this", "attempts": attempts}
+    if attempts > 0: log.debug "program killed" --tags={"program": "$this", "attempts": attempts}
 
   /**
   Returns a printable string representing the program.
