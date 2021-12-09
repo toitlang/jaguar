@@ -14,15 +14,14 @@ import (
 )
 
 const (
-	WorkspacePathEnv         = "JAG_WORKSPACE_PATH"
-	SnapshotCachePathEnv     = "JAG_SNAPSHOT_CACHE_PATH"
-	configFile               = ".jaguar"
-	ToitvmPathEnv            = "JAG_TOITVM_PATH"
-	ToitcPathEnv             = "JAG_TOITC_PATH"
-	ToitSnap2ImagePathEnv    = "JAG_TOIT_SNAP_TO_IMAGE_PATH"
-	ToitSystemMessagePathEnv = "JAG_TOIT_SYSTEM_MESSAGE_PATH"
-	// EntryPointEnv snapshot of the jaguar program
+	WorkspacePathEnv     = "JAG_WORKSPACE_PATH"
+	SnapshotCachePathEnv = "JAG_SNAPSHOT_CACHE_PATH"
+	configFile           = ".jaguar"
+
+	// EntryPointEnv snapshot of the jaguar program.
 	EntryPointEnv = "JAG_ENTRY_POINT"
+	// ToitPathEnv path to the toit sdk build.
+	ToitPathEnv = "JAG_TOIT_PATH"
 )
 
 func GetWorkspacePath() (string, error) {

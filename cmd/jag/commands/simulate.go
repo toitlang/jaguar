@@ -25,7 +25,7 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			toitvm, err := Toitvm()
+			sdk, err := GetSDK()
 			if err != nil {
 				return err
 			}
@@ -35,7 +35,7 @@ func SimulateCmd() *cobra.Command {
 				return fmt.Errorf("You must set the env variable '%s'", EntryPointEnv)
 			}
 
-			simCmd := toitvm.Cmd(ctx, "-b", "none", jaguarEntryPoint, strconv.Itoa(int(port)))
+			simCmd := sdk.Toitvm(ctx, "-b", "none", jaguarEntryPoint, strconv.Itoa(int(port)))
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = os.Stdout
 			return simCmd.Run()
