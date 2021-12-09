@@ -25,7 +25,7 @@ func GetSDK() (*SDK, error) {
 			return nil, err
 		}
 		if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
-			return nil, fmt.Errorf("you must download a toit SDK using 'jag download'")
+			return nil, fmt.Errorf("you must setup the toit SDK using 'jag setup'")
 		}
 		toit = sdkCachePath
 	}
