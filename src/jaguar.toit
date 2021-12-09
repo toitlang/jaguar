@@ -23,15 +23,19 @@ HTTP_PORT ::= 9000
 manager ::= ProgramManager
 logger ::= log.default
 
-main:
+main args:
+  port := HTTP_PORT
+  if args.size == 1:
+    port = int.parse args[0]
   install_system_message_handler
   network := net.open
-  server := http.Server network --logger=logger
-  address := "http://$network.address:$HTTP_PORT"
-  logger.info "running jaguar on $address"
+  socket := network.tcp_listen port
+  address := "http://$network.address:$socket.local_address.port"
+  logger.info "Running jaguar on: $address"
   task::
     identify address
-  server.listen HTTP_PORT:: | request/http.Request writer/http.ResponseWriter |
+  server := http.Server --logger=logger
+  server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
       writer.write

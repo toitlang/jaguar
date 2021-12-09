@@ -19,15 +19,15 @@ type Device struct {
 }
 
 func (d Device) String() string {
-	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name, d.Address, d.WordSize * 8)
+	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name, d.Address, d.WordSize*8)
 }
 
 const (
 	pingTimeout = 400 * time.Millisecond
 )
 
-func (d Device) Ping() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), pingTimeout)
+func (d Device) Ping(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", d.Address+"/ping", nil)
 	if err != nil {

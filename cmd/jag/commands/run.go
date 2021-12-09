@@ -5,11 +5,9 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 )
@@ -26,20 +24,20 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			device, err := GetDevice(ctx, cfg, true)
 			if err != nil {
 				return err
 			}
 
-			toitc, ok := os.LookupEnv(ToitcPathEnv)
-			if !ok {
-				return fmt.Errorf("You must set the env variable '%s'", ToitcPathEnv)
+			toitc, err := Toitc()
+			if err != nil {
+				return err
 			}
 
-			toitvm, ok := os.LookupEnv(ToitvmPathEnv)
-			if !ok {
-				return fmt.Errorf("You must set the env variable '%s'", ToitvmPathEnv)
+			toitvm, err := Toitvm()
+			if err != nil {
+				return err
 			}
 
 			toits2i, ok := os.LookupEnv(ToitSnap2ImagePathEnv)
@@ -55,7 +53,7 @@ func RunCmd() *cobra.Command {
 			defer os.Remove(snapshot.Name())
 
 			entrypoint := args[0]
-			buildSnap := exec.CommandContext(ctx, toitc, "-w", snapshot.Name(), entrypoint)
+			buildSnap := toitc.Cmd(ctx, "-w", snapshot.Name(), entrypoint)
 			buildSnap.Stderr = os.Stderr
 			buildSnap.Stdout = os.Stdout
 			if err := buildSnap.Run(); err != nil {
@@ -74,7 +72,7 @@ func RunCmd() *cobra.Command {
 				bits = "-m64"
 			}
 
-			buildImage := exec.CommandContext(ctx, toitvm, toits2i, "--binary", bits, snapshot.Name(), image.Name())
+			buildImage := toitvm.Cmd(ctx, toits2i, "--binary", bits, snapshot.Name(), image.Name())
 			buildImage.Stderr = os.Stderr
 			buildImage.Stdout = os.Stdout
 			if err := buildImage.Run(); err != nil {

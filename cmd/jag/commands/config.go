@@ -15,10 +15,11 @@ import (
 
 const (
 	ConfigPathEnv         = "JAG_CONFIG_PATH"
-	configFile            = ".shaguar"
-	ToitvmPathEnv         = "TOITVM_PATH"
-	ToitcPathEnv          = "TOITC_PATH"
-	ToitSnap2ImagePathEnv = "TOIT_SNAP_TO_IMAGE_PATH"
+	configFile            = ".jaguar"
+	ToitvmPathEnv         = "JAGUAR_TOITVM_PATH"
+	ToitcPathEnv          = "JAGUAR_TOITC_PATH"
+	ToitSnap2ImagePathEnv = "JAGUAR_TOIT_SNAP_TO_IMAGE_PATH"
+	JaguarEntryPointEnv   = "JAGUAR_ENTRY_POINT"
 )
 
 func GetConfigPath() (string, error) {
@@ -70,7 +71,7 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, 
 			return nil, err
 		}
 		if checkPing {
-			if d.Ping() {
+			if d.Ping(ctx) {
 				return &d, nil
 			}
 			fmt.Println("Couldn't ping the device, select a new device")

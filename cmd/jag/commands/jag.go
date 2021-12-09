@@ -12,6 +12,11 @@ func JagCmd() *cobra.Command {
 		Short: "Jaguar is a very fast car for ESP32",
 	}
 
-	cmd.AddCommand(ScanCmd(), PingCmd(), RunCmd())
+	cmd.AddCommand(
+		ScanCmd(),
+		PingCmd(),
+		RunCmd(),
+		SimulateCmd(),
+	)
 	return cmd
 }

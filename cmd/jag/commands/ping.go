@@ -5,7 +5,6 @@
 package commands
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -21,12 +20,12 @@ func PingCmd() *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			device, err := GetDevice(ctx, cfg, false)
 			if err != nil {
 				return err
 			}
-			if !device.Ping() {
+			if !device.Ping(ctx) {
 				cmd.SilenceUsage = true
 				return fmt.Errorf("couldn't ping the device")
 			}

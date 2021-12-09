@@ -42,7 +42,7 @@ func ScanCmd() *cobra.Command {
 			}
 			cmd.SilenceUsage = true
 
-			device, err := scanAndPickDevice(context.Background(), timeout, port)
+			device, err := scanAndPickDevice(cmd.Context(), timeout, port)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func ScanCmd() *cobra.Command {
 
 func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint) (*Device, error) {
 	fmt.Println("scanning...")
-	scanCtx, cancel := context.WithTimeout(context.Background(), scanTimeout)
+	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := scan(scanCtx, port)
 	cancel()
 	if err != nil {
