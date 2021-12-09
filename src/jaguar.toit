@@ -56,7 +56,7 @@ install_program program_size/int reader/reader.Reader -> none:
   logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
 
   gid ::= programs_registry_next_gid_
-  logger.info "program $gid starting"
+  logger.info "program $gid starting from $program"
   program.run gid
 
 identify address/string -> none:
