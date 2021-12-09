@@ -25,5 +25,5 @@ clean:
 
 check-toitc-env:
 ifndef TOITC_PATH
-	$(error TOITC_PATH is not set
+	$(error TOITC_PATH is not set)
 endif

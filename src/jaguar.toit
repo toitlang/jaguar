@@ -34,7 +34,7 @@ main args:
   logger.info "Running jaguar on: $address"
   task::
     identify address
-  server := http.Server
+  server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body

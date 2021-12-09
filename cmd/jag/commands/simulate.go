@@ -35,7 +35,7 @@ func SimulateCmd() *cobra.Command {
 				return fmt.Errorf("You must set the env variable '%s'", JaguarToitPathEnv)
 			}
 
-			simCmd := toitvm.Cmd(ctx, jaguarToitPath, strconv.Itoa(int(port)))
+			simCmd := toitvm.Cmd(ctx, "-b", "none", jaguarToitPath, strconv.Itoa(int(port)))
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = os.Stdout
 			return simCmd.Run()

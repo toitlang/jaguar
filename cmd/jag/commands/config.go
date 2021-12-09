@@ -16,9 +16,9 @@ import (
 const (
 	ConfigPathEnv         = "JAG_CONFIG_PATH"
 	configFile            = ".shaguar"
-	ToitvmPathEnv         = "TOITVM_PATH"
-	ToitcPathEnv          = "TOITC_PATH"
-	ToitSnap2ImagePathEnv = "TOIT_SNAP_TO_IMAGE_PATH"
+	ToitvmPathEnv         = "JAGUAR_TOITVM_PATH"
+	ToitcPathEnv          = "JAGUAR_TOITC_PATH"
+	ToitSnap2ImagePathEnv = "JAGUAR_TOIT_SNAP_TO_IMAGE_PATH"
 	JaguarToitPathEnv     = "JAGUAR_TOIT_PATH"
 )
 
