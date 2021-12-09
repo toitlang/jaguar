@@ -26,7 +26,7 @@ logger ::= log.default
 main:
   install_system_message_handler
   network := net.open
-  server := http.Server network
+  server := http.Server network --logger=logger
   address := "http://$network.address:$HTTP_PORT"
   logger.info "running jaguar on $address"
   task::
