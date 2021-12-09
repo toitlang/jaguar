@@ -61,12 +61,20 @@ func GetSnapshotCachePath() (string, error) {
 		return path, nil
 	}
 
-	home, err := os.UserCacheDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	return ensureDirectory(filepath.Join(home, "jaguar", "snapshots"), nil)
+	return ensureDirectory(filepath.Join(home, ".cache", "jaguar", "snapshots"), nil)
+}
+
+func GetSDKCachePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "jaguar", "sdk"), nil
 }
 
 func ensureDirectory(dir string, err error) (string, error) {
