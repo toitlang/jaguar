@@ -23,7 +23,7 @@ func (d Device) String() string {
 }
 
 const (
-	pingTimeout = 200 * time.Millisecond
+	pingTimeout = 400 * time.Millisecond
 )
 
 func (d Device) Ping() bool {
