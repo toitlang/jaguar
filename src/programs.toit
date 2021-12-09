@@ -5,8 +5,8 @@
 import log
 import uuid
 
-IMAGE_WORD_SIZE ::= 4
-IMAGE_CHUNK_SIZE ::= 33 * IMAGE_WORD_SIZE
+IMAGE_WORD_SIZE ::= BYTES_PER_WORD
+IMAGE_CHUNK_SIZE ::= (BITS_PER_WORD + 1) * IMAGE_WORD_SIZE
 
 class ProgramManager:
   program_/Program? := null

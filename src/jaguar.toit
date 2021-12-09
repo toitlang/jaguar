@@ -9,6 +9,7 @@ import reader
 import net.udp
 import .programs
 import .aligned_reader
+import .system_message_handler
 
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
@@ -20,12 +21,13 @@ HTTP_PORT ::= 9000
 manager ::= ProgramManager
 
 main:
+  install_system_message_handler
   network := net.open
   server := http.Server network
-  addr := "http://$network.address:$HTTP_PORT"
-  print "Running shaguar on: $addr"
+  address := "http://$network.address:$HTTP_PORT"
+  print "Running jaguar on: $address"
   task::
-    identify addr
+    identify address
   server.listen HTTP_PORT:: | request/http.Request writer/http.ResponseWriter |
     if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
@@ -57,6 +59,7 @@ identify address/string -> none:
       "payload": {
         "name": NAME,
         "address": address,
+        "wordSize": BYTES_PER_WORD,
       }
     }
     net.SocketAddress

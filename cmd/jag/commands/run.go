@@ -65,7 +65,12 @@ func RunCmd() *cobra.Command {
 			image.Close()
 			defer os.Remove(image.Name())
 
-			buildImage := exec.CommandContext(ctx, toitvm, toits2i, "--binary", snapshot.Name(), image.Name())
+			bits := "-m32"
+			if device.WordSize == 8 {
+				bits = "-m64"
+			}
+
+			buildImage := exec.CommandContext(ctx, toitvm, toits2i, "--binary", bits, snapshot.Name(), image.Name())
 			buildImage.Stderr = os.Stderr
 			buildImage.Stdout = os.Stdout
 			if err := buildImage.Run(); err != nil {
@@ -80,7 +85,7 @@ func RunCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().UintP("port", "p", scanPort, "UDP Port to scan for devices on")
+	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "How long to scan")
 	return cmd
 }
