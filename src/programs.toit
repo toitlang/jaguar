@@ -5,19 +5,29 @@
 import log
 import uuid
 
-IMAGE_WORD_SIZE ::= BYTES_PER_WORD
+IMAGE_WORD_SIZE  ::= BYTES_PER_WORD
 IMAGE_CHUNK_SIZE ::= (BITS_PER_WORD + 1) * IMAGE_WORD_SIZE
+IMAGE_PAGE_SIZE  ::= BYTES_PER_WORD == 4 ? 4 * KB : 32 * KB
 
 class ProgramManager:
   program_/Program? := null
   writer_/FlashImageWriter_? := null
+
+  next_offset_/int := 0
 
   new image_size/int -> none:
     if program_:
       program_.kill
       program_ = null
     relocated_size := image_size - (image_size / IMAGE_CHUNK_SIZE) * IMAGE_WORD_SIZE
-    writer_ = FlashImageWriter_ 0 relocated_size
+    2.repeat:
+      catch --trace=(: it != "OUT_OF_BOUNDS"):
+        writer_ = FlashImageWriter_ next_offset_ relocated_size
+        allocated_size ::= (relocated_size + IMAGE_PAGE_SIZE - 1) & (-IMAGE_PAGE_SIZE)
+        next_offset_ += allocated_size
+        return
+      // Start over from offset zero.
+      next_offset_ = 0
 
   write bytes/ByteArray -> none:
     assert: writer_
@@ -74,7 +84,7 @@ class Program:
   Returns a printable string representing the program.
   */
   stringify -> string:
-    return "program:[$offset_,$(offset_ + size_)]"
+    return "flash @ [$offset_,$(offset_ + size_)]"
 
 
 // -------------------------------------------------------
