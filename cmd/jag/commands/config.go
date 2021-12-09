@@ -19,6 +19,7 @@ const (
 	ToitvmPathEnv         = "TOITVM_PATH"
 	ToitcPathEnv          = "TOITC_PATH"
 	ToitSnap2ImagePathEnv = "TOIT_SNAP_TO_IMAGE_PATH"
+	JaguarToitPathEnv     = "JAGUAR_TOIT_PATH"
 )
 
 func GetConfigPath() (string, error) {
@@ -70,7 +71,7 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, 
 			return nil, err
 		}
 		if checkPing {
-			if d.Ping() {
+			if d.Ping(ctx) {
 				return &d, nil
 			}
 			fmt.Println("Couldn't ping the device, select a new device")

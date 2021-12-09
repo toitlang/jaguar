@@ -20,15 +20,19 @@ NAME ::= "Hest"
 HTTP_PORT ::= 9000
 manager ::= ProgramManager
 
-main:
+main args:
+  port := HTTP_PORT
+  if args.size == 1:
+    port = int.parse args[0]
   install_system_message_handler
   network := net.open
-  server := http.Server network
-  address := "http://$network.address:$HTTP_PORT"
+  socket := network.tcp_listen port
+  address := "http://$network.address:$socket.local_address.port"
   print "Running jaguar on: $address"
   task::
     identify address
-  server.listen HTTP_PORT:: | request/http.Request writer/http.ResponseWriter |
+  server := http.Server
+  server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
       writer.write
