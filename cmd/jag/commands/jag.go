@@ -19,6 +19,7 @@ func JagCmd() *cobra.Command {
 		SimulateCmd(),
 		DecodeCmd(),
 		SetupCmd(),
+		FlashCmd(),
 	)
 	return cmd
 }

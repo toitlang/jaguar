@@ -22,6 +22,10 @@ const (
 	EntryPointEnv = "JAG_ENTRY_POINT"
 	// ToitPathEnv path to the toit sdk build.
 	ToitPathEnv = "JAG_TOIT_PATH"
+	// EsptoolPathEnv path to the esptool.
+	EsptoolPathEnv = "JAG_ESPTOOL_PATH"
+	// ESP32BinEnv path to the jaguar esp32 binary image.
+	ESP32BinEnv = "JAG_ESP32_BIN_PATH"
 )
 
 func GetWorkspacePath() (string, error) {

@@ -59,12 +59,17 @@ func (s *SDK) SnapshotToImagePath() string {
 	return filepath.Join(s.Path, "snapshots", "snapshot_to_image.snapshot")
 }
 
+func (s *SDK) InjectConfigPath() string {
+	return filepath.Join(s.Path, "snapshots", "inject_config.snapshot")
+}
+
 func (s *SDK) validate() error {
 	paths := []string{
 		s.ToitcPath(),
 		s.ToitvmPath(),
 		s.SystemMessageSnapshotPath(),
 		s.SnapshotToImagePath(),
+		s.InjectConfigPath(),
 	}
 	for _, p := range paths {
 		if stat, err := os.Stat(p); err != nil {
