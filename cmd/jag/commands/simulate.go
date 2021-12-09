@@ -30,9 +30,9 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			jaguarEntryPoint, ok := os.LookupEnv(JaguarEntryPointEnv)
+			jaguarEntryPoint, ok := os.LookupEnv(EntryPointEnv)
 			if !ok {
-				return fmt.Errorf("You must set the env variable '%s'", JaguarEntryPointEnv)
+				return fmt.Errorf("You must set the env variable '%s'", EntryPointEnv)
 			}
 
 			simCmd := toitvm.Cmd(ctx, "-b", "none", jaguarEntryPoint, strconv.Itoa(int(port)))
