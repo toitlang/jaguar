@@ -22,10 +22,10 @@ func getToitSDKURL(version string) string {
 	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, currOS)
 }
 
-func DownloadCmd() *cobra.Command {
+func SetupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "download",
-		Short:        "Downloads a toit SDK into cache",
+		Use:          "setup",
+		Short:        "Setup the toit SDK",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			version, err := cmd.Flags().GetString("version")
@@ -53,7 +53,7 @@ func DownloadCmd() *cobra.Command {
 
 			if resp.StatusCode != http.StatusOK {
 				resp.Body.Close()
-				return fmt.Errorf("Failed downloading: %v", resp.Status)
+				return fmt.Errorf("Failed downloading the toit SDK artifact: %v", resp.Status)
 			}
 
 			progress := pb.New64(resp.ContentLength)
@@ -62,7 +62,7 @@ func DownloadCmd() *cobra.Command {
 			gzipReader, err := newGZipReader(r)
 			if err != nil {
 				r.Close()
-				return fmt.Errorf("failed to read gzip file: %w", err)
+				return fmt.Errorf("failed to read the toit SDK artifact as gzip file: %w", err)
 			}
 			defer gzipReader.Close()
 
@@ -75,10 +75,10 @@ func DownloadCmd() *cobra.Command {
 			}
 
 			if err := extractTarFile(gzipReader, sdkPath, "toit/"); err != nil {
-				return fmt.Errorf("failed to extract toit SDK, reason: %w", err)
+				return fmt.Errorf("failed to extract the toit SDK, reason: %w", err)
 			}
 			gzipReader.Close()
-			fmt.Println("Successfully downloaded toit SDK into", sdkPath)
+			fmt.Println("Successfully installed toit SDK into", sdkPath)
 			return nil
 		},
 	}
