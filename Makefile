@@ -17,13 +17,12 @@ $(BUILD_DIR)/jag: $(GO_SOURCE)
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
 $(BUILD_DIR)/jaguar.snapshot: check-toitc-env $(TOIT_SOURCE)
-	$(JAG_TOITC_PATH) -w $@ ./src/jaguar.toit
+	$(JAG_TOIT_PATH)/bin/toitc -w $@ ./src/jaguar.toit
 
 clean:
 	rm -rf $(BUILD_DIR)
 
-
 check-toitc-env:
-ifndef JAG_TOITC_PATH
-	$(error JAG_TOITC_PATH is not set)
+ifndef JAG_TOIT_PATH
+	$(error JAG_TOIT_PATH is not set)
 endif

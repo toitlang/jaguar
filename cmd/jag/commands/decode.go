@@ -35,14 +35,9 @@ func DecodeCmd() *cobra.Command {
 				return err
 			}
 
-			toitvm, err := Toitvm()
+			sdk, err := GetSDK()
 			if err != nil {
 				return err
-			}
-
-			systemMessage, ok := os.LookupEnv(ToitSystemMessagePathEnv)
-			if !ok {
-				return fmt.Errorf("You must set the env variable '%s'", ToitSystemMessagePathEnv)
 			}
 
 			var snapshot string
@@ -60,7 +55,7 @@ func DecodeCmd() *cobra.Command {
 				snapshot = filepath.Join(snapshotCache, device.Name+".snapshot")
 			}
 
-			decodeCmd := toitvm.Cmd(ctx, systemMessage, snapshot, "-b", args[0])
+			decodeCmd := sdk.Toitvm(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", args[0])
 			decodeCmd.Stderr = os.Stderr
 			decodeCmd.Stdout = os.Stdout
 			return decodeCmd.Run()
