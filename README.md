@@ -22,10 +22,11 @@ version of the application gets to start again from `main`.
 
 ## How do I use it?
 
-First you'll need to have a Go development environment setup.
+First you'll need to have a [Go development environment](https://go.dev) properly set up. Using that
+you can install the `jag` command line tool using `go install`:
 
 ``` sh
-go install ...
+go install github.com/toitlang/jaguar/cmd/jag
 ```
 
 Next step is to let `jag` download and configure the Toit SDK and the associated tools for flashing
