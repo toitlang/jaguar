@@ -31,4 +31,4 @@ jobs:
       run: make jag
 
     - name: Build image
-      run: make image
+      run:  make install_esp_idf image
