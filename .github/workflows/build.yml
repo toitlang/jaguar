@@ -10,12 +10,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build cmake
+        ninja --version
+        cmake --version
+        gcc --version
+
     - uses: actions/checkout@v2
+      with:
+          submodules: "recursive"
 
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: 1.17
 
-    - name: Build
+    - name: Build jag
       run: make jag
+
+    - name: Build image
+      run: make image

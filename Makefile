@@ -6,23 +6,59 @@ BUILD_DIR := build
 
 GO_SOURCE := $(shell find . -name '*.go')
 TOIT_SOURCE := $(shell find . -name '*.toit')
+THIRD_PARTY_TOIT_PATH = $(PWD)/third_party/toit
+JAG_TOIT_PATH ?= $(THIRD_PARTY_TOIT_PATH)/build/host/sdk
+
+$(BUILD_DIR):
+	mkdir -p $@
 
 .PHONY: jag
 jag: $(BUILD_DIR)/jag
 
-$(BUILD_DIR)/jag: $(GO_SOURCE)
+$(BUILD_DIR)/jag: $(GO_SOURCE) $(BUILD_DIR)
 	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/jag
 
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
-$(BUILD_DIR)/jaguar.snapshot: check-toitc-env $(TOIT_SOURCE)
-	$(JAG_TOIT_PATH)/bin/toitc -w $@ ./src/jaguar.toit
+.PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitc
+$(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitc:
+	make -C $(THIRD_PARTY_TOIT_PATH) build/host/sdk/bin/toitc
+
+$(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toitc $(TOIT_SOURCE) $(BUILD_DIR)
+	$(JAG_TOIT_PATH)/bin/toitc -w ./$@ ./src/jaguar.toit
+
+IDF_PATH ?= $(THIRD_PARTY_TOIT_PATH)/third_party/esp-idf
+.PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/
+$(THIRD_PARTY_TOIT_PATH)/build/host/esp32/: $(TOIT_SOURCE)
+	IDF_PATH=$(IDF_PATH) make -C $(THIRD_PARTY_TOIT_PATH) esp32 ESP32_ENTRY=$(PWD)/src/jaguar.toit esp32
+
+$(BUILD_DIR)/image.snapshot: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/
+	cp $(THIRD_PARTY_TOIT_PATH)/build/snapshot $@
+
+.PHONY: image_snapshot
+image_snapshot: $(BUILD_DIR)/image.snapshot
+
+$(BUILD_DIR)/image/:
+	mkdir -p $@
+
+$(BUILD_DIR)/image/ota_data_initial.bin: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/ $(BUILD_DIR)/image/
+	cp $(THIRD_PARTY_TOIT_PATH)/build/esp32/ota_data_initial.bin $@
+
+$(BUILD_DIR)/image/bootloader/:
+	mkdir -p $@
+
+$(BUILD_DIR)/image/bootloader/bootloader.bin: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/ $(BUILD_DIR)/image/bootloader/
+	cp $(THIRD_PARTY_TOIT_PATH)/build/esp32/bootloader/bootloader.bin $@
+
+$(BUILD_DIR)/image/toit.bin: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/ $(BUILD_DIR)/image/
+	cp $(THIRD_PARTY_TOIT_PATH)/build/esp32/toit.bin $@
+
+$(BUILD_DIR)/image/partitions.bin: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/ $(BUILD_DIR)/image/
+	cp $(THIRD_PARTY_TOIT_PATH)/build/esp32/partitions.bin $@
+
+.PHONY: image
+image: $(BUILD_DIR)/image.snapshot $(BUILD_DIR)/image/ota_data_initial.bin $(BUILD_DIR)/image/bootloader/bootloader.bin $(BUILD_DIR)/image/toit.bin $(BUILD_DIR)/image/partitions.bin
 
 clean:
 	rm -rf $(BUILD_DIR)
-
-check-toitc-env:
-ifndef JAG_TOIT_PATH
-	$(error JAG_TOIT_PATH is not set)
-endif
