@@ -24,7 +24,9 @@ const (
 func ScanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "scan",
-		Short: "Scan for Shaguar devices",
+		Short: "Scan for Jaguar devices",
+		Long:  "Scan for Jaguar devices by listening for UDP packets broadcasted by the devices.\n"+
+		       "To use a Jaguar device, you need to be on the same network as the device.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := GetConfig()
 			if err != nil {
@@ -52,12 +54,12 @@ func ScanCmd() *cobra.Command {
 	}
 
 	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
-	cmd.Flags().DurationP("timeout", "t", scanTimeout, "How long to scan")
+	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
 	return cmd
 }
 
 func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint) (*Device, error) {
-	fmt.Println("scanning...")
+	fmt.Println("Scanning...")
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := scan(scanCtx, port)
 	cancel()
@@ -66,11 +68,11 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	}
 
 	if len(devices) == 0 {
-		return nil, fmt.Errorf("didn't find any shaguar devices")
+		return nil, fmt.Errorf("didn't find any Jaguar devices")
 	}
 
 	prompt := promptui.Select{
-		Label:     "Choose what shaguar device you want to use",
+		Label:     "Choose what Jaguar device you want to use",
 		Items:     devices,
 		Templates: &promptui.SelectTemplates{},
 	}

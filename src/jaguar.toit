@@ -31,7 +31,7 @@ main args:
   network := net.open
   socket := network.tcp_listen port
   address := "http://$network.address:$socket.local_address.port"
-  logger.info "Running jaguar on: $address"
+  logger.info "Running Jaguar on: $address"
   task::
     identify address
   server := http.Server --logger=logger

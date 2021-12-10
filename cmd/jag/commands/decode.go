@@ -14,8 +14,10 @@ import (
 
 func DecodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "decode <base64-message>",
-		Short:        "decode a base64 system message",
+		Use:          "decode <message>",
+		Short:        "Decode a stack trace received from a Jaguar device",
+		Long:         "Decode a stack trace received from a Jaguar device. Stack traces are encoded\n"+
+		              "using base64 and are easy to copy from the serial output.",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,7 +47,7 @@ func DecodeCmd() *cobra.Command {
 				var ok bool
 				snapshot, ok = os.LookupEnv(EntryPointEnv)
 				if !ok {
-					return fmt.Errorf("You must set the env variable '%s'", EntryPointEnv)
+					return fmt.Errorf("you must set the env variable '%s'", EntryPointEnv)
 				}
 			} else {
 				snapshotCache, err := GetSnapshotCachePath()
@@ -62,6 +64,6 @@ func DecodeCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("system", false, "if set, will decode the system message using the jaguar snapshot")
+	cmd.Flags().Bool("system", false, "if set, will decode the system message using the Jaguar snapshot")
 	return cmd
 }
