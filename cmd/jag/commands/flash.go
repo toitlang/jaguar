@@ -7,6 +7,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +26,7 @@ type binaryConfig struct {
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "flash",
-		Short:        "flash a device with the jaguar image",
+		Short:        "Flash an ESP32 with the jaguar image",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,7 +82,27 @@ func FlashCmd() *cobra.Command {
 			configFile.Close()
 
 			toitBin := filepath.Join(esp32BinPath, "toit.bin")
-			injectCmd := sdk.Toitvm(ctx, sdk.InjectConfigPath(), configFile.Name(), toitBin)
+
+			binTmpFile, err := os.CreateTemp("", "*.bin")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(binTmpFile.Name())
+
+			binFile, err := os.Open(toitBin)
+			if err != nil {
+				binTmpFile.Close()
+				return err
+			}
+
+			_, err = io.Copy(binTmpFile, binFile)
+			binTmpFile.Close()
+			binFile.Close()
+			if err != nil {
+				return err
+			}
+
+			injectCmd := sdk.Toitvm(ctx, sdk.InjectConfigPath(), configFile.Name(), binTmpFile.Name())
 			injectCmd.Stderr = os.Stderr
 			injectCmd.Stdout = os.Stdout
 			if err := injectCmd.Run(); err != nil {
@@ -93,7 +114,7 @@ func FlashCmd() *cobra.Command {
 				"--flash_freq", "40m", "--flash_size", "detect",
 				"0xd000", filepath.Join(esp32BinPath, "ota_data_initial.bin"),
 				"0x1000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
-				"0x10000", toitBin,
+				"0x10000", binTmpFile.Name(),
 				"0x8000", filepath.Join(esp32BinPath, "partitions.bin"),
 			}
 
@@ -104,10 +125,10 @@ func FlashCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "port to flash onto")
-	cmd.Flags().Uint("baud", 921600, "the baud rate to flash with")
+	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "Port to flash onto")
+	cmd.Flags().Uint("baud", 921600, "The baud rate to flash with")
 	cmd.Flags().String("wifi-ssid", "", "The WiFi SSID to flash with")
-	cmd.Flags().String("wifi-password", "", "The WiFi Password to flash with")
+	cmd.Flags().String("wifi-password", "", "The WiFi password to flash with")
 	cmd.MarkFlagRequired("wifi-ssid")
 	cmd.MarkFlagRequired("wifi-password")
 	return cmd
