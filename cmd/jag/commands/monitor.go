@@ -52,9 +52,9 @@ func MonitorCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "Port to flash to monitor")
+	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "port to monitor")
 	cmd.Flags().BoolP("attach", "a", false, "attach to the serial output without rebooting it")
-	cmd.Flags().Uint("baud", 115200, "The baud rate to monitor with")
+	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
 	return cmd
 }
 
