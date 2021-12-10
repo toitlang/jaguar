@@ -39,6 +39,7 @@ jobs:
           . ./third_party/toit/third_party/esp-idf/export.sh
           make image
           tar -czf build/image.tar.gz -C ./build -h image
+          cp ./build/image.snapshot ./build/jaguar.snapshot
       - name: Upload image artifacts
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
