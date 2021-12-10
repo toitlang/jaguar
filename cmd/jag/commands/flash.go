@@ -26,7 +26,10 @@ type binaryConfig struct {
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "flash",
-		Short:        "Flash an ESP32 with the jaguar image",
+		Short:        "Flash an ESP32 with the Jaguar image",
+		Long:         "Flash an ESP32 with the Jaguar application image. The initial flashing is\n"+
+		              "done over a serial connection and it is used to give the ESP32 its initial\n"+
+					  "firmware and the necessary WiFi credentials.",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -125,10 +128,10 @@ func FlashCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "Port to flash onto")
-	cmd.Flags().Uint("baud", 921600, "The baud rate to flash with")
-	cmd.Flags().String("wifi-ssid", "", "The WiFi SSID to flash with")
-	cmd.Flags().String("wifi-password", "", "The WiFi password to flash with")
+	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "serial port to flash via")
+	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
+	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.MarkFlagRequired("wifi-ssid")
 	cmd.MarkFlagRequired("wifi-password")
 	return cmd
