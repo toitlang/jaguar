@@ -10,11 +10,11 @@ func JagCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "jag",
 		Short: "Fast development for your ESP32",
-		Long:  "Jaguar is a Toit application for your ESP32 that gives you the fastest development cycle.\n\n"+
-		       "Jaguar uses the capabilities of the Toit virtual machine to let you update and restart your\n"+
-			   "ESP32 applications written in Toit over WiFi. Change your Toit code in your editor, update\n"+
-			   "the application on your device, and restart it all within seconds. No need to flash over\n"+
-			   "serial, reboot your device, or wait for it to reconnect to your network.",
+		Long: "Jaguar is a Toit application for your ESP32 that gives you the fastest development cycle.\n\n" +
+			"Jaguar uses the capabilities of the Toit virtual machine to let you update and restart your\n" +
+			"ESP32 applications written in Toit over WiFi. Change your Toit code in your editor, update\n" +
+			"the application on your device, and restart it all within seconds. No need to flash over\n" +
+			"serial, reboot your device, or wait for it to reconnect to your network.",
 	}
 
 	cmd.AddCommand(
@@ -25,6 +25,7 @@ func JagCmd() *cobra.Command {
 		DecodeCmd(),
 		SetupCmd(),
 		FlashCmd(),
+		MonitorCmd(),
 	)
 	return cmd
 }
