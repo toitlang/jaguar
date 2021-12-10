@@ -22,21 +22,42 @@ version of the application gets to start again from `main`.
 
 ## How do I use it?
 
+First you'll need to have a Go development environment setup.
+
 ``` sh
 go install ...
 ```
+
+Next step is to let `jag` download and configure the Toit SDK and the associated tools for flashing
+the Jaguar application onto your ESP32:
 
 ``` sh
 jag setup
 ```
 
+Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
+application onto it:
+
 ``` sh
 jag flash --port=/dev/ttyUSB0 --wifi-ssid="<ssid>" --wifi-password="<password>"
 ```
 
+Now it is possible to monitor the serial output from the device:
+
+``` sh
+jag monitor --port=/dev/ttyUSB0
+```
+
+Once the serial output shows that your ESP32 runs the Jaguar application, it will start announcing
+its presence to the network using UDP broadcast. You can find a device by scanning, but this requires
+you to be on the same local network as your ESP32:
+
 ``` sh
 jag scan
 ```
+
+With the scanning complete, you're ready to run your first Toit program on your Jaguar-enabled
+ESP32 device:
 
 ``` sh
 jag run examples/hello.toit
