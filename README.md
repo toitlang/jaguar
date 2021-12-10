@@ -26,7 +26,7 @@ First you'll need to have a [Go development environment](https://go.dev) properl
 you can install the `jag` command line tool using `go install`:
 
 ``` sh
-go install github.com/toitlang/jaguar/cmd/jag
+go install github.com/toitlang/jaguar/cmd/jag@latest
 ```
 
 Next step is to let `jag` download and configure the Toit SDK and the associated tools for flashing
