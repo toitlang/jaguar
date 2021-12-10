@@ -124,7 +124,8 @@ looping:
 		if err != nil {
 			fmt.Println("Failed to parse identify", err)
 		} else if dev != nil {
-			devices[dev.Name] = *dev
+			// TODO (jesper): Once names are real unique, use name in map.
+			devices[dev.Address] = *dev
 		}
 	}
 
