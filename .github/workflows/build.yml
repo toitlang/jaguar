@@ -32,6 +32,6 @@ jobs:
 
     - name: Build image
       run: |
-        make install_esp_idf
+        make install-esp-idf
         . ./third_party/toit/third_party/esp-idf/export.sh
         make image

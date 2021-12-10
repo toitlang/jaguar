@@ -62,8 +62,8 @@ $(BUILD_DIR)/image/partitions.bin: $(TOIT_REPO_PATH)/build/host/esp32/ $(BUILD_D
 .PHONY: image
 image: $(BUILD_DIR)/image.snapshot $(BUILD_DIR)/image/ota_data_initial.bin $(BUILD_DIR)/image/bootloader/bootloader.bin $(BUILD_DIR)/image/toit.bin $(BUILD_DIR)/image/partitions.bin
 
-.PHONY: install_esp_idf
-install_esp_idf:
+.PHONY: install-esp-idf
+install-esp-idf:
 	IDF_PATH=$(IDF_PATH) $(IDF_PATH)/install.sh
 
 clean:
