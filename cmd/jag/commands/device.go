@@ -52,7 +52,7 @@ func (d Device) Run(ctx context.Context, b []byte) error {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("Got non OK from device: %d", res.StatusCode)
+		return fmt.Errorf("got non OK from device: %d", res.StatusCode)
 	}
 
 	return nil

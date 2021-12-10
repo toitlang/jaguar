@@ -18,9 +18,9 @@ const (
 	SnapshotCachePathEnv = "JAG_SNAPSHOT_CACHE_PATH"
 	configFile           = ".jaguar"
 
-	// EntryPointEnv snapshot of the jaguar program.
+	// EntryPointEnv snapshot of the Jaguar program.
 	EntryPointEnv = "JAG_ENTRY_POINT"
-	// ToitPathEnv path to the toit sdk build.
+	// ToitPathEnv path to the Toit sdk build.
 	ToitPathEnv = "JAG_TOIT_PATH"
 )
 

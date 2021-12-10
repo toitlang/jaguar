@@ -13,7 +13,7 @@ import (
 func PingCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping",
-		Short: "Ping a Jaguar device to see if it's active",
+		Short: "Ping a Jaguar device to see if it is active",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := GetConfig()
 			if err != nil {
@@ -30,11 +30,11 @@ func PingCmd() *cobra.Command {
 				return fmt.Errorf("couldn't ping the device")
 			}
 
-			fmt.Println("got ping from the device")
+			fmt.Println("Got ping from the device")
 			return nil
 		},
 	}
 
-	cmd.Flags().DurationP("timeout", "t", pingTimeout, "How long to wait for a reply")
+	cmd.Flags().DurationP("timeout", "t", pingTimeout, "how long to wait for a reply")
 	return cmd
 }
