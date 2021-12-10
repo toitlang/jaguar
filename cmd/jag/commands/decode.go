@@ -5,7 +5,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -39,10 +38,9 @@ func DecodeCmd() *cobra.Command {
 
 			var snapshot string
 			if system {
-				var ok bool
-				snapshot, ok = os.LookupEnv(EntryPointEnv)
-				if !ok {
-					return fmt.Errorf("you must set the env variable '%s'", EntryPointEnv)
+				var err error
+				if snapshot, err = GetSnapshotPath(); err != nil {
+					return err
 				}
 			} else {
 				device, err := GetDevice(ctx, cfg, true)
@@ -50,11 +48,11 @@ func DecodeCmd() *cobra.Command {
 					return err
 				}
 
-				snapshotCache, err := GetSnapshotCachePath()
+				snapshotsCache, err := GetSnapshotsCachePath()
 				if err != nil {
 					return err
 				}
-				snapshot = filepath.Join(snapshotCache, device.Name+".snapshot")
+				snapshot = filepath.Join(snapshotsCache, device.Name+".snapshot")
 			}
 
 			decodeCmd := sdk.Toitvm(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", args[0])
