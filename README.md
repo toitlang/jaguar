@@ -29,8 +29,8 @@ you can install the `jag` command line tool using `go install`:
 go install github.com/toitlang/jaguar/cmd/jag@latest
 ```
 
-Next step is to let `jag` download and configure the Toit SDK and the associated tools for flashing
-the Jaguar application onto your ESP32:
+Remember to add `$HOME/go/bin` to your `PATH`. Next step is to let `jag` download and configure 
+the Toit SDK and the associated tools for flashing the Jaguar application onto your ESP32:
 
 ``` sh
 jag setup
