@@ -24,10 +24,10 @@ func getToitSDKURL(version string) string {
 
 func SetupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "setup",
-		Short:        "Setup the Toit SDK",
-		Long:         "Setup the Toit SDK by downloading the necessary bits from https://github.com/toitlang/toit.\n"+
-		              "The downloaded SDK is stored locally in a subdirectory of your home folder.",
+		Use:   "setup",
+		Short: "Setup the Toit SDK",
+		Long: "Setup the Toit SDK by downloading the necessary bits from https://github.com/toitlang/toit.\n" +
+			"The downloaded SDK is stored locally in a subdirectory of your home folder.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			version, err := cmd.Flags().GetString("version")

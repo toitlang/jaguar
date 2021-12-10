@@ -25,11 +25,11 @@ type binaryConfig struct {
 
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "flash",
-		Short:        "Flash an ESP32 with the Jaguar image",
-		Long:         "Flash an ESP32 with the Jaguar application image. The initial flashing is\n"+
-		              "done over a serial connection and it is used to give the ESP32 its initial\n"+
-					  "firmware and the necessary WiFi credentials.",
+		Use:   "flash",
+		Short: "Flash an ESP32 with the Jaguar image",
+		Long: "Flash an ESP32 with the Jaguar application image. The initial flashing is\n" +
+			"done over a serial connection and it is used to give the ESP32 its initial\n" +
+			"firmware and the necessary WiFi credentials.",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
