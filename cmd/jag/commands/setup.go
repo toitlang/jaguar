@@ -69,13 +69,13 @@ func SetupCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Successfully setup jaguar with toit SDK %s.\n", version)
+			fmt.Printf("Successfully setup Jaguar with Toit SDK %s.\n", version)
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringP("version", "v", "v0.0.2", "the version of the Toit SDK to download")
+	cmd.Flags().StringP("version", "v", "v0.0.2", "Toit SDK version to download")
 	return cmd
 }
 
