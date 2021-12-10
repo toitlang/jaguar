@@ -25,7 +25,9 @@ func getToitSDKURL(version string) string {
 func SetupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "setup",
-		Short:        "Setup the toit SDK",
+		Short:        "Setup the Toit SDK",
+		Long:         "Setup the Toit SDK by downloading the necessary bits from https://github.com/toitlang/toit.\n"+
+		              "The downloaded SDK is stored locally in a subdirectory of your home folder.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			version, err := cmd.Flags().GetString("version")
@@ -39,7 +41,7 @@ func SetupCmd() *cobra.Command {
 			}
 
 			sdkURL := getToitSDKURL(version)
-			fmt.Printf("Downloading toit SDK from %s...\n", sdkURL)
+			fmt.Printf("Downloading Toit SDK from %s...\n", sdkURL)
 			ctx := cmd.Context()
 			req, err := http.NewRequestWithContext(ctx, http.MethodGet, getToitSDKURL(version), nil)
 			if err != nil {
@@ -53,7 +55,7 @@ func SetupCmd() *cobra.Command {
 
 			if resp.StatusCode != http.StatusOK {
 				resp.Body.Close()
-				return fmt.Errorf("Failed downloading the toit SDK artifact: %v", resp.Status)
+				return fmt.Errorf("failed downloading the Toit SDK artifact: %v", resp.Status)
 			}
 
 			progress := pb.New64(resp.ContentLength)
@@ -62,7 +64,7 @@ func SetupCmd() *cobra.Command {
 			gzipReader, err := newGZipReader(r)
 			if err != nil {
 				r.Close()
-				return fmt.Errorf("failed to read the toit SDK artifact as gzip file: %w", err)
+				return fmt.Errorf("failed to read the Toit SDK artifact as gzip file: %w", err)
 			}
 			defer gzipReader.Close()
 
@@ -75,14 +77,14 @@ func SetupCmd() *cobra.Command {
 			}
 
 			if err := extractTarFile(gzipReader, sdkPath, "toit/"); err != nil {
-				return fmt.Errorf("failed to extract the toit SDK, reason: %w", err)
+				return fmt.Errorf("failed to extract the Toit SDK, reason: %w", err)
 			}
 			gzipReader.Close()
-			fmt.Println("Successfully installed toit SDK into", sdkPath)
+			fmt.Println("Successfully installed Toit SDK into", sdkPath)
 			return nil
 		},
 	}
 
-	cmd.Flags().StringP("version", "v", "v0.0.1", "the version of the toit SDK to download")
+	cmd.Flags().StringP("version", "v", "v0.0.1", "the version of the Toit SDK to download")
 	return cmd
 }

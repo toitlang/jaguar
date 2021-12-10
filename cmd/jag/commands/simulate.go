@@ -15,7 +15,9 @@ import (
 func SimulateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "simulate",
-		Short:        "Start a simulated jaguar device on your machine",
+		Short:        "Start a simulated Jaguar device on your machine",
+		Long:         "Start a simulated Jaguar device on your host machine. Useful for testing\n"+
+		              "and for experimenting with the Jaguar-based workflows.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -32,7 +34,7 @@ func SimulateCmd() *cobra.Command {
 
 			jaguarEntryPoint, ok := os.LookupEnv(EntryPointEnv)
 			if !ok {
-				return fmt.Errorf("You must set the env variable '%s'", EntryPointEnv)
+				return fmt.Errorf("you must set the env variable '%s'", EntryPointEnv)
 			}
 
 			simCmd := sdk.Toitvm(ctx, "-b", "none", jaguarEntryPoint, strconv.Itoa(int(port)))
@@ -42,7 +44,7 @@ func SimulateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().UintP("port", "p", 0, "Port to run the simulator on")
+	cmd.Flags().UintP("port", "p", 0, "port to run the simulator on")
 
 	return cmd
 }

@@ -25,7 +25,7 @@ func GetSDK() (*SDK, error) {
 			return nil, err
 		}
 		if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
-			return nil, fmt.Errorf("you must setup the toit SDK using 'jag setup'")
+			return nil, fmt.Errorf("you must setup the Toit SDK using 'jag setup'")
 		}
 		toit = sdkCachePath
 	}
@@ -59,21 +59,26 @@ func (s *SDK) SnapshotToImagePath() string {
 	return filepath.Join(s.Path, "snapshots", "snapshot_to_image.snapshot")
 }
 
+func (s *SDK) InjectConfigPath() string {
+	return filepath.Join(s.Path, "snapshots", "inject_config.snapshot")
+}
+
 func (s *SDK) validate() error {
 	paths := []string{
 		s.ToitcPath(),
 		s.ToitvmPath(),
 		s.SystemMessageSnapshotPath(),
 		s.SnapshotToImagePath(),
+		s.InjectConfigPath(),
 	}
 	for _, p := range paths {
 		if stat, err := os.Stat(p); err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("invalid toit SDK, missing '%s'", p)
+				return fmt.Errorf("invalid Toit SDK, missing '%s'", p)
 			}
-			return fmt.Errorf("invalid toit SDK, failed to load '%s', reason: %w", p, err)
+			return fmt.Errorf("invalid Toit SDK, failed to load '%s', reason: %w", p, err)
 		} else if stat.IsDir() {
-			return fmt.Errorf("invalid toit SDK, '%s' was a directory", p)
+			return fmt.Errorf("invalid Toit SDK, '%s' was a directory", p)
 		}
 
 	}
