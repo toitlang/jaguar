@@ -6,7 +6,7 @@ BUILD_DIR := build
 CURR_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 GO_SOURCE := $(shell find . -name '*.go')
-TOIT_SOURCE := $(shell find . -name '*.toit')
+TOIT_SOURCE := $(shell find . -name '*.toit') package.lock package.yaml
 THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
 TOIT_REPO_PATH ?= $(THIRD_PARTY_TOIT_PATH)
 JAG_TOIT_PATH ?= $(TOIT_REPO_PATH)/build/host/sdk
@@ -23,19 +23,26 @@ $(BUILD_DIR)/jag: $(GO_SOURCE) $(BUILD_DIR)
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
+.PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitpkg
+$(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitpkg:
+	make -C $(THIRD_PARTY_TOIT_PATH) build/host/sdk/bin/toitpkg
+
+.packages: $(TOIT_SOURCE) $(JAG_TOIT_PATH)/bin/toitpkg
+	$(JAG_TOIT_PATH)/bin/toitpkg pkg install
+
 .PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitc
 $(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitc:
 	make -C $(THIRD_PARTY_TOIT_PATH) build/host/sdk/bin/toitc
 
-$(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toitc $(TOIT_SOURCE) $(BUILD_DIR)
+$(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toitc $(TOIT_SOURCE) $(BUILD_DIR) .packages
 	$(JAG_TOIT_PATH)/bin/toitc -w ./$@ ./src/jaguar.toit
 
 IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 .PHONY: $(TOIT_REPO_PATH)/build/host/esp32/
-$(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE)
+$(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE) .packages
 	IDF_PATH=$(IDF_PATH) make -C $(TOIT_REPO_PATH) esp32 ESP32_ENTRY=$(CURR_DIR)/src/jaguar.toit esp32
 
-$(BUILD_DIR)/image.snapshot: $(TOIT_REPO_PATH)/build/host/esp32/
+$(BUILD_DIR)/image.snapshot: $(TOIT_REPO_PATH)/build/host/esp32/ .packages
 	cp $(TOIT_REPO_PATH)/build/snapshot $@
 
 .PHONY: image_snapshot
