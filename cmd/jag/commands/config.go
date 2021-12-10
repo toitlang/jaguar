@@ -81,6 +81,14 @@ func GetSDKCachePath() (string, error) {
 	return filepath.Join(home, ".cache", "jaguar", "sdk"), nil
 }
 
+func GetImageCachePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "jaguar", "image"), nil
+}
+
 func ensureDirectory(dir string, err error) (string, error) {
 	if err != nil {
 		return dir, err
