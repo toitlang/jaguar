@@ -31,4 +31,7 @@ jobs:
       run: make jag
 
     - name: Build image
-      run:  make install_esp_idf image
+      run: |
+        make install_esp_idf
+        . ./third_party/toit/third_party/esp-idf/export.sh
+        make image
