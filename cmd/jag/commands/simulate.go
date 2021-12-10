@@ -14,10 +14,10 @@ import (
 
 func SimulateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "simulate",
-		Short:        "Start a simulated Jaguar device on your machine",
-		Long:         "Start a simulated Jaguar device on your host machine. Useful for testing\n"+
-		              "and for experimenting with the Jaguar-based workflows.",
+		Use:   "simulate",
+		Short: "Start a simulated Jaguar device on your machine",
+		Long: "Start a simulated Jaguar device on your host machine. Useful for testing\n" +
+			"and for experimenting with the Jaguar-based workflows.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

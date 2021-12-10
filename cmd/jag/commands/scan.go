@@ -25,8 +25,8 @@ func ScanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "scan",
 		Short: "Scan for Jaguar devices",
-		Long:  "Scan for Jaguar devices by listening for UDP packets broadcasted by the devices.\n"+
-		       "To use a Jaguar device, you need to be on the same network as the device.",
+		Long: "Scan for Jaguar devices by listening for UDP packets broadcasted by the devices.\n" +
+			"To use a Jaguar device, you need to be on the same network as the device.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := GetConfig()
 			if err != nil {

@@ -14,11 +14,11 @@ import (
 
 func RunCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "run <file>",
-		Short:        "Run Toit code on a Jaguar device",
-		Long:         "Run the specified .toit file on a Jaguar device as a new program. If the\n"+
-		              "device is already executing another program, that program is stopped before\n"+
-					  "the new program is started.",
+		Use:   "run <file>",
+		Short: "Run Toit code on a Jaguar device",
+		Long: "Run the specified .toit file on a Jaguar device as a new program. If the\n" +
+			"device is already executing another program, that program is stopped before\n" +
+			"the new program is started.",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
