@@ -6,7 +6,6 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -59,14 +58,14 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			esptoolPath, ok := os.LookupEnv(EsptoolPathEnv)
-			if !ok {
-				return fmt.Errorf("you must set the env variable '%s'", EsptoolPathEnv)
+			esptoolPath, err := GetEsptoolPath()
+			if err != nil {
+				return err
 			}
 
-			esp32BinPath, ok := os.LookupEnv(ESP32BinEnv)
-			if !ok {
-				return fmt.Errorf("you must set the env variable '%s'", ESP32BinEnv)
+			esp32BinPath, err := GetESP32ImagePath()
+			if err != nil {
+				return err
 			}
 
 			configFile, err := os.CreateTemp("", "*.json")

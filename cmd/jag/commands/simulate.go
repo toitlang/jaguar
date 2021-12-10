@@ -5,7 +5,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 
@@ -32,12 +31,12 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			jaguarEntryPoint, ok := os.LookupEnv(EntryPointEnv)
-			if !ok {
-				return fmt.Errorf("you must set the env variable '%s'", EntryPointEnv)
+			snapshot, err := GetSnapshotPath()
+			if err != nil {
+				return err
 			}
 
-			simCmd := sdk.Toitvm(ctx, "-b", "none", jaguarEntryPoint, strconv.Itoa(int(port)))
+			simCmd := sdk.Toitvm(ctx, "-b", "none", snapshot, strconv.Itoa(int(port)))
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = os.Stdout
 			return simCmd.Run()

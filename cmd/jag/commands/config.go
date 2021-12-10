@@ -59,7 +59,7 @@ func GetConfigPath() (string, error) {
 	return filepath.Join(ws, configFile), err
 }
 
-func GetSnapshotCachePath() (string, error) {
+func GetSnapshotsCachePath() (string, error) {
 	path, ok := os.LookupEnv(SnapshotCachePathEnv)
 	if ok {
 		return path, nil
@@ -79,6 +79,79 @@ func GetSDKCachePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, ".cache", "jaguar", "sdk"), nil
+}
+
+func GetESP32ImageCachePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "jaguar", "image"), nil
+}
+
+func GetESP32ImagePath() (string, error) {
+	imagePath, ok := os.LookupEnv(ESP32BinEnv)
+	if ok {
+		return imagePath, nil
+	}
+
+	imagePath, err := GetESP32ImageCachePath()
+	if err != nil {
+		return "", err
+	}
+	if stat, err := os.Stat(imagePath); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("you must setup the esp32 image using 'jag setup'")
+	}
+	return imagePath, nil
+}
+
+func GetSnapshotCachePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "jaguar", "jaguar.snapshot"), nil
+}
+
+func GetSnapshotPath() (string, error) {
+	snapshotPath, ok := os.LookupEnv(EntryPointEnv)
+	if ok {
+		return snapshotPath, nil
+	}
+
+	snapshotPath, err := GetSnapshotCachePath()
+	if err != nil {
+		return "", err
+	}
+	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
+		return "", fmt.Errorf("you must setup the jaguar snapshot using 'jag setup'")
+	}
+	return snapshotPath, nil
+}
+
+func GetEsptoolCachePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "jaguar", executable("esptool")), nil
+}
+
+func GetEsptoolPath() (string, error) {
+	esptoolPath, ok := os.LookupEnv(EsptoolPathEnv)
+	if ok {
+		return esptoolPath, nil
+	}
+
+	cachePath, err := GetEsptoolCachePath()
+	if err != nil {
+		return "", err
+	}
+
+	if stat, err := os.Stat(cachePath); err != nil || stat.IsDir() {
+		return "", fmt.Errorf("you must setup the esptool using 'jag setup'")
+	}
+	return cachePath, nil
 }
 
 func ensureDirectory(dir string, err error) (string, error) {
