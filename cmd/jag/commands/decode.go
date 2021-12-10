@@ -14,25 +14,20 @@ import (
 
 func DecodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "decode <message>",
-		Short:        "Decode a stack trace received from a Jaguar device",
-		Long:         "Decode a stack trace received from a Jaguar device. Stack traces are encoded\n"+
-		              "using base64 and are easy to copy from the serial output.",
+		Use:   "decode <message>",
+		Short: "Decode a stack trace received from a Jaguar device",
+		Long: "Decode a stack trace received from a Jaguar device. Stack traces are encoded\n" +
+			"using base64 and are easy to copy from the serial output.",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			system, err := cmd.Flags().GetBool("system")
 			if err != nil {
 				return err
 			}
 
 			cfg, err := GetConfig()
-			if err != nil {
-				return err
-			}
-
-			ctx := cmd.Context()
-			device, err := GetDevice(ctx, cfg, true)
 			if err != nil {
 				return err
 			}
@@ -50,6 +45,11 @@ func DecodeCmd() *cobra.Command {
 					return fmt.Errorf("you must set the env variable '%s'", EntryPointEnv)
 				}
 			} else {
+				device, err := GetDevice(ctx, cfg, true)
+				if err != nil {
+					return err
+				}
+
 				snapshotCache, err := GetSnapshotCachePath()
 				if err != nil {
 					return err
