@@ -3,10 +3,11 @@
 # found in the LICENSE file.
 
 BUILD_DIR := build
+CURR_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 GO_SOURCE := $(shell find . -name '*.go')
 TOIT_SOURCE := $(shell find . -name '*.toit')
-THIRD_PARTY_TOIT_PATH = $(PWD)/third_party/toit
+THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
 JAG_TOIT_PATH ?= $(THIRD_PARTY_TOIT_PATH)/build/host/sdk
 
 $(BUILD_DIR):
@@ -31,7 +32,7 @@ $(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toitc $(TOIT_SOURCE) $(BUILD_
 IDF_PATH ?= $(THIRD_PARTY_TOIT_PATH)/third_party/esp-idf
 .PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/
 $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/: $(TOIT_SOURCE)
-	IDF_PATH=$(IDF_PATH) make -C $(THIRD_PARTY_TOIT_PATH) esp32 ESP32_ENTRY=$(PWD)/src/jaguar.toit esp32
+	IDF_PATH=$(IDF_PATH) make -C $(THIRD_PARTY_TOIT_PATH) esp32 ESP32_ENTRY=$(CURR_DIR)/src/jaguar.toit esp32
 
 $(BUILD_DIR)/image.snapshot: $(THIRD_PARTY_TOIT_PATH)/build/host/esp32/
 	cp $(THIRD_PARTY_TOIT_PATH)/build/snapshot $@
