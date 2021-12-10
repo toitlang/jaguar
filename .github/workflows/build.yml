@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -31,7 +33,18 @@ jobs:
       run: make jag
 
     - name: Build image
+      if: github.event_name == 'release'
       run: |
         make install-esp-idf
         . ./third_party/toit/third_party/esp-idf/export.sh
         make image
+        tar -czf build/image.tar.gz -C ./build -h image
+    - name: Upload release artifacts
+      if: github.event_name == 'release'
+      uses: svenstaro/upload-release-action@v2
+      with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/image.*
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true

@@ -23,16 +23,16 @@ $(BUILD_DIR)/jag: $(GO_SOURCE) $(BUILD_DIR)
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
-.PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitpkg
-$(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitpkg:
-	make -C $(THIRD_PARTY_TOIT_PATH) build/host/sdk/bin/toitpkg
+.PHONY: $(TOIT_REPO_PATH)/build/host/sdk/bin/toitpkg
+$(TOIT_REPO_PATH)/build/host/sdk/bin/toitpkg:
+	make -C $(TOIT_REPO_PATH) build/host/sdk/bin/toitpkg
 
 .packages: $(TOIT_SOURCE) $(JAG_TOIT_PATH)/bin/toitpkg
 	$(JAG_TOIT_PATH)/bin/toitpkg pkg install
 
-.PHONY: $(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitc
-$(THIRD_PARTY_TOIT_PATH)/build/host/sdk/bin/toitc:
-	make -C $(THIRD_PARTY_TOIT_PATH) build/host/sdk/bin/toitc
+.PHONY: $(TOIT_REPO_PATH)/build/host/sdk/bin/toitc
+$(TOIT_REPO_PATH)/build/host/sdk/bin/toitc:
+	make -C $(TOIT_REPO_PATH) build/host/sdk/bin/toitc
 
 $(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toitc $(TOIT_SOURCE) $(BUILD_DIR) .packages
 	$(JAG_TOIT_PATH)/bin/toitc -w ./$@ ./src/jaguar.toit
