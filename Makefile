@@ -11,11 +11,11 @@ THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
 TOIT_REPO_PATH ?= $(THIRD_PARTY_TOIT_PATH)
 JAG_TOIT_PATH ?= $(TOIT_REPO_PATH)/build/host/sdk
 
-$(BUILD_DIR):
-	mkdir -p $@
-
 .PHONY: jag
 jag: $(BUILD_DIR)/jag
+
+$(BUILD_DIR):
+	mkdir -p $@
 
 $(BUILD_DIR)/jag: $(GO_SOURCE) $(BUILD_DIR)
 	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/jag
