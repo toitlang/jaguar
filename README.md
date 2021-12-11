@@ -104,6 +104,14 @@ export JAG_ENTRY_POINT=$TOIT_PATH/build/snapshot
 build/jag scan
 ```
 
+To also do the ESP32 flashing through Jaguar, you'll need two extra environment variables:
+
+``` sh
+export JAG_ESP32_BIN_PATH=$TOIT_PATH/build/esp32
+export JAG_ESPTOOL_PATH=$IDF_PATH/components/esptool_py/esptool/esptool.py
+build/jag flash --port=/dev/ttyUSB0 --wifi-ssid="<ssid>" --wifi-password="<password>"
+```
+
 ## Contributing
 
 We welcome and value your [open source contributions](CONTRIBUTING.md) to Jaguar (or Shaguar as we
