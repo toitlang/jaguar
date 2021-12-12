@@ -1,7 +1,8 @@
 
 # Jaguar
 
-Develop, update, and restart your ESP32 applications in less than two seconds.
+Develop, update, and restart your ESP32 applications in less than two seconds. Use the really fast 
+development cycle to iterate quickly and learn fast!
 
 ## What is it?
 
