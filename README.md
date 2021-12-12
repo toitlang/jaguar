@@ -3,8 +3,6 @@
 
 Develop, update, and restart your ESP32 applications in less than two seconds.
 
-![Shaguar!](https://user-images.githubusercontent.com/22043/145008669-65d31451-99fc-4965-b087-2ac48ce5ac53.jpeg)
-
 ## What is it?
 
 Jaguar is a small Toit program that runs on your ESP32. It uses the capabilities of the
@@ -120,3 +118,6 @@ build/jag flash --port=/dev/ttyUSB0 --wifi-ssid="<ssid>" --wifi-password="<passw
 
 We welcome and value your [open source contributions](CONTRIBUTING.md) to Jaguar (or Shaguar as we
 like to call it).
+
+![Shaguar!](https://user-images.githubusercontent.com/22043/145008669-65d31451-99fc-4965-b087-2ac48ce5ac53.jpeg)
+
