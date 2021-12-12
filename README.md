@@ -13,6 +13,8 @@ applications written in Toit over WiFi. Change your Toit code in your editor, up
 your device, and restart it all within seconds. No need to flash over serial, reboot your device, or wait
 for it to reconnect to your network.
 
+Watch a short video that shows how you can experience Jaguar on your ESP32 in less than 3 minutes:
+
 [![Jaguar demonstration](https://img.youtube.com/vi/rXbe_1hyz80/0.jpg)](https://www.youtube.com/watch?v=rXbe_1hyz80)
 
 ## How does it work?
