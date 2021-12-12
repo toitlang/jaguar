@@ -3,7 +3,7 @@
 
 Develop, update, and restart your ESP32 applications in less than two seconds.
 
-![shaguar](https://user-images.githubusercontent.com/22043/145008669-65d31451-99fc-4965-b087-2ac48ce5ac53.jpeg)
+![Shaguar!](https://user-images.githubusercontent.com/22043/145008669-65d31451-99fc-4965-b087-2ac48ce5ac53.jpeg)
 
 ## What is it?
 
@@ -12,6 +12,8 @@ Jaguar is a small Toit program that runs on your ESP32. It uses the capabilities
 applications written in Toit over WiFi. Change your Toit code in your editor, update the application on
 your device, and restart it all within seconds. No need to flash over serial, reboot your device, or wait
 for it to reconnect to your network.
+
+[![Jaguar demonstration](https://img.youtube.com/vi/rXbe_1hyz80/0.jpg)](https://www.youtube.com/watch?v=rXbe_1hyz80)
 
 ## How does it work?
 
