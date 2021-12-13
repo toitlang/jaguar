@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,17 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
+			id := uuid.New()
+			var name string
+			if cmd.Flags().Changed("name") {
+				name, err = cmd.Flags().GetString("name")
+				if err != nil {
+					return err
+				}
+			} else {
+				name = GetRandomName(id[:])
+			}
+
 			sdk, err := GetSDK()
 			if err != nil {
 				return err
@@ -36,7 +48,7 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			simCmd := sdk.Toitvm(ctx, "-b", "none", snapshot, strconv.Itoa(int(port)))
+			simCmd := sdk.Toitvm(ctx, "-b", "none", snapshot, strconv.Itoa(int(port)), id.String(), name)
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = os.Stdout
 			return simCmd.Run()
@@ -44,6 +56,7 @@ func SimulateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().UintP("port", "p", 0, "port to run the simulator on")
+	cmd.Flags().String("name", "", "name for the simulator, if not set a name will be auto generated")
 
 	return cmd
 }
