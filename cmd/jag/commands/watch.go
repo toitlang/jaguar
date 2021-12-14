@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -99,6 +100,10 @@ func (w *watcher) Errors() chan error {
 	return w.watcher.Errors
 }
 
+func (w *watcher) CountPaths() int {
+	return len(w.paths)
+}
+
 func (w *watcher) Watch(paths ...string) (err error) {
 	for i, p := range paths {
 		if paths[i], err = filepath.EvalSymlinks(p); err != nil {
@@ -106,8 +111,6 @@ func (w *watcher) Watch(paths ...string) (err error) {
 		}
 	}
 
-	// TODO: Watch does not work for sub-sub directories so we disable this for now.
-	// paths = findParents(paths...)
 	candidates := map[string]struct{}{}
 	for _, p := range paths {
 		if _, ok := w.paths[p]; !ok {
@@ -128,53 +131,6 @@ func (w *watcher) Watch(paths ...string) (err error) {
 		}
 	}
 	return nil
-}
-
-func findParents(paths ...string) []string {
-	var res []string
-	for _, p := range paths {
-		if len(res) == 0 {
-			res = append(res, p)
-			continue
-		}
-
-		matched := false
-		for i, r := range res {
-			if isSubPath(r, p) {
-				matched = true
-				break
-			}
-			if isSubPath(p, r) {
-				matched = true
-				res[i] = p
-				break
-			}
-		}
-		if !matched {
-			res = append(res, p)
-		}
-	}
-	return res
-}
-
-func isSubPath(parent, sub string) bool {
-	if parent == sub {
-		return true
-	}
-	if rel, err := filepath.Rel(sub, parent); err == nil {
-		prefix := ".." + string(filepath.Separator)
-		for {
-			if rel == ".." {
-				return true
-			}
-			if strings.HasPrefix(rel, prefix) {
-				rel = strings.TrimPrefix(rel, prefix)
-			} else {
-				return false
-			}
-		}
-	}
-	return false
 }
 
 func parseDependeniesToDirs(b []byte) []string {
@@ -198,7 +154,6 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	doneCh := make(chan struct{})
 
 	updateWatcher := func(runCtx context.Context) {
-
 		var paths []string
 		if tmpFile, err := ioutil.TempFile("", "*.txt"); err == nil {
 			defer os.Remove(tmpFile.Name())
@@ -207,6 +162,11 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 			if err := cmd.Run(); err == nil {
 				if b, err := ioutil.ReadFile(tmpFile.Name()); err == nil {
 					paths = parseDependeniesToDirs(b)
+				}
+			} else {
+				// A compilation error happened, we let the watch paths be if there was some.
+				if watcher.CountPaths() > 0 {
+					return
 				}
 			}
 		}
@@ -239,6 +199,10 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	runOnDevice(firstCtx)
 	return doneCh, func() {
 		defer close(doneCh)
+		fired := false
+		ticketDuration := 100 * time.Millisecond
+		ticker := time.NewTicker(ticketDuration)
+		defer ticker.Stop()
 		for {
 			select {
 			case event, ok := <-watcher.Events():
@@ -246,13 +210,19 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					previousCancel()
-					var innerCtx context.Context
-					innerCtx, previousCancel = context.WithCancel(ctx)
-					fmt.Printf("File modified '%s'\n", event.Name)
-					go updateWatcher(innerCtx)
-					runOnDevice(innerCtx)
+					if !fired {
+						fmt.Printf("File modified '%s'\n", event.Name)
+						previousCancel()
+						var innerCtx context.Context
+						innerCtx, previousCancel = context.WithCancel(ctx)
+						go updateWatcher(innerCtx)
+						go runOnDevice(innerCtx)
+						fired = true
+						ticker.Reset(ticketDuration)
+					}
 				}
+			case <-ticker.C:
+				fired = false
 			case err, ok := <-watcher.Errors():
 				if !ok {
 					return
