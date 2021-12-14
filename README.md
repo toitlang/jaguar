@@ -26,16 +26,15 @@ version of the program gets to start again from `main`.
 
 ## How do I use it?
 
-First you'll need to have a [Go development environment](https://go.dev) properly set up. Using that
+First you'll need to have a [Go development environment](https://go.dev) properly set up 
+(remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`). Using that
 you can install the `jag` command line tool using `go install`:
 
 ``` sh
 go install github.com/toitlang/jaguar/cmd/jag@latest
 ```
-
-Remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Next step is to let `jag` 
-download and configure the Toit SDK and the associated tools for flashing the Jaguar application 
-onto your ESP32:
+Next step is to let `jag` download and configure the Toit SDK and the associated tools for 
+flashing the Jaguar application onto your ESP32:
 
 ``` sh
 jag setup
