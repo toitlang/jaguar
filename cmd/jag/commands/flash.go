@@ -61,14 +61,34 @@ func FlashCmd() *cobra.Command {
 				name = GetRandomName(id[:])
 			}
 
-			wifiSsid, err := cmd.Flags().GetString("wifi-ssid")
-			if err != nil {
-				return err
+			var wifiSsid string
+			if cmd.Flags().Changed("wifi-ssid") {
+				wifiSsid, err = cmd.Flags().GetString("wifi-ssid")
+				if err != nil {
+					return err
+				}
+			} else {
+				fmt.Printf("Enter WiFi Network (SSID): ")
+				wifiSsid, err = ReadLine()
+				if err != nil {
+					return err
+				}
 			}
 
-			wifiPassword, err := cmd.Flags().GetString("wifi-password")
-			if err != nil {
-				return err
+			var wifiPassword string
+			if cmd.Flags().Changed("wifi-password") {
+				wifiPassword, err = cmd.Flags().GetString("wifi-password")
+				if err != nil {
+					return err
+				}
+			} else {
+				fmt.Printf("Enter WiFi Password for '%s': ", wifiSsid)
+				pw, err := ReadPassword()
+				if err != nil {
+					fmt.Printf("\n")
+					return err
+				}
+				wifiPassword = string(pw)
 			}
 
 			sdk, err := GetSDK()
@@ -153,7 +173,5 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
-	cmd.MarkFlagRequired("wifi-ssid")
-	cmd.MarkFlagRequired("wifi-password")
 	return cmd
 }
