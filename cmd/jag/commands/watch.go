@@ -100,6 +100,10 @@ func (w *watcher) Errors() chan error {
 	return w.watcher.Errors
 }
 
+func (w *watcher) CountPaths() int {
+	return len(w.paths)
+}
+
 func (w *watcher) Watch(paths ...string) (err error) {
 	for i, p := range paths {
 		if paths[i], err = filepath.EvalSymlinks(p); err != nil {
@@ -150,7 +154,6 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	doneCh := make(chan struct{})
 
 	updateWatcher := func(runCtx context.Context) {
-
 		var paths []string
 		if tmpFile, err := ioutil.TempFile("", "*.txt"); err == nil {
 			defer os.Remove(tmpFile.Name())
@@ -159,6 +162,11 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 			if err := cmd.Run(); err == nil {
 				if b, err := ioutil.ReadFile(tmpFile.Name()); err == nil {
 					paths = parseDependeniesToDirs(b)
+				}
+			} else {
+				// A compilation error happened, we let the watch paths be if there was some.
+				if watcher.CountPaths() > 0 {
+					return
 				}
 			}
 		}
@@ -191,36 +199,28 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	runOnDevice(firstCtx)
 	return doneCh, func() {
 		defer close(doneCh)
-		var events []fsnotify.Event
+		fired := false
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
-
 		for {
 			select {
 			case event, ok := <-watcher.Events():
 				if !ok {
 					return
 				}
-				events = append(events, event)
-			case <-ticker.C:
-
-				modified := false
-				queued := events
-				events = nil
-				for _, event := range queued {
-					if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					if !fired {
 						fmt.Printf("File modified '%s'\n", event.Name)
-						modified = true
+						previousCancel()
+						var innerCtx context.Context
+						innerCtx, previousCancel = context.WithCancel(ctx)
+						go updateWatcher(innerCtx)
+						runOnDevice(innerCtx)
+						fired = true
 					}
 				}
-
-				if modified {
-					previousCancel()
-					var innerCtx context.Context
-					innerCtx, previousCancel = context.WithCancel(ctx)
-					go updateWatcher(innerCtx)
-					runOnDevice(innerCtx)
-				}
+			case <-ticker.C:
+				fired = false
 			case err, ok := <-watcher.Errors():
 				if !ok {
 					return
