@@ -106,7 +106,8 @@ func (w *watcher) Watch(paths ...string) (err error) {
 		}
 	}
 
-	paths = findParents(paths...)
+	// TODO: Watch does not work for sub-sub directories so we disable this for now.
+	// paths = findParents(paths...)
 	candidates := map[string]struct{}{}
 	for _, p := range paths {
 		if _, ok := w.paths[p]; !ok {
