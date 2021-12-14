@@ -21,7 +21,8 @@ jag: $(BUILD_DIR)/jag
 $(BUILD_DIR):
 	mkdir -p $@
 
-update_jag_info: $(BUILD_DIR)
+.PHONY: update-jag-info
+update-jag-info: $(BUILD_DIR)
 	sed 's/date       = .*/date       = "$(BUILD_DATE)"/' $(CURR_DIR)/cmd/jag/main.go | \
 	sed 's/version    = .*/version    = "$(BUILD_VERSION)"/' | \
 	sed 's/sdkVersion = .*/sdkVersion = "$(BUILD_SDK_VERSION)"/' > $(BUILD_DIR)/new_main.go
@@ -55,8 +56,8 @@ $(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE) .packages
 $(BUILD_DIR)/image.snapshot: $(TOIT_REPO_PATH)/build/host/esp32/ .packages
 	cp $(TOIT_REPO_PATH)/build/snapshot $@
 
-.PHONY: image_snapshot
-image_snapshot: $(BUILD_DIR)/image.snapshot
+.PHONY: image-snapshot
+image-snapshot: $(BUILD_DIR)/image.snapshot
 
 $(BUILD_DIR)/image/:
 	mkdir -p $@

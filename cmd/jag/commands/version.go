@@ -18,7 +18,7 @@ func VersionCmd(info Info) *cobra.Command {
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Version:\t", info.Version)
-			fmt.Println("SDK Version:\t", info.SDKVersion)
+			fmt.Println("SDK version:\t", info.SDKVersion)
 			fmt.Println("Build date:\t", info.Date)
 		},
 	}
