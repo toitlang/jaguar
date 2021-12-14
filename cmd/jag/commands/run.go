@@ -42,7 +42,7 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snapshot := filepath.Join(snapshotsCache, device.Name+".snapshot")
+			snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
 
 			entrypoint := args[0]
 			buildSnap := sdk.Toitc(ctx, "-w", snapshot, entrypoint)
