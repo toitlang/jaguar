@@ -12,10 +12,13 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
 type binaryConfig struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
 	Wifi struct {
 		Password string `json:"password"`
 		SSID     string `json:"ssid"`
@@ -41,6 +44,17 @@ func FlashCmd() *cobra.Command {
 			baud, err := cmd.Flags().GetUint("baud")
 			if err != nil {
 				return err
+			}
+
+			id := uuid.New()
+			var name string
+			if cmd.Flags().Changed("name") {
+				name, err = cmd.Flags().GetString("name")
+				if err != nil {
+					return err
+				}
+			} else {
+				name = GetRandomName(id[:])
 			}
 
 			wifiSsid, err := cmd.Flags().GetString("wifi-ssid")
@@ -75,6 +89,8 @@ func FlashCmd() *cobra.Command {
 			defer os.Remove(configFile.Name())
 
 			var config binaryConfig
+			config.Name = name
+			config.ID = id.String()
 			config.Wifi.Password = wifiPassword
 			config.Wifi.SSID = wifiSsid
 			if err := json.NewEncoder(configFile).Encode(config); err != nil {
@@ -131,6 +147,7 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
+	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	cmd.MarkFlagRequired("wifi-ssid")
 	cmd.MarkFlagRequired("wifi-password")
 	return cmd

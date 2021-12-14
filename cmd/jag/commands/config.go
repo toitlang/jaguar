@@ -100,7 +100,7 @@ func GetESP32ImagePath() (string, error) {
 		return "", err
 	}
 	if stat, err := os.Stat(imagePath); err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("you must setup the esp32 image using 'jag setup'")
+		return "", fmt.Errorf("the path '%s' did not hold the esp32 image.\nYou must setup the esp32 image using 'jag setup'", imagePath)
 	}
 	return imagePath, nil
 }
@@ -124,7 +124,7 @@ func GetSnapshotPath() (string, error) {
 		return "", err
 	}
 	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("you must setup the jaguar snapshot using 'jag setup'")
+		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the jaguar snapshot using 'jag setup'", snapshotPath)
 	}
 	return snapshotPath, nil
 }
@@ -149,7 +149,7 @@ func GetEsptoolPath() (string, error) {
 	}
 
 	if stat, err := os.Stat(cachePath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("you must setup the esptool using 'jag setup'")
+		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the esptool using 'jag setup'", cachePath)
 	}
 	return cachePath, nil
 }

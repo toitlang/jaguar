@@ -13,6 +13,7 @@ import (
 )
 
 type Device struct {
+	ID       string `mapstructure:"id" yaml:"id" json:"id"`
 	Name     string `mapstructure:"name" yaml:"name" json:"name"`
 	Address  string `mapstructure:"address" yaml:"address" json:"address"`
 	WordSize int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
