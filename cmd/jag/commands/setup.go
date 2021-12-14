@@ -75,7 +75,7 @@ func SetupCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("version", "v", "v0.0.5", "Toit SDK version to download")
+	cmd.Flags().StringP("version", "v", "v0.10.0", "Toit SDK version to download")
 	return cmd
 }
 
