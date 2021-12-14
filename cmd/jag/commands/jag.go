@@ -6,7 +6,13 @@ package commands
 
 import "github.com/spf13/cobra"
 
-func JagCmd() *cobra.Command {
+type Info struct {
+	Version    string
+	Date       string
+	SDKVersion string
+}
+
+func JagCmd(info Info) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "jag",
 		Short: "Fast development for your ESP32",
@@ -23,11 +29,12 @@ func JagCmd() *cobra.Command {
 		RunCmd(),
 		SimulateCmd(),
 		DecodeCmd(),
-		SetupCmd(),
+		SetupCmd(info),
 		FlashCmd(),
 		MonitorCmd(),
 		WatchCmd(),
 		SetPortCmd(),
+		VersionCmd(info),
 	)
 	return cmd
 }
