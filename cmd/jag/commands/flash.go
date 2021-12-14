@@ -61,15 +61,17 @@ func FlashCmd() *cobra.Command {
 				name = GetRandomName(id[:])
 			}
 
-			var wifiSsid string
+			var wifiSSID string
 			if cmd.Flags().Changed("wifi-ssid") {
-				wifiSsid, err = cmd.Flags().GetString("wifi-ssid")
+				wifiSSID, err = cmd.Flags().GetString("wifi-ssid")
 				if err != nil {
 					return err
 				}
+			} else if v, ok := os.LookupEnv(WifiSSIDEnv); ok {
+				wifiSSID = v
 			} else {
 				fmt.Printf("Enter WiFi Network (SSID): ")
-				wifiSsid, err = ReadLine()
+				wifiSSID, err = ReadLine()
 				if err != nil {
 					return err
 				}
@@ -81,8 +83,10 @@ func FlashCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+			} else if v, ok := os.LookupEnv(WifiPasswordEnv); ok {
+				wifiPassword = v
 			} else {
-				fmt.Printf("Enter WiFi Password for '%s': ", wifiSsid)
+				fmt.Printf("Enter WiFi Password for '%s': ", wifiSSID)
 				pw, err := ReadPassword()
 				if err != nil {
 					fmt.Printf("\n")
@@ -116,7 +120,7 @@ func FlashCmd() *cobra.Command {
 			config.Name = name
 			config.ID = id.String()
 			config.Wifi.Password = wifiPassword
-			config.Wifi.SSID = wifiSsid
+			config.Wifi.SSID = wifiSSID
 			if err := json.NewEncoder(configFile).Encode(config); err != nil {
 				configFile.Close()
 				return err
