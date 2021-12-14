@@ -141,13 +141,13 @@ func findParents(paths ...string) []string {
 
 		matched := false
 		for i, r := range res {
-			fmt.Printf("Is %s sub of %s: %v\n", r, p, isSub(r, p))
-			if isSub(r, p) {
+			fmt.Printf("Is %s sub of %s: %v\n", r, p, isSubPath(r, p))
+			if isSubPath(r, p) {
 				matched = true
 				break
 			}
-			fmt.Printf("Is %s sub of %s: %v\n", p, r, isSub(p, r))
-			if isSub(p, r) {
+			fmt.Printf("Is %s sub of %s: %v\n", p, r, isSubPath(p, r))
+			if isSubPath(p, r) {
 				matched = true
 				res[i] = p
 				break
@@ -160,13 +160,23 @@ func findParents(paths ...string) []string {
 	return res
 }
 
-func isSub(parent, sub string) bool {
+func isSubPath(parent, sub string) bool {
 	if parent == sub {
 		return true
 	}
-	pattern := parent + string(filepath.Separator) + "*"
-	if ok, err := filepath.Match(pattern, sub); err == nil && ok {
-		return true
+	if rel, err := filepath.Rel(sub, parent); err == nil {
+		prefix := ".." + string(filepath.Separator)
+		for {
+			if rel == ".." {
+				return true
+			}
+			if strings.HasPrefix(rel, prefix) {
+				rel = strings.TrimPrefix(rel, prefix)
+			} else {
+				return false
+			}
+		}
+		return rel == ".." || strings.TrimLeft(rel, ".."+string(filepath.Separator)) == ""
 	}
 	return false
 }
