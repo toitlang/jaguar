@@ -5,10 +5,15 @@
 package commands
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -16,9 +21,9 @@ import (
 
 func WatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "watch <directory> <entrypoint>",
-		Short:        "watches <directory> for changes and runs <entrypoint> on the device every time",
-		Args:         cobra.ExactArgs(2),
+		Use:          "watch <entrypoint>",
+		Short:        "watches for changes on <entrypoint> and dependencies and re-runs a run every time changes happens",
+		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := GetConfig()
@@ -37,17 +42,7 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
-			directory := args[0]
-			if stat, err := os.Stat(directory); err != nil {
-				if os.IsNotExist(err) {
-					return fmt.Errorf("the directory '%s' did not exists", directory)
-				}
-				return fmt.Errorf("could not stat directory '%s', reason: %w", directory, err)
-			} else if !stat.IsDir() {
-				return fmt.Errorf("the path given '%s' was not a directory", directory)
-			}
-
-			entrypoint := args[1]
+			entrypoint := args[0]
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
 					return fmt.Errorf("the entrypoint '%s' did not exists", entrypoint)
@@ -57,7 +52,7 @@ func WatchCmd() *cobra.Command {
 				return fmt.Errorf("the path given '%s' was a directory", entrypoint)
 			}
 
-			watcher, err := fsnotify.NewWatcher()
+			watcher, err := newWatcher()
 			if err != nil {
 				return err
 			}
@@ -65,10 +60,6 @@ func WatchCmd() *cobra.Command {
 
 			waitCh, fn := onWatchChanges(ctx, watcher, device, sdk, entrypoint)
 			go fn()
-
-			if err := watcher.Add(directory); err != nil {
-				return fmt.Errorf("failed to watch directory: '%s', reason: %w", directory, err)
-			}
 
 			<-waitCh
 			return nil
@@ -78,8 +69,156 @@ func WatchCmd() *cobra.Command {
 	return cmd
 }
 
-func onWatchChanges(ctx context.Context, watcher *fsnotify.Watcher, device *Device, sdk *SDK, entrypoint string) (<-chan struct{}, func()) {
+type watcher struct {
+	sync.Mutex
+	watcher *fsnotify.Watcher
+
+	paths map[string]struct{}
+}
+
+func newWatcher() (*watcher, error) {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+	return &watcher{
+		watcher: w,
+		paths:   map[string]struct{}{},
+	}, nil
+}
+
+func (w *watcher) Close() error {
+	return w.Close()
+}
+
+func (w *watcher) Events() chan fsnotify.Event {
+	return w.watcher.Events
+}
+
+func (w *watcher) Errors() chan error {
+	return w.watcher.Errors
+}
+
+func (w *watcher) Watch(paths ...string) (err error) {
+	for i, p := range paths {
+		if paths[i], err = filepath.EvalSymlinks(p); err != nil {
+			return err
+		}
+	}
+
+	// TODO: Watch does not work for sub-sub directories so we disable this for now.
+	// paths = findParents(paths...)
+	candidates := map[string]struct{}{}
+	for _, p := range paths {
+		if _, ok := w.paths[p]; !ok {
+			w.Mutex.Lock()
+			w.watcher.Add(p)
+			w.paths[p] = struct{}{}
+			w.Mutex.Unlock()
+		}
+		candidates[p] = struct{}{}
+	}
+
+	for p := range w.paths {
+		if _, ok := candidates[p]; !ok {
+			w.Mutex.Lock()
+			w.watcher.Remove(p)
+			delete(w.paths, p)
+			w.Mutex.Unlock()
+		}
+	}
+	return nil
+}
+
+func findParents(paths ...string) []string {
+	var res []string
+	for _, p := range paths {
+		if len(res) == 0 {
+			res = append(res, p)
+			continue
+		}
+
+		matched := false
+		for i, r := range res {
+			if isSubPath(r, p) {
+				matched = true
+				break
+			}
+			if isSubPath(p, r) {
+				matched = true
+				res[i] = p
+				break
+			}
+		}
+		if !matched {
+			res = append(res, p)
+		}
+	}
+	return res
+}
+
+func isSubPath(parent, sub string) bool {
+	if parent == sub {
+		return true
+	}
+	if rel, err := filepath.Rel(sub, parent); err == nil {
+		prefix := ".." + string(filepath.Separator)
+		for {
+			if rel == ".." {
+				return true
+			}
+			if strings.HasPrefix(rel, prefix) {
+				rel = strings.TrimPrefix(rel, prefix)
+			} else {
+				return false
+			}
+		}
+	}
+	return false
+}
+
+func parseDependeniesToDirs(b []byte) []string {
+	m := map[string]struct{}{}
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for scanner.Scan() {
+		p := strings.TrimSuffix(strings.TrimSpace(scanner.Text()), ":")
+		if _, err := os.Stat(p); err == nil {
+			m[filepath.Dir(p)] = struct{}{}
+		}
+
+	}
+	var res []string
+	for r := range m {
+		res = append(res, r)
+	}
+	return res
+}
+
+func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *SDK, entrypoint string) (<-chan struct{}, func()) {
 	doneCh := make(chan struct{})
+
+	updateWatcher := func(runCtx context.Context) {
+
+		var paths []string
+		if tmpFile, err := ioutil.TempFile("", "*.txt"); err == nil {
+			defer os.Remove(tmpFile.Name())
+			tmpFile.Close()
+			cmd := sdk.Toitc(ctx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", "--analyze", entrypoint)
+			if err := cmd.Run(); err == nil {
+				if b, err := ioutil.ReadFile(tmpFile.Name()); err == nil {
+					paths = parseDependeniesToDirs(b)
+				}
+			}
+		}
+
+		if len(paths) == 0 {
+			paths = []string{filepath.Dir(entrypoint)}
+		}
+
+		if err := watcher.Watch(paths...); err != nil {
+			fmt.Println("Failed to update watcher: ", err)
+		}
+	}
 
 	runOnDevice := func(runCtx context.Context) {
 		fmt.Println("Compiling...")
@@ -95,29 +234,30 @@ func onWatchChanges(ctx context.Context, watcher *fsnotify.Watcher, device *Devi
 		fmt.Println("Successfully pushed program to device.")
 	}
 
-	runOnDevice(ctx)
+	firstCtx, previousCancel := context.WithCancel(ctx)
+	go updateWatcher(firstCtx)
+	runOnDevice(firstCtx)
 	return doneCh, func() {
 		defer close(doneCh)
-		var previousCancel context.CancelFunc
-		previousCancel = func() {}
 		for {
-			previousCancel()
-			var innerCtx context.Context
-			innerCtx, previousCancel = context.WithCancel(ctx)
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-watcher.Events():
 				if !ok {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Printf("File modified '%s'\n", event.Name)
+					previousCancel()
+					var innerCtx context.Context
+					innerCtx, previousCancel = context.WithCancel(ctx)
+					fmt.Printf("File modified '%s'\n", event.Name)
+					go updateWatcher(innerCtx)
 					runOnDevice(innerCtx)
 				}
-			case err, ok := <-watcher.Errors:
+			case err, ok := <-watcher.Errors():
 				if !ok {
 					return
 				}
-				log.Println("error:", err)
+				fmt.Println("Watch error:", err)
 			case <-ctx.Done():
 				return
 			}
