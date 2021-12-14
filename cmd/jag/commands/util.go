@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -91,6 +92,42 @@ func (s *SDK) Toitc(ctx context.Context, args ...string) *exec.Cmd {
 
 func (s *SDK) Toitvm(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitvmPath(), args...)
+}
+
+func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]byte, error) {
+	snapshotsCache, err := GetSnapshotsCachePath()
+	if err != nil {
+		return nil, err
+	}
+	snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
+
+	buildSnap := s.Toitc(ctx, "-w", snapshot, entrypoint)
+	buildSnap.Stderr = os.Stderr
+	buildSnap.Stdout = os.Stdout
+	if err := buildSnap.Run(); err != nil {
+		return nil, err
+	}
+
+	image, err := os.CreateTemp("", "*.image")
+	if err != nil {
+		return nil, err
+	}
+	image.Close()
+	defer os.Remove(image.Name())
+
+	bits := "-m32"
+	if device.WordSize == 8 {
+		bits = "-m64"
+	}
+
+	buildImage := s.Toitvm(ctx, s.SnapshotToImagePath(), "--binary", bits, snapshot, image.Name())
+	buildImage.Stderr = os.Stderr
+	buildImage.Stdout = os.Stdout
+	if err := buildImage.Run(); err != nil {
+		return nil, err
+	}
+
+	return ioutil.ReadFile(image.Name())
 }
 
 type gzipReader struct {

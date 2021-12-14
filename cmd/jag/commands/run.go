@@ -5,9 +5,7 @@
 package commands
 
 import (
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"fmt"
 
 	"github.com/spf13/cobra"
 )
@@ -38,44 +36,17 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			snapshotsCache, err := GetSnapshotsCachePath()
-			if err != nil {
-				return err
-			}
-			snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
-
 			entrypoint := args[0]
-			buildSnap := sdk.Toitc(ctx, "-w", snapshot, entrypoint)
-			buildSnap.Stderr = os.Stderr
-			buildSnap.Stdout = os.Stdout
-			if err := buildSnap.Run(); err != nil {
-				return err
-			}
-
-			image, err := os.CreateTemp("", "*.image")
+			fmt.Printf("Running '%s' on device '%s'...\n", entrypoint, device.Name)
+			b, err := sdk.Build(ctx, device, entrypoint)
 			if err != nil {
 				return err
 			}
-			image.Close()
-			defer os.Remove(image.Name())
-
-			bits := "-m32"
-			if device.WordSize == 8 {
-				bits = "-m64"
+			if err := device.Run(ctx, b); err != nil {
+				return nil
 			}
-
-			buildImage := sdk.Toitvm(ctx, sdk.SnapshotToImagePath(), "--binary", bits, snapshot, image.Name())
-			buildImage.Stderr = os.Stderr
-			buildImage.Stdout = os.Stdout
-			if err := buildImage.Run(); err != nil {
-				return err
-			}
-
-			b, err := ioutil.ReadFile(image.Name())
-			if err != nil {
-				return err
-			}
-			return device.Run(ctx, b)
+			fmt.Println("Successfully pushed program to device.")
+			return nil
 		},
 	}
 
