@@ -41,16 +41,16 @@ jag setup
 ```
 
 Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
-application onto it:
+application onto it. This will ask you for the serial port to use and the WiFi credentials:
 
 ``` sh
-jag flash --port=/dev/ttyUSB0 --wifi-ssid="<ssid>" --wifi-password="<password>"
+jag flash
 ```
 
 Now it is possible to monitor the serial output from the device:
 
 ``` sh
-jag monitor --port=/dev/ttyUSB0
+jag monitor
 ```
 
 Once the serial output shows that your ESP32 runs the Jaguar application, it will start announcing
@@ -67,6 +67,15 @@ ESP32 device:
 ``` sh
 jag run examples/hello.toit
 ```
+
+It is even possible to ask Jaguar to keep watching your Toit code on disk and to *live reload* it when
+it changes. Simply write:
+
+``` sh
+jag watch examples/hello.toit
+```
+
+and edit `examples/hello.toit` or any of the files it depends on in your favorite editor.
 
 # Building it yourself
 
