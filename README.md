@@ -1,7 +1,7 @@
 
 # Jaguar: Live reloading for your ESP32
 
-Jaguar enables live reloading when developing code for the ESP32. Develop, update, and restart 
+Jaguar enables live reloading when developing for the ESP32. Develop, update, and restart 
 your code in less than two seconds via WiFi. Use the really fast development cycle to iterate 
 quickly and learn fast!
 
