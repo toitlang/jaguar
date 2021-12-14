@@ -28,7 +28,7 @@ main args:
     port = int.parse args[0]
 
   image_config := {:}
-  if platform == "FreeRTOS":
+  if platform == PLATFORM_FREERTOS:
     image_config = esp32.image_config or {:}
 
   id/uuid.Uuid := uuid.NIL
