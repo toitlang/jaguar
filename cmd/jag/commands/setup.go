@@ -25,11 +25,11 @@ func getToitSDKURL(version string) string {
 }
 
 func getSnapshotURL(version string) string {
-	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/sdk-%s/jaguar.snapshot", version)
+	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/jaguar.snapshot", version)
 }
 
 func getESP32ImageURL(version string) string {
-	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/sdk-%s/image.tar.gz", version)
+	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/image.tar.gz", version)
 }
 
 func getEsptoolURL(version string) string {
@@ -37,10 +37,14 @@ func getEsptoolURL(version string) string {
 	if currOS == "darwin" {
 		currOS = "macos"
 	}
-	return executable(fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/sdk-%s/esptool_%s_v3.0", version, currOS))
+	return executable(fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/esptool-%s/esptool_%s_%s", version, currOS, version))
 }
 
-func SetupCmd() *cobra.Command {
+const (
+	esptoolVersion = "v3.0"
+)
+
+func SetupCmd(info Info) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Setup the Toit SDK",
@@ -48,34 +52,29 @@ func SetupCmd() *cobra.Command {
 			"The downloaded SDK is stored locally in a subdirectory of your home folder.",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			version, err := cmd.Flags().GetString("version")
-			if err != nil {
-				return err
-			}
 			ctx := cmd.Context()
-			if err := downloadSDK(ctx, version); err != nil {
+			if err := downloadSDK(ctx, info.SDKVersion); err != nil {
 				return err
 			}
 
-			if err := downloadESP32Image(ctx, version); err != nil {
+			if err := downloadESP32Image(ctx, info.Version); err != nil {
 				return err
 			}
 
-			if err := downloadSnapshot(ctx, version); err != nil {
+			if err := downloadSnapshot(ctx, info.Version); err != nil {
 				return err
 			}
 
-			if err := downloadEsptool(ctx, version); err != nil {
+			if err := downloadEsptool(ctx, esptoolVersion); err != nil {
 				return err
 			}
 
-			fmt.Printf("Successfully setup Jaguar with Toit SDK %s.\n", version)
+			fmt.Printf("Successfully setup Jaguar %s with Toit SDK %s.\n", info.Version, info.SDKVersion)
 
 			return nil
 		},
 	}
 
-	cmd.Flags().StringP("version", "v", "v0.10.0", "Toit SDK version to download")
 	return cmd
 }
 

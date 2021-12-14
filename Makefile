@@ -11,14 +11,24 @@ THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
 TOIT_REPO_PATH ?= $(THIRD_PARTY_TOIT_PATH)
 JAG_TOIT_PATH ?= $(TOIT_REPO_PATH)/build/host/sdk
 
+BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_VERSION ?= $(shell ./tools/gitversion)
+BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
+
 .PHONY: jag
 jag: $(BUILD_DIR)/jag
 
 $(BUILD_DIR):
 	mkdir -p $@
 
+update_jag_info: $(BUILD_DIR)
+	sed 's/date       = .*/date       = "$(BUILD_DATE)"/' $(CURR_DIR)/cmd/jag/main.go | \
+	sed 's/version    = .*/version    = "$(BUILD_VERSION)"/' | \
+	sed 's/sdkVersion = .*/sdkVersion = "$(BUILD_SDK_VERSION)"/' > $(BUILD_DIR)/new_main.go
+	mv $(BUILD_DIR)/new_main.go $(CURR_DIR)/cmd/jag/main.go
+
 $(BUILD_DIR)/jag: $(GO_SOURCE) $(BUILD_DIR)
-	CGO_ENABLED=1 GODEBUG=netdns=go go build  -o $@ ./cmd/jag
+	CGO_ENABLED=1 GODEBUG=netdns=go go build -o $@ ./cmd/jag
 
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
