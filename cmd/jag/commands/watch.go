@@ -200,7 +200,8 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	return doneCh, func() {
 		defer close(doneCh)
 		fired := false
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticketDuration := 100 * time.Millisecond
+		ticker := time.NewTicker(ticketDuration)
 		defer ticker.Stop()
 		for {
 			select {
@@ -215,8 +216,9 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 						var innerCtx context.Context
 						innerCtx, previousCancel = context.WithCancel(ctx)
 						go updateWatcher(innerCtx)
-						runOnDevice(innerCtx)
+						go runOnDevice(innerCtx)
 						fired = true
+						ticker.Reset(ticketDuration)
 					}
 				}
 			case <-ticker.C:
