@@ -27,6 +27,7 @@ func JagCmd() *cobra.Command {
 		FlashCmd(),
 		MonitorCmd(),
 		WatchCmd(),
+		SetPortCmd(),
 	)
 	return cmd
 }
