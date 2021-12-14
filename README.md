@@ -1,15 +1,15 @@
 
 # Jaguar: Live reloading for your ESP32s
 
-Jaguar enables live reloading for your ESP32 application development. Develop, update, and restart 
-your applications in less than two seconds via WiFi. Use the really fast development cycle to iterate 
+Jaguar enables live reloading when developing code for the ESP32. Develop, update, and restart 
+your code in less than two seconds via WiFi. Use the really fast development cycle to iterate 
 quickly and learn fast!
 
 ## What is it?
 
-Jaguar is a small Toit program that runs on your ESP32. It uses the capabilities of the
+Jaguar is a small Toit application that runs on your ESP32. It uses the capabilities of the
 [Toit virtual machine](https://github.com/toitlang/toit) to let you update and restart your ESP32
-applications written in Toit over WiFi. Change your Toit code in your editor, update the application on
+code written in Toit over WiFi. Change your code in your editor, update it on
 your device, and restart it all within seconds. No need to flash over serial, reboot your device, or wait
 for it to reconnect to your network.
 
@@ -20,9 +20,9 @@ Watch a short video that shows how you can experience Jaguar on your ESP32 in le
 ## How does it work?
 
 Jaguar runs a small HTTP server that listens for incoming requests. The requests contain compiled
-Toit applications that are relocated and installed in flash on the device. Before installing an
-application, we stop any old version of the application and free the resources it has consumed. The new
-version of the application gets to start again from `main`.
+Toit programs that are relocated and installed in flash on the device. Before installing a
+program, we stop any old version of the program and free the resources it has consumed. The new
+version of the program gets to start again from `main`.
 
 ## How do I use it?
 
