@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,7 @@ import (
 func WatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "watch <entrypoint>",
-		Short:        "watches for changes on <entrypoint> and dependencies and starts a run every time changes happens",
+		Short:        "watches for changes on <entrypoint> and dependencies and re-runs a run every time changes happens",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -106,12 +107,10 @@ func (w *watcher) Watch(paths ...string) (err error) {
 	}
 
 	paths = findParents(paths...)
-	fmt.Println("Watching paths: ", paths)
 	candidates := map[string]struct{}{}
 	for _, p := range paths {
 		if _, ok := w.paths[p]; !ok {
 			w.Mutex.Lock()
-			fmt.Println("watch path", p)
 			w.watcher.Add(p)
 			w.paths[p] = struct{}{}
 			w.Mutex.Unlock()
@@ -122,7 +121,6 @@ func (w *watcher) Watch(paths ...string) (err error) {
 	for p := range w.paths {
 		if _, ok := candidates[p]; !ok {
 			w.Mutex.Lock()
-			fmt.Println("remove path", p)
 			w.watcher.Remove(p)
 			delete(w.paths, p)
 			w.Mutex.Unlock()
@@ -141,12 +139,10 @@ func findParents(paths ...string) []string {
 
 		matched := false
 		for i, r := range res {
-			fmt.Printf("Is %s sub of %s: %v\n", r, p, isSubPath(r, p))
 			if isSubPath(r, p) {
 				matched = true
 				break
 			}
-			fmt.Printf("Is %s sub of %s: %v\n", p, r, isSubPath(p, r))
 			if isSubPath(p, r) {
 				matched = true
 				res[i] = p
@@ -176,7 +172,6 @@ func isSubPath(parent, sub string) bool {
 				return false
 			}
 		}
-		return rel == ".." || strings.TrimLeft(rel, ".."+string(filepath.Separator)) == ""
 	}
 	return false
 }
@@ -186,7 +181,10 @@ func parseDependeniesToDirs(b []byte) []string {
 	scanner := bufio.NewScanner(bytes.NewReader(b))
 	for scanner.Scan() {
 		p := strings.TrimSuffix(strings.TrimSpace(scanner.Text()), ":")
-		m[filepath.Dir(p)] = struct{}{}
+		if _, err := os.Stat(p); err == nil {
+			m[filepath.Dir(p)] = struct{}{}
+		}
+
 	}
 	var res []string
 	for r := range m {
@@ -199,14 +197,21 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	doneCh := make(chan struct{})
 
 	updateWatcher := func(runCtx context.Context) {
-		cmd := sdk.Toitc(ctx, "--dependency-file", "-", "--dependency-format", "plain", "--analyze", entrypoint)
-		o, err := cmd.CombinedOutput()
+
 		var paths []string
-		if err != nil {
-			fmt.Printf("Failed to get dependencies for entrypoint: '%s', reason: %v\n", entrypoint, err)
+		if tmpFile, err := ioutil.TempFile("", "*.txt"); err == nil {
+			defer os.Remove(tmpFile.Name())
+			tmpFile.Close()
+			cmd := sdk.Toitc(ctx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", "--analyze", entrypoint)
+			if err := cmd.Run(); err == nil {
+				if b, err := ioutil.ReadFile(tmpFile.Name()); err == nil {
+					paths = parseDependeniesToDirs(b)
+				}
+			}
+		}
+
+		if len(paths) == 0 {
 			paths = []string{filepath.Dir(entrypoint)}
-		} else {
-			paths = parseDependeniesToDirs(o)
 		}
 
 		if err := watcher.Watch(paths...); err != nil {
@@ -251,7 +256,7 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 				if !ok {
 					return
 				}
-				fmt.Println("watch error:", err)
+				fmt.Println("Watch error:", err)
 			case <-ctx.Done():
 				return
 			}
