@@ -203,3 +203,26 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, 
 	}
 	return d, nil
 }
+
+func GetPort(cfg *viper.Viper, all bool, reset bool) (string, error) {
+	if !reset && cfg.IsSet("port") {
+		port := cfg.GetString("port")
+		exists, err := PortExists(port)
+		if err != nil {
+			return "", err
+		}
+		if exists {
+			return port, nil
+		}
+	}
+
+	port, err := pickPort(all)
+	if err != nil {
+		return "", err
+	}
+	cfg.Set("port", port)
+	if err := cfg.WriteConfig(); err != nil {
+		return "", err
+	}
+	return port, nil
+}

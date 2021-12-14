@@ -6,6 +6,7 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -38,6 +39,9 @@ func FlashCmd() *cobra.Command {
 			ctx := cmd.Context()
 			port, err := cmd.Flags().GetString("port")
 			if err != nil {
+				return err
+			}
+			if port, err = CheckPort(port); err != nil {
 				return err
 			}
 
@@ -136,6 +140,7 @@ func FlashCmd() *cobra.Command {
 				"0x8000", filepath.Join(esp32BinPath, "partitions.bin"),
 			}
 
+			fmt.Printf("Flashing device over serial on port '%s'...\n", port)
 			flashCmd := exec.CommandContext(ctx, esptoolPath, flashArgs...)
 			flashCmd.Stderr = os.Stderr
 			flashCmd.Stdout = os.Stdout
@@ -143,7 +148,7 @@ func FlashCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "serial port to flash via")
+	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")

@@ -26,6 +26,10 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
+			if port, err = CheckPort(port); err != nil {
+				return err
+			}
+
 			baud, err := cmd.Flags().GetUint("baud")
 			if err != nil {
 				return err
@@ -36,6 +40,7 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
+			fmt.Printf("Starting serial monitor of port '%s'...\n", port)
 			dev, err := serialOpen(port, &serial.Mode{
 				BaudRate: int(baud),
 			})
@@ -52,7 +57,7 @@ func MonitorCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("port", "p", "/dev/ttyUSB0", "port to monitor")
+	cmd.Flags().StringP("port", "p", ConfiguredPort(), "port to monitor")
 	cmd.Flags().BoolP("attach", "a", false, "attach to the serial output without rebooting it")
 	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
 	return cmd
