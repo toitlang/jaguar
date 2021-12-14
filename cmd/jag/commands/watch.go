@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -106,8 +107,6 @@ func (w *watcher) Watch(paths ...string) (err error) {
 		}
 	}
 
-	// TODO: Watch does not work for sub-sub directories so we disable this for now.
-	// paths = findParents(paths...)
 	candidates := map[string]struct{}{}
 	for _, p := range paths {
 		if _, ok := w.paths[p]; !ok {
@@ -128,53 +127,6 @@ func (w *watcher) Watch(paths ...string) (err error) {
 		}
 	}
 	return nil
-}
-
-func findParents(paths ...string) []string {
-	var res []string
-	for _, p := range paths {
-		if len(res) == 0 {
-			res = append(res, p)
-			continue
-		}
-
-		matched := false
-		for i, r := range res {
-			if isSubPath(r, p) {
-				matched = true
-				break
-			}
-			if isSubPath(p, r) {
-				matched = true
-				res[i] = p
-				break
-			}
-		}
-		if !matched {
-			res = append(res, p)
-		}
-	}
-	return res
-}
-
-func isSubPath(parent, sub string) bool {
-	if parent == sub {
-		return true
-	}
-	if rel, err := filepath.Rel(sub, parent); err == nil {
-		prefix := ".." + string(filepath.Separator)
-		for {
-			if rel == ".." {
-				return true
-			}
-			if strings.HasPrefix(rel, prefix) {
-				rel = strings.TrimPrefix(rel, prefix)
-			} else {
-				return false
-			}
-		}
-	}
-	return false
 }
 
 func parseDependeniesToDirs(b []byte) []string {
@@ -239,17 +191,33 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	runOnDevice(firstCtx)
 	return doneCh, func() {
 		defer close(doneCh)
+		var events []fsnotify.Event
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case event, ok := <-watcher.Events():
 				if !ok {
 					return
 				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				events = append(events, event)
+			case <-ticker.C:
+
+				modified := false
+				queued := events
+				events = nil
+				for _, event := range queued {
+					if event.Op&fsnotify.Write == fsnotify.Write {
+						fmt.Printf("File modified '%s'\n", event.Name)
+						modified = true
+					}
+				}
+
+				if modified {
 					previousCancel()
 					var innerCtx context.Context
 					innerCtx, previousCancel = context.WithCancel(ctx)
-					fmt.Printf("File modified '%s'\n", event.Name)
 					go updateWatcher(innerCtx)
 					runOnDevice(innerCtx)
 				}
