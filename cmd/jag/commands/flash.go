@@ -61,14 +61,38 @@ func FlashCmd() *cobra.Command {
 				name = GetRandomName(id[:])
 			}
 
-			wifiSsid, err := cmd.Flags().GetString("wifi-ssid")
-			if err != nil {
-				return err
+			var wifiSSID string
+			if cmd.Flags().Changed("wifi-ssid") {
+				wifiSSID, err = cmd.Flags().GetString("wifi-ssid")
+				if err != nil {
+					return err
+				}
+			} else if v, ok := os.LookupEnv(WifiSSIDEnv); ok {
+				wifiSSID = v
+			} else {
+				fmt.Printf("Enter WiFi Network (SSID): ")
+				wifiSSID, err = ReadLine()
+				if err != nil {
+					return err
+				}
 			}
 
-			wifiPassword, err := cmd.Flags().GetString("wifi-password")
-			if err != nil {
-				return err
+			var wifiPassword string
+			if cmd.Flags().Changed("wifi-password") {
+				wifiPassword, err = cmd.Flags().GetString("wifi-password")
+				if err != nil {
+					return err
+				}
+			} else if v, ok := os.LookupEnv(WifiPasswordEnv); ok {
+				wifiPassword = v
+			} else {
+				fmt.Printf("Enter WiFi Password for '%s': ", wifiSSID)
+				pw, err := ReadPassword()
+				if err != nil {
+					fmt.Printf("\n")
+					return err
+				}
+				wifiPassword = string(pw)
 			}
 
 			sdk, err := GetSDK()
@@ -96,7 +120,7 @@ func FlashCmd() *cobra.Command {
 			config.Name = name
 			config.ID = id.String()
 			config.Wifi.Password = wifiPassword
-			config.Wifi.SSID = wifiSsid
+			config.Wifi.SSID = wifiSSID
 			if err := json.NewEncoder(configFile).Encode(config); err != nil {
 				configFile.Close()
 				return err
@@ -150,10 +174,8 @@ func FlashCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
-	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", os.Getenv(WifiSSIDEnv), "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
-	cmd.MarkFlagRequired("wifi-ssid")
-	cmd.MarkFlagRequired("wifi-password")
 	return cmd
 }

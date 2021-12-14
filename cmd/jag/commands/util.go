@@ -2,6 +2,7 @@ package commands
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"context"
 	"fmt"
@@ -9,9 +10,12 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type SDK struct {
@@ -202,4 +206,39 @@ func extractTarFile(fileReader io.Reader, destDir string, subDir string) error {
 	}
 
 	return nil
+}
+
+func ReadLine() (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	return strings.TrimSpace(line), err
+}
+
+func ReadPassword() ([]byte, error) {
+	fd := int(os.Stdin.Fd())
+	oldState, err := terminal.MakeRaw(fd)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		terminal.Restore(fd, oldState)
+		fmt.Printf("******\n")
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	defer signal.Stop(c)
+	defer func() { close(c) }()
+	go func() {
+		select {
+		case _, ok := <-c:
+			if ok {
+				terminal.Restore(fd, oldState)
+				fmt.Printf("\n")
+				os.Exit(1)
+			}
+		}
+	}()
+
+	return terminal.ReadPassword(fd)
 }
