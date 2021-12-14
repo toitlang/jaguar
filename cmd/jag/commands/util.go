@@ -6,15 +6,20 @@ package commands
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 type SDK struct {
@@ -97,6 +102,42 @@ func (s *SDK) Toitvm(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitvmPath(), args...)
 }
 
+func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]byte, error) {
+	snapshotsCache, err := GetSnapshotsCachePath()
+	if err != nil {
+		return nil, err
+	}
+	snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
+
+	buildSnap := s.Toitc(ctx, "-w", snapshot, entrypoint)
+	buildSnap.Stderr = os.Stderr
+	buildSnap.Stdout = os.Stdout
+	if err := buildSnap.Run(); err != nil {
+		return nil, err
+	}
+
+	image, err := os.CreateTemp("", "*.image")
+	if err != nil {
+		return nil, err
+	}
+	image.Close()
+	defer os.Remove(image.Name())
+
+	bits := "-m32"
+	if device.WordSize == 8 {
+		bits = "-m64"
+	}
+
+	buildImage := s.Toitvm(ctx, s.SnapshotToImagePath(), "--binary", bits, snapshot, image.Name())
+	buildImage.Stderr = os.Stderr
+	buildImage.Stdout = os.Stdout
+	if err := buildImage.Run(); err != nil {
+		return nil, err
+	}
+
+	return ioutil.ReadFile(image.Name())
+}
+
 type gzipReader struct {
 	*gzip.Reader
 	inner io.ReadCloser
@@ -169,4 +210,39 @@ func extractTarFile(fileReader io.Reader, destDir string, subDir string) error {
 	}
 
 	return nil
+}
+
+func ReadLine() (string, error) {
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	return strings.TrimSpace(line), err
+}
+
+func ReadPassword() ([]byte, error) {
+	fd := int(os.Stdin.Fd())
+	oldState, err := terminal.MakeRaw(fd)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		terminal.Restore(fd, oldState)
+		fmt.Printf("******\n")
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	defer signal.Stop(c)
+	defer func() { close(c) }()
+	go func() {
+		select {
+		case _, ok := <-c:
+			if ok {
+				terminal.Restore(fd, oldState)
+				fmt.Printf("\n")
+				os.Exit(1)
+			}
+		}
+	}()
+
+	return terminal.ReadPassword(fd)
 }

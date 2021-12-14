@@ -26,6 +26,10 @@ const (
 	EsptoolPathEnv = "JAG_ESPTOOL_PATH"
 	// ESP32BinEnv path to the jaguar esp32 binary image.
 	ESP32BinEnv = "JAG_ESP32_BIN_PATH"
+	// WifiSSIDEnv if set will use this wifi ssid
+	WifiSSIDEnv = "JAG_WIFI_SSID"
+	// WifiPasswordEnv if set will use this wifi password
+	WifiPasswordEnv = "JAG_WIFI_PASSWORD"
 )
 
 func GetWorkspacePath() (string, error) {
