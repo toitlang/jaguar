@@ -139,9 +139,8 @@ func parseDependeniesToDirs(b []byte) []string {
 	for scanner.Scan() {
 		p := strings.TrimSuffix(strings.TrimSpace(scanner.Text()), ":")
 		if _, err := os.Stat(p); err == nil {
-			m[filepath.Dir(p)] = struct{}{}
+			m[p] = struct{}{}
 		}
-
 	}
 	var res []string
 	for r := range m {
