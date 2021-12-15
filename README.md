@@ -27,7 +27,7 @@ version of the program gets to start again from `main`.
 ## How do I use it?
 
 First you'll need to have a [Go development environment](https://go.dev) properly set up 
-(remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`). Using that
+and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
 you can install the `jag` command line tool using `go install`:
 
 ``` sh
