@@ -40,7 +40,7 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Starting serial monitor of port '%s'...\n", port)
+			fmt.Printf("Starting serial monitor of port '%s' ...\n", port)
 			dev, err := serialOpen(port, &serial.Mode{
 				BaudRate: int(baud),
 			})

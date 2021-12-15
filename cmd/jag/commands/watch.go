@@ -22,8 +22,8 @@ import (
 
 func WatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "watch <entrypoint>",
-		Short:        "watches for changes on <entrypoint> and dependencies and re-runs a run every time changes happens",
+		Use:          "watch <file>",
+		Short:        "watches for changes to <file> and its dependencies and re-runs the code every time changes happens",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -181,7 +181,7 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	}
 
 	runOnDevice := func(runCtx context.Context) {
-		fmt.Println("Compiling...")
+		fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 		b, err := sdk.Build(runCtx, device, entrypoint)
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -191,7 +191,7 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 			fmt.Println("Error:", err)
 			return
 		}
-		fmt.Println("Successfully pushed program to device.")
+		fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
 	}
 
 	firstCtx, previousCancel := context.WithCancel(ctx)

@@ -85,7 +85,7 @@ func downloadESP32Image(ctx context.Context, version string) error {
 	}
 
 	esp32ImageURL := getESP32ImageURL(version)
-	fmt.Printf("Downloading ESP32 image from %s...\n", esp32ImageURL)
+	fmt.Printf("Downloading ESP32 image from %s ...\n", esp32ImageURL)
 	bundle, err := download(ctx, esp32ImageURL)
 	if err != nil {
 		return err
@@ -121,7 +121,7 @@ func downloadSnapshot(ctx context.Context, version string) error {
 	}
 
 	snapshotURL := getSnapshotURL(version)
-	fmt.Printf("Downloading snapshot from %s...\n", snapshotURL)
+	fmt.Printf("Downloading snapshot from %s ...\n", snapshotURL)
 	bundle, err := download(ctx, snapshotURL)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func downloadEsptool(ctx context.Context, version string) error {
 	}
 
 	esptoolURL := getEsptoolURL(version)
-	fmt.Printf("Downloading esptool from %s...\n", esptoolURL)
+	fmt.Printf("Downloading esptool from %s ...\n", esptoolURL)
 	bundle, err := download(ctx, esptoolURL)
 	if err != nil {
 		return err
@@ -175,7 +175,7 @@ func downloadSDK(ctx context.Context, version string) error {
 	}
 
 	sdkURL := getToitSDKURL(version)
-	fmt.Printf("Downloading Toit SDK from %s...\n", sdkURL)
+	fmt.Printf("Downloading Toit SDK from %s ...\n", sdkURL)
 	sdk, err := download(ctx, getToitSDKURL(version))
 	if err != nil {
 		return err
