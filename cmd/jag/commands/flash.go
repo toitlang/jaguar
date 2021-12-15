@@ -70,7 +70,7 @@ func FlashCmd() *cobra.Command {
 			} else if v, ok := os.LookupEnv(WifiSSIDEnv); ok {
 				wifiSSID = v
 			} else {
-				fmt.Printf("Enter WiFi Network (SSID): ")
+				fmt.Printf("Enter WiFi network (SSID): ")
 				wifiSSID, err = ReadLine()
 				if err != nil {
 					return err
@@ -86,7 +86,7 @@ func FlashCmd() *cobra.Command {
 			} else if v, ok := os.LookupEnv(WifiPasswordEnv); ok {
 				wifiPassword = v
 			} else {
-				fmt.Printf("Enter WiFi Password for '%s': ", wifiSSID)
+				fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
 				pw, err := ReadPassword()
 				if err != nil {
 					fmt.Printf("\n")
@@ -164,7 +164,7 @@ func FlashCmd() *cobra.Command {
 				"0x8000", filepath.Join(esp32BinPath, "partitions.bin"),
 			}
 
-			fmt.Printf("Flashing device over serial on port '%s'...\n", port)
+			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
 			flashCmd := exec.CommandContext(ctx, esptoolPath, flashArgs...)
 			flashCmd.Stderr = os.Stderr
 			flashCmd.Stdout = os.Stdout

@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	scanTimeout = 400 * time.Millisecond
+	scanTimeout = 600 * time.Millisecond
 	scanPort    = 1990
 )
 
@@ -59,7 +59,7 @@ func ScanCmd() *cobra.Command {
 }
 
 func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint) (*Device, error) {
-	fmt.Println("Scanning...")
+	fmt.Println("Scanning ...")
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := scan(scanCtx, port)
 	cancel()

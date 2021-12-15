@@ -37,15 +37,17 @@ func RunCmd() *cobra.Command {
 			}
 
 			entrypoint := args[0]
-			fmt.Printf("Running '%s' on device '%s'...\n", entrypoint, device.Name)
+			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 			b, err := sdk.Build(ctx, device, entrypoint)
 			if err != nil {
+				fmt.Println("Error:", err)
 				return err
 			}
 			if err := device.Run(ctx, b); err != nil {
+				fmt.Println("Error:", err)
 				return nil
 			}
-			fmt.Println("Successfully pushed program to device.")
+			fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
 			return nil
 		},
 	}

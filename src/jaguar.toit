@@ -20,7 +20,7 @@ IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 
 HTTP_PORT ::= 9000
 manager ::= ProgramManager
-logger ::= log.default
+logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget
 
 main args:
   port := HTTP_PORT
