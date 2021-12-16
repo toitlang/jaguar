@@ -17,6 +17,7 @@ import .system_message_handler
 
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
+DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 
 HTTP_PORT ::= 9000
 manager ::= ProgramManager
@@ -54,11 +55,15 @@ main args:
     identify id name address
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
+    device_id_header := request.headers.single DEVICE_ID_HEADER
+    if device_id_header != id.stringify:
+      logger.info "Denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
+      writer.write_headers 403
     if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
       writer.write
         json.encode {"status": "success"}
-    if request.path == "/ping" and request.method == "GET":
+    else if request.path == "/ping" and request.method == "GET":
       writer.write
         json.encode {"status": "OK"}
 
