@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const (
+	JaguarDeviceIDHeader = "X-Jaguar-Device-ID"
+)
+
 type Device struct {
 	ID       string `mapstructure:"id" yaml:"id" json:"id"`
 	Name     string `mapstructure:"name" yaml:"name" json:"name"`
@@ -34,6 +38,7 @@ func (d Device) Ping(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false
@@ -47,6 +52,7 @@ func (d Device) Run(ctx context.Context, b []byte) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
