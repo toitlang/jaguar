@@ -36,16 +36,6 @@ jobs:
           tag: ${{ github.ref }}
           asset_name: jag_${{ github.ref }}_linux
           overwrite: true
-      # # TODO: Sign on mac and let that upload
-      # - name: Upload jag macos
-      #   if: github.event_name == 'release'
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: build/jag_macos
-      #     tag: ${{ github.ref }}
-      #     asset_name: jag_${{ github.ref }}_macos
-      #     overwrite: true
 
   sign_jag_windows:
     runs-on: windows-signing
@@ -92,9 +82,6 @@ jobs:
           security import certificate.p12 -k jaguar.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PWD jaguar.keychain
           /usr/bin/codesign --force -s CLI-code-sign ./jag_macos -v
-        run: |
-          dir
-          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_windows.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
