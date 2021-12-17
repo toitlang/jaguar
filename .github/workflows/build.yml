@@ -36,16 +36,16 @@ jobs:
           tag: ${{ github.ref }}
           asset_name: jag_${{ github.ref }}_linux
           overwrite: true
-      # TODO: Sign on mac and let that upload
-      - name: Upload jag macos
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/jag_macos
-          tag: ${{ github.ref }}
-          asset_name: jag_${{ github.ref }}_macos
-          overwrite: true
+      # # TODO: Sign on mac and let that upload
+      # - name: Upload jag macos
+      #   if: github.event_name == 'release'
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: build/jag_macos
+      #     tag: ${{ github.ref }}
+      #     asset_name: jag_${{ github.ref }}_macos
+      #     overwrite: true
 
   sign_jag_windows:
     runs-on: windows-signing
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: jag-build
-      - name: Sign jag on windows
+      - name: Sign jag on Windows
         run: |
           dir
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_windows.exe
@@ -62,15 +62,52 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: jag-signed-windows
-          path: build/jag_windows.exe
-      - name: Upload jag linux
+          path: jag_windows.exe
+      - name: Upload jag Windows
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/jag_windows.exe
+          file: jag_windows.exe
           tag: ${{ github.ref }}
           asset_name: jag_${{ github.ref }}_windows.exe
+          overwrite: true
+
+  sign_jag_macos:
+    runs-on: macos-latest
+    needs: [build_jag]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: jag-build
+      - name: Sign jag on macOS
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          echo $MACOS_CERTIFICATE | base64 —decode > certificate.p12
+          security create-keychain -p $KEYCHAIN_PWD build.keychain security default-keychain -s jaguar.keychain
+          security unlock-keychain -p $KEYCHAIN_PWD jaguar.keychain
+          security import certificate.p12 -k jaguar.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PWD jaguar.keychain
+          /usr/bin/codesign --force -s CLI-code-sign ./jag_macos -v
+        run: |
+          dir
+          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_windows.exe
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: jag-signed-macos
+          path: jag_macos
+      - name: Upload jag macOS
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jag_macos
+          tag: ${{ github.ref }}
+          asset_name: jag_${{ github.ref }}_macos
           overwrite: true
 
   build_toit_images:
