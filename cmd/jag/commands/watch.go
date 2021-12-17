@@ -183,7 +183,6 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 		fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 		b, err := sdk.Build(runCtx, device, entrypoint)
 		if err != nil {
-			fmt.Println("Error:", err)
 			return
 		}
 		if err := device.Run(runCtx, b); err != nil {
