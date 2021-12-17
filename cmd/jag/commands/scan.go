@@ -44,7 +44,7 @@ func ScanCmd() *cobra.Command {
 			}
 			cmd.SilenceUsage = true
 
-			device, err := scanAndPickDevice(cmd.Context(), timeout, port)
+			device, err := scanAndPickDevice(cmd.Context(), timeout, port, nil)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func ScanCmd() *cobra.Command {
 	return cmd
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint) (*Device, error) {
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelectDeviceID *string) (*Device, error) {
 	fmt.Println("Scanning ...")
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := scan(scanCtx, port)
@@ -69,6 +69,14 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 
 	if len(devices) == 0 {
 		return nil, fmt.Errorf("didn't find any Jaguar devices")
+	}
+	if autoSelectDeviceID != nil {
+		for _, d := range devices {
+			if d.ID == *autoSelectDeviceID {
+				fmt.Printf("Found device '%s' again\n", d.Name)
+				return &d, nil
+			}
+		}
 	}
 
 	prompt := promptui.Select{

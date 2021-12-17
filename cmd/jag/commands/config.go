@@ -182,6 +182,7 @@ func GetConfig() (*viper.Viper, error) {
 }
 
 func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, error) {
+	var autoSelectDeviceID *string
 	if cfg.IsSet("device") {
 		var d Device
 		if err := cfg.UnmarshalKey("device", &d); err != nil {
@@ -191,13 +192,14 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, 
 			if d.Ping(ctx) {
 				return &d, nil
 			}
-			fmt.Println("Couldn't ping the device, select a new device")
+			autoSelectDeviceID = &d.ID
+			fmt.Printf("Failed to ping '%s'.\n", d.Name)
 		} else {
 			return &d, nil
 		}
 	}
 
-	d, err := scanAndPickDevice(ctx, scanTimeout, scanPort)
+	d, err := scanAndPickDevice(ctx, scanTimeout, scanPort, autoSelectDeviceID)
 	if err != nil {
 		return nil, err
 	}
