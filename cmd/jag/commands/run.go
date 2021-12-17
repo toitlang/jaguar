@@ -6,6 +6,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -37,11 +38,19 @@ func RunCmd() *cobra.Command {
 			}
 
 			entrypoint := args[0]
+			if stat, err := os.Stat(entrypoint); err != nil {
+				if os.IsNotExist(err) {
+					return fmt.Errorf("the entrypoint '%s' did not exists", entrypoint)
+				}
+				return fmt.Errorf("could not stat entrypoint '%s', reason: %w", entrypoint, err)
+			} else if stat.IsDir() {
+				return fmt.Errorf("the path given '%s' was a directory", entrypoint)
+			}
+
 			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 			b, err := sdk.Build(ctx, device, entrypoint)
 			if err != nil {
-				fmt.Println("Error:", err)
-				return err
+				return nil
 			}
 			if err := device.Run(ctx, b); err != nil {
 				fmt.Println("Error:", err)
