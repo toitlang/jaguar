@@ -58,7 +58,7 @@ IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 $(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE) .packages
 	IDF_PATH=$(IDF_PATH) make -C $(TOIT_REPO_PATH) esp32 ESP32_ENTRY=$(CURR_DIR)/src/jaguar.toit esp32
 
-$(BUILD_DIR)/image.snapshot: $(TOIT_REPO_PATH)/build/host/esp32/ .packages
+$(BUILD_DIR)/image.snapshot: $(BUILD_DIR) $(TOIT_REPO_PATH)/build/host/esp32/ .packages
 	cp $(TOIT_REPO_PATH)/build/snapshot $@
 
 .PHONY: image-snapshot
