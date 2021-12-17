@@ -34,7 +34,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/jag_linux
           tag: ${{ github.ref }}
-          asset_name: jag_${{ github.ref }}_linux
+          asset_name: jag_linux
           overwrite: true
 
   sign_jag_windows:
@@ -60,7 +60,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: jag_windows.exe
           tag: ${{ github.ref }}
-          asset_name: jag_${{ github.ref }}_windows.exe
+          asset_name: jag_windows.exe
           overwrite: true
 
   sign_jag_macos:
@@ -89,7 +89,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: jag_macos
           tag: ${{ github.ref }}
-          asset_name: jag_${{ github.ref }}_macos
+          asset_name: jag_macos
           overwrite: true
 
   build_toit_images:
