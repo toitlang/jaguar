@@ -9,8 +9,92 @@ on:
     types: [published]
 
 jobs:
-  build:
+  build_jag:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: Build jag
+        run: |
+          GOOS=linux JAG_BINARY=jag_linux make jag
+          GOOS=darwin JAG_BINARY=jag_macos make jag
+          GOOS=windows JAG_BINARY=jag_windows.exe make jag
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: jag-build
+          path: build/jag_*
+      - name: Upload jag linux
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/jag_linux
+          tag: ${{ github.ref }}
+          asset_name: jag_linux
+          overwrite: true
+
+  sign_jag_windows:
+    runs-on: windows-signing
+    needs: [build_jag]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: jag-build
+      - name: Sign jag on Windows
+        run: |
+          dir
+          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_windows.exe
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: jag-signed-windows
+          path: jag_windows.exe
+      - name: Upload jag Windows
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jag_windows.exe
+          tag: ${{ github.ref }}
+          asset_name: jag_windows.exe
+          overwrite: true
+
+  sign_jag_macos:
+    runs-on: macos-latest
+    needs: [build_jag]
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: jag-build
+      - name: import signing keychain
+        uses: apple-actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      - name: Sign jag on macOS
+        run: /usr/bin/codesign --force -s CLI-code-sign ./jag_macos -v
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: jag-signed-macos
+          path: jag_macos
+      - name: Upload jag macOS
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jag_macos
+          tag: ${{ github.ref }}
+          asset_name: jag_macos
+          overwrite: true
+
+  build_toit_images:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
     steps:
       - name: Install dependencies
         run: |
@@ -24,16 +108,7 @@ jobs:
         with:
           submodules: "recursive"
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.17
-
-      - name: Build jag
-        run: make jag
-
       - name: Build artifacts
-        if: github.event_name == 'release'
         run: |
           make install-esp-idf
           . ./third_party/toit/third_party/esp-idf/export.sh
@@ -41,7 +116,6 @@ jobs:
           tar -czf build/image.tar.gz -C ./build -h image
           cp ./build/image.snapshot ./build/jaguar.snapshot
       - name: Upload image artifacts
-        if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -50,7 +124,6 @@ jobs:
           overwrite: true
           file_glob: true
       - name: Upload jaguar.snapshot artifact
-        if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}

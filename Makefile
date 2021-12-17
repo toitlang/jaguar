@@ -15,8 +15,10 @@ BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 BUILD_VERSION ?= $(shell ./tools/gitversion)
 BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
 
+JAG_BINARY ?= jag
+
 .PHONY: jag
-jag: $(BUILD_DIR)/jag
+jag: $(BUILD_DIR)/$(JAG_BINARY)
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -28,8 +30,11 @@ update-jag-info: $(BUILD_DIR)
 	sed 's/sdkVersion = .*/sdkVersion = "$(BUILD_SDK_VERSION)"/' > $(BUILD_DIR)/new_main.go
 	mv $(BUILD_DIR)/new_main.go $(CURR_DIR)/cmd/jag/main.go
 
-$(BUILD_DIR)/jag: $(GO_SOURCE) $(BUILD_DIR)
-	CGO_ENABLED=1 GODEBUG=netdns=go go build -o $@ ./cmd/jag
+GO_BUILD_FLAGS := CGO_ENABLED=1 GODEBUG=netdns=go
+GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
+
+$(BUILD_DIR)/$(JAG_BINARY): $(GO_SOURCE) $(BUILD_DIR)
+	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
 
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
