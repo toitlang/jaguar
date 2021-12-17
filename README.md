@@ -44,7 +44,7 @@ to install a full Go development environment, but there are known issues with th
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos)
 
 Once you've downloaded the binary, you will want to make sure it is renamed to `jag` 
-or `jag.exe` and made executable through `chmod u+x jag` on Linux and macOS and put somewhere
+or `jag.exe`, made executable through `chmod u+x jag` on Linux and macOS, and put somewhere
 on your `PATH`.
 
 ---
