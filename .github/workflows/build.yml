@@ -70,25 +70,13 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: jag-build
+      - name: import signing keychain
+        uses: apple-actions/import-codesign-certs@v1
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
       - name: Sign jag on macOS
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
-          security create-keychain -p $KEYCHAIN_PWD build.keychain security default-keychain -s jaguar.keychain
-          echo "created"
-          security unlock-keychain -p $KEYCHAIN_PWD jaguar.keychain
-          echo "unlocked"
-          security import certificate.p12 -k jaguar.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
-          echo "imported"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PWD jaguar.keychain
-          echo "set"
-          security find-identity -v
-          echo "found"
-          /usr/bin/codesign --force -s CLI-code-sign ./jag_macos -v
-          echo "signed"
+        run: /usr/bin/codesign --force -s CLI-code-sign ./jag_macos -v
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
