@@ -37,7 +37,7 @@ jobs:
           asset_name: jag_${{ github.ref }}_linux
           overwrite: true
       # TODO: Sign on mac and let that upload
-      - name: Upload jag linux
+      - name: Upload jag macos
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
