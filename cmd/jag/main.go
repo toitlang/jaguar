@@ -7,8 +7,8 @@ package main
 import "github.com/toitlang/jaguar/cmd/jag/commands"
 
 var (
-	date       = "2021-12-17T04:42:30Z"
-	version    = "v0.1.3"
+	date       = "2021-12-17T15:21:43Z"
+	version    = "v0.2.0"
 	sdkVersion = "v0.10.4"
 )
 
