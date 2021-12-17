@@ -57,7 +57,7 @@ jobs:
       - name: Sign jag on windows
         run: |
           dir
-          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ %CD%/jag_windows.exe
+          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_windows.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
