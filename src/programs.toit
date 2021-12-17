@@ -12,8 +12,12 @@ IMAGE_PAGE_SIZE  ::= BYTES_PER_WORD == 4 ? 4 * KB : 32 * KB
 class ProgramManager:
   program_/Program? := null
   writer_/FlashImageWriter_? := null
+  logger_/log.Logger
 
   next_offset_/int := 0
+
+  constructor --logger=log.default:
+    logger_ = logger
 
   new image_size/int -> none:
     if program_:
@@ -39,7 +43,7 @@ class ProgramManager:
     // Commit the image to flash by writing the program header.
     id ::= uuid.NIL
     writer_.commit id.bytes_
-    program_ = Program.internal_ writer_.offset writer_.size
+    program_ = Program.internal_ writer_.offset writer_.size logger_
     return program_
 
   close -> none:
@@ -49,11 +53,12 @@ class ProgramManager:
 class Program:
   offset_ / int ::= 0
   size_   / int := 0
+  logger_ / log.Logger
 
   /**
   Private constructor and state.
   */
-  constructor.internal_ .offset_ .size_:
+  constructor.internal_ .offset_ .size_ .logger_:
     // Do nothing.
 
   /**
@@ -71,14 +76,17 @@ class Program:
   run gid -> int:
     return programs_registry_spawn_ offset_ size_ gid
 
-  // TODO(kasper): Make this non-polling.
+  /**
+  Kills the program and makes sure it does not run.
+  */
   kill -> none:
     attempts := 0
     while programs_registry_is_running_ offset_ size_:
       result := programs_registry_kill_ offset_ size_
       if result: attempts++
       sleep --ms=10
-    if attempts > 0: log.debug "program killed" --tags={"program": "$this", "attempts": attempts}
+    if attempts > 0:
+      logger_.debug "program killed" --tags={"program": "$this", "attempts": attempts}
 
   /**
   Returns a printable string representing the program.
