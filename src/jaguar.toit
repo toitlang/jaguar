@@ -20,7 +20,7 @@ IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 
 HTTP_PORT ::= 9000
-manager ::= ProgramManager
+manager ::= ProgramManager --logger=logger
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget
 
 main args:
