@@ -77,7 +77,7 @@ jobs:
           KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           base64 --help
-          echo $MACOS_CERTIFICATE | base64 —d > certificate.p12
+          echo $MACOS_CERTIFICATE | base64 --decode > certificate.p12
           security create-keychain -p $KEYCHAIN_PWD build.keychain security default-keychain -s jaguar.keychain
           security unlock-keychain -p $KEYCHAIN_PWD jaguar.keychain
           security import certificate.p12 -k jaguar.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
