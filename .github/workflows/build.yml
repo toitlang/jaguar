@@ -82,6 +82,8 @@ jobs:
           security import certificate.p12 -k jaguar.keychain -P $MACOS_CERTIFICATE_PWD -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $KEYCHAIN_PWD jaguar.keychain
           security find-identity -v
+          echo "hello"
+          /usr/bin/codesign --help
           /usr/bin/codesign --force -s CLI-code-sign ./jag_macos -v
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
