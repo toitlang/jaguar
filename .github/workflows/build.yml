@@ -47,8 +47,7 @@ jobs:
           name: jag-build
       - name: Sign jag
         run: |
-          dir
-          mv $PWD/jag_windows.exe $PWD/jag.exe
+          mv jag_windows.exe jag.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag.exe
           powershell Compress-Archive jag.exe jag.zip
       - name: Build installer
@@ -57,8 +56,8 @@ jobs:
         run: |
           echo %INNO%
           C:\Program Files (x86)\Inno Setup 6\ISCC.exe /Qp /dMyAppVersion=${{ github.ref }} /dMyAppExeName=$PWD/jag.exe $PWD/tools/windows_installer/installer.iss
-          mv $PWD/tools/windows_installer/jaguar_installer.exe $PWD/jaguar_installer.exe
-          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jaguar_installer.exe
+          move $PWD/tools/windows_installer/jag_installer.exe $PWD/jag_installer.exe
+          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_installer.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -68,7 +67,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: jag-signed-windows-installer
-          path: jaguar_installer.exe
+          path: jag_installer.exe
       - name: Upload jag Windows (exe)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
@@ -92,9 +91,9 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jaguar_installer.exe
+          file: jag_installer.exe
           tag: ${{ github.ref }}
-          asset_name: jaguar_installer.exe
+          asset_name: jag_installer.exe
           overwrite: true
 
   sign_jag_macos:

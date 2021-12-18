@@ -23,7 +23,7 @@ DisableProgramGroupPage=yes
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
 OutputDir=.
-OutputBaseFilename=jaguar_installer
+OutputBaseFilename=jag_installer
 SetupIconFile=toitlogo.ico
 Compression=lzma
 SolidCompression=yes
