@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 BUILD_DIR := build
-CURR_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+CURR_DIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 GO_SOURCE := $(shell find . -name '*.go')
 TOIT_SOURCE := $(shell find . -name '*.toit') package.lock package.yaml
