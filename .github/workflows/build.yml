@@ -55,7 +55,8 @@ jobs:
         env:
           INNO: C:\Program Files (x86)\Inno Setup 6\ISCC.exe
         run: |
-          $INNO /Qp /dMyAppVersion=${{ github.ref }} /dMyAppExeName=$PWD/jag.exe $PWD/tools/windows_installer/installer.iss
+          echo %INNO%
+          C:\Program Files (x86)\Inno Setup 6\ISCC.exe /Qp /dMyAppVersion=${{ github.ref }} /dMyAppExeName=$PWD/jag.exe $PWD/tools/windows_installer/installer.iss
           mv $PWD/tools/windows_installer/jaguar_installer.exe $PWD/jaguar_installer.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jaguar_installer.exe
       - name: Upload artifacts
