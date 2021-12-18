@@ -56,8 +56,7 @@ jobs:
           INNO: C:\Program Files (x86)\Inno Setup 6\ISCC.exe
         run: |
           echo "sign: $INNO - %INNO%"
-          $INNO
-          $INNO /Qp /dMyAppVersion=${{ github.ref }} /dMyAppExeName=$PWD/jag.exe $PWD/tools/windows_installer/installer.iss
+          %INNO% /Qp /dMyAppVersion=${{ github.ref }} /dMyAppExeName=$PWD/jag.exe $PWD/tools/windows_installer/installer.iss
           mv $PWD/tools/windows_installer/jag_installer.exe $PWD/jag_installer.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag_installer.exe
       - name: Upload artifacts
