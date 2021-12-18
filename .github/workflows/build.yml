@@ -47,6 +47,7 @@ jobs:
           name: jag-build
       - name: Sign jag
         run: |
+          rm jag.exe
           mv jag_windows.exe jag.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag.exe
           powershell Compress-Archive jag.exe jag.zip
@@ -86,7 +87,7 @@ jobs:
           tag: ${{ github.ref }}
           asset_name: jag_windows.zip
           overwrite: true
-      - name: Upload jag Windows (zip)
+      - name: Upload jag Windows installer
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
