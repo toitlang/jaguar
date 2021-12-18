@@ -44,11 +44,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v2
         with:
-          name:
+          name: jag-build
       - name: Sign jag
         run: |
-          rm jag.exe
-          mv jag-build/jag_windows.exe jag.exe
+          mv jag_windows.exe jag.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag.exe
           powershell Compress-Archive -Force jag.exe jag.zip
       - name: Build installer
