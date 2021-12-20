@@ -1,0 +1,17 @@
+{
+    "source": ["build/macos/jag"],
+    "bundle_id": "org.toitlang.jag",
+    "apple_id": {
+        "password": "@env:AC_PASSWORD"
+    },
+    "sign": {
+        "application_identity": "8E390E686B14016FED38C66B6E9E54EA7C0D6976"
+    },
+    "dmg": {
+        "output_path": "./build/macos/jag.dmg",
+        "volume_name": "jag"
+    },
+    "zip": {
+        "output_path": "./build/macos/jag.zip"
+    }
+}

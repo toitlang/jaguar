@@ -36,6 +36,13 @@ GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
 $(BUILD_DIR)/$(JAG_BINARY): $(GO_SOURCE) $(BUILD_DIR)
 	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
 
+$(BUILD_DIR)/macos:
+	mkdir -p $@
+
+.PHONY: jag-macos-sign
+jag-macos-sign:
+	gon -log-level=debug -log-json ./tools/gon.json
+
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
