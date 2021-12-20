@@ -7,9 +7,9 @@ package main
 import "github.com/toitlang/jaguar/cmd/jag/commands"
 
 var (
-	date       = "2021-12-20T14:43:47Z"
-	version    = "v0.3.0"
-	sdkVersion = "v0.10.4"
+	date       = "2021-12-20T20:30:23Z"
+	version    = "v0.3.1"
+	sdkVersion = "v0.10.5"
 )
 
 func main() {
