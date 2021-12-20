@@ -33,7 +33,7 @@ jobs:
       - name: Create archive Linux
         working-directory: ./build/linux
         run: |
-          tar cvzf jag.tgz jag
+          tar -czf jag.tgz jag
       - name: Upload jag Linux (tgz)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
