@@ -13,12 +13,11 @@ import (
 func ToitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "toit",
-		Short: "Use 'toit lsp' and 'toit pkg' through Jaguar",
+		Short: "Use 'toit lsp' and other extras through Jaguar",
 	}
 
 	cmd.AddCommand(
 		ToitLspCmd(),
-		ToitPkgCmd(),
 	)
 	return cmd
 }

@@ -23,7 +23,7 @@ import (
 func WatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "watch <file>",
-		Short:        "watches for changes to <file> and its dependencies and re-runs the code every time changes happens",
+		Short:        "Watch for changes to <file> and its dependencies and automatically re-run the code",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
