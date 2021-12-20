@@ -26,27 +26,28 @@ version of the program gets to start again from `main`.
 
 ## How do I use it?
 
-First you'll need to have a [Go development environment](https://go.dev) properly set up 
-and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
-you can install the `jag` command line tool using `go install`:
+Start by installing the `jag` binary:
+
+- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
+  (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
+- [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag.dmg)
+  (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
+- [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux)
+
+If you download the archive, you should unpack it and put the embedded binary somewhere on your PATH.
+
+**Note for Linux users**: Once you've downloaded the binary, you will want to make sure it is renamed to `jag`, 
+made executable through `chmod u+x jag`, and put somewhere on your `PATH`.
+
+---
+
+You can also install using `go install`. First you'll need to have a [Go development environment](https://go.dev) 
+properly set up  and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
+you can install the `jag` command line tool using:
 
 ``` sh
 go install github.com/toitlang/jaguar/cmd/jag@latest
 ```
-
----
-
-**Note:** We are working on making it possible to download the pre-built binaries instead of having
-to install a full Go development environment:
-
-- [Download Jaguar for Windows installer](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
-  ([or jag.exe](https://github.com/toitlang/jaguar/releases/latest/download/jag.exe))
-- [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux)
-- [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos)
-
-Once you've downloaded the binary, you will want to make sure it is renamed to `jag` 
-or `jag.exe`, made executable through `chmod u+x jag` on Linux and macOS, and put somewhere
-on your `PATH`.
 
 ---
 
