@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 type binaryConfig struct {
@@ -67,7 +68,7 @@ func FlashCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-			} else if v, ok := os.LookupEnv(WifiSSIDEnv); ok {
+			} else if v, ok := os.LookupEnv(directory.WifiSSIDEnv); ok {
 				wifiSSID = v
 			} else {
 				fmt.Printf("Enter WiFi network (SSID): ")
@@ -83,7 +84,7 @@ func FlashCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-			} else if v, ok := os.LookupEnv(WifiPasswordEnv); ok {
+			} else if v, ok := os.LookupEnv(directory.WifiPasswordEnv); ok {
 				wifiPassword = v
 			} else {
 				fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
@@ -100,12 +101,12 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			esptoolPath, err := GetEsptoolPath()
+			esptoolPath, err := directory.GetEsptoolPath()
 			if err != nil {
 				return err
 			}
 
-			esp32BinPath, err := GetESP32ImagePath()
+			esp32BinPath, err := directory.GetESP32ImagePath()
 			if err != nil {
 				return err
 			}
@@ -174,7 +175,7 @@ func FlashCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
-	cmd.Flags().String("wifi-ssid", os.Getenv(WifiSSIDEnv), "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	return cmd

@@ -4,7 +4,11 @@
 
 package commands
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/analytics"
+	segment "gopkg.in/segmentio/analytics-go.v3"
+)
 
 type Info struct {
 	Version    string
@@ -13,6 +17,11 @@ type Info struct {
 }
 
 func JagCmd(info Info) *cobra.Command {
+	analyticsClient, err := analytics.GetClient()
+	if err != nil {
+		panic(err)
+	}
+
 	cmd := &cobra.Command{
 		Use:   "jag",
 		Short: "Fast development for your ESP32",
@@ -21,6 +30,18 @@ func JagCmd(info Info) *cobra.Command {
 			"ESP32 applications written in Toit over WiFi. Change your Toit code in your editor, update\n" +
 			"the application on your device, and restart it all within seconds. No need to flash over\n" +
 			"serial, reboot your device, or wait for it to reconnect to your network.",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			go analyticsClient.Enqueue(segment.Page{
+				Name: "CLI Execute",
+				Properties: segment.Properties{
+					"command": (*cobra.Command)(cmd).UseLine(),
+					"jaguar":  true,
+				},
+			})
+		},
+		PostRun: func(cmd *cobra.Command, args []string) {
+			analyticsClient.Close()
+		},
 	}
 
 	cmd.AddCommand(
@@ -35,7 +56,8 @@ func JagCmd(info Info) *cobra.Command {
 		WatchCmd(),
 		SetPortCmd(),
 		ToitCmd(),
-		PkgCmd(info),
+		PkgCmd(info, analyticsClient),
+		ConfigCmd(),
 		VersionCmd(info),
 	)
 	return cmd

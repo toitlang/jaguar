@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func DecodeCmd() *cobra.Command {
@@ -26,7 +27,7 @@ func DecodeCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := GetConfig()
+			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}
@@ -39,7 +40,7 @@ func DecodeCmd() *cobra.Command {
 			var snapshot string
 			if system {
 				var err error
-				if snapshot, err = GetSnapshotPath(); err != nil {
+				if snapshot, err = directory.GetSnapshotPath(); err != nil {
 					return err
 				}
 			} else {
@@ -48,7 +49,7 @@ func DecodeCmd() *cobra.Command {
 					return err
 				}
 
-				snapshotsCache, err := GetSnapshotsCachePath()
+				snapshotsCache, err := directory.GetSnapshotsCachePath()
 				if err != nil {
 					return err
 				}

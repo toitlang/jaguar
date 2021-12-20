@@ -16,9 +16,9 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strings"
 
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -27,9 +27,9 @@ type SDK struct {
 }
 
 func GetSDK() (*SDK, error) {
-	toit, ok := os.LookupEnv(ToitPathEnv)
+	toit, ok := os.LookupEnv(directory.ToitPathEnv)
 	if !ok {
-		sdkCachePath, err := GetSDKCachePath()
+		sdkCachePath, err := directory.GetSDKCachePath()
 		if err != nil {
 			return nil, err
 		}
@@ -45,27 +45,20 @@ func GetSDK() (*SDK, error) {
 	return res, res.validate()
 }
 
-func executable(str string) string {
-	if runtime.GOOS == "windows" {
-		return str + ".exe"
-	}
-	return str
-}
-
 func (s *SDK) ToitcPath() string {
-	return filepath.Join(s.Path, "bin", executable("toitc"))
+	return filepath.Join(s.Path, "bin", directory.Executable("toitc"))
 }
 
 func (s *SDK) ToitvmPath() string {
-	return filepath.Join(s.Path, "bin", executable("toitvm"))
+	return filepath.Join(s.Path, "bin", directory.Executable("toitvm"))
 }
 
 func (s *SDK) ToitLspPath() string {
-	return filepath.Join(s.Path, "bin", executable("toitlsp"))
+	return filepath.Join(s.Path, "bin", directory.Executable("toitlsp"))
 }
 
 func (s *SDK) ToitPkgPath() string {
-	return filepath.Join(s.Path, "bin", executable("toitpkg"))
+	return filepath.Join(s.Path, "bin", directory.Executable("toitpkg"))
 }
 
 func (s *SDK) SystemMessageSnapshotPath() string {
@@ -110,16 +103,16 @@ func (s *SDK) Toitvm(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitvmPath(), args...)
 }
 
-func (s *SDK) ToitLsp(ctx context.Context, args[] string) *exec.Cmd {
+func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
 }
 
-func (s *SDK) ToitPkg(ctx context.Context, args[] string) *exec.Cmd {
+func (s *SDK) ToitPkg(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPkgPath(), args...)
 }
 
 func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]byte, error) {
-	snapshotsCache, err := GetSnapshotsCachePath()
+	snapshotsCache, err := directory.GetSnapshotsCachePath()
 	if err != nil {
 		return nil, err
 	}

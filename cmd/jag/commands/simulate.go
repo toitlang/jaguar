@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func SimulateCmd() *cobra.Command {
@@ -43,7 +44,7 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			snapshot, err := GetSnapshotPath()
+			snapshot, err := directory.GetSnapshotPath()
 			if err != nil {
 				return err
 			}

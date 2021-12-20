@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func PingCmd() *cobra.Command {
@@ -15,7 +16,7 @@ func PingCmd() *cobra.Command {
 		Use:   "ping",
 		Short: "Ping a Jaguar device to see if it is active",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := GetConfig()
+			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}
