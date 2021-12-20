@@ -34,7 +34,7 @@ Start by installing the `jag` binary:
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux)
 
-If you download the archive, you should unpack it and put the embedded binary somewhere on your PATH.
+If you download the archive, you should unpack it and put the embedded binary somewhere on your `PATH`.
 
 **Note for Linux users**: Once you've downloaded the binary, you will want to make sure it is renamed to `jag`, 
 made executable through `chmod u+x jag`, and put somewhere on your `PATH`.
@@ -43,7 +43,7 @@ made executable through `chmod u+x jag`, and put somewhere on your `PATH`.
 
 You can also install using `go install`. First you'll need to have a [Go development environment](https://go.dev) 
 properly set up  and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
-you can install the `jag` command line tool using:
+you can install the `jag` command line tool through:
 
 ``` sh
 go install github.com/toitlang/jaguar/cmd/jag@latest
