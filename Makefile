@@ -40,7 +40,7 @@ $(BUILD_DIR)/macos:
 	mkdir -p $@
 
 .PHONY: jag-macos-sign
-jag-macos-sign: $(BUILD_DIR)/macos/jag
+jag-macos-sign:
 	gon -log-level=debug -log-json ./tools/gon.json
 
 .PHONY: snapshot
