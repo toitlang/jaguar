@@ -23,13 +23,23 @@ import (
 func WatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "watch <file>",
-		Short:        "watches for changes to <file> and its dependencies and re-runs the code every time changes happens",
+		Short:        "Watch for changes to <file> and its dependencies and automatically re-run the code",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := GetConfig()
 			if err != nil {
 				return err
+			}
+
+			entrypoint := args[0]
+			if stat, err := os.Stat(entrypoint); err != nil {
+				if os.IsNotExist(err) {
+					return fmt.Errorf("no such file or directory: '%s'", entrypoint)
+				}
+				return fmt.Errorf("can't stat file '%s', reason: %w", entrypoint, err)
+			} else if stat.IsDir() {
+				return fmt.Errorf("can't watch directory: '%s'", entrypoint)
 			}
 
 			ctx := cmd.Context()
@@ -43,15 +53,6 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
-			entrypoint := args[0]
-			if stat, err := os.Stat(entrypoint); err != nil {
-				if os.IsNotExist(err) {
-					return fmt.Errorf("the entrypoint '%s' did not exists", entrypoint)
-				}
-				return fmt.Errorf("could not stat entrypoint '%s', reason: %w", entrypoint, err)
-			} else if stat.IsDir() {
-				return fmt.Errorf("the path given '%s' was a directory", entrypoint)
-			}
 
 			watcher, err := newWatcher()
 			if err != nil {
