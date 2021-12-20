@@ -30,14 +30,18 @@ jobs:
             build/linux/
             build/macos/
             build/windows/
-      - name: Upload jag linux
+      - name: Create archive Linux
+        working-directory: ./build/linux
+        run: |
+          tar -czf jag.tgz jag
+      - name: Upload jag Linux (tgz)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/linux/jag
+          file: build/linux/jag.tgz
           tag: ${{ github.ref }}
-          asset_name: jag_linux
+          asset_name: jag_linux.tgz
           overwrite: true
 
   sign_jag_windows:
@@ -65,15 +69,6 @@ jobs:
         with:
           name: jag-signed-windows
           path: build/windows
-
-      - name: Upload jag Windows (exe)
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/windows/jag.exe
-          tag: ${{ github.ref }}
-          asset_name: jag.exe
-          overwrite: true
       - name: Upload jag Windows (zip)
         uses: svenstaro/upload-release-action@v2
         with:
@@ -82,7 +77,7 @@ jobs:
           tag: ${{ github.ref }}
           asset_name: jag_windows.zip
           overwrite: true
-      - name: Upload jag Windows installer
+      - name: Upload jag Windows (installer)
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -129,16 +124,6 @@ jobs:
         with:
           name: jag-macos
           path: build/macos/
-
-      - name: Upload jag macOS (binary)
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/macos/jag
-          tag: ${{ github.ref }}
-          asset_name: jag_macos
-          overwrite: true
 
       - name: Upload jag macOS (zip)
         if: github.event_name == 'release'
