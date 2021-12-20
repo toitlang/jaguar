@@ -5,33 +5,36 @@
 package commands
 
 import (
-	"os"
+	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/analytics"
+	"github.com/toitlang/tpkg/commands"
+	"github.com/toitlang/tpkg/config/store"
+	"github.com/toitlang/tpkg/pkg/tracking"
+	segment "gopkg.in/segmentio/analytics-go.v3"
 )
 
-func PkgCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "pkg",
-		Short:        "Manage your Toit packages",
-		Long:         "Manage your Toit packages.\n\nUse 'jag pkg -- --help' for detailed help.",
-		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			sdk, err := GetSDK()
-			if err != nil {
-				return err
-			}
-
-			toitPkg := sdk.ToitPkg(ctx, append([]string{"pkg"}, args...))
-			toitPkg.Stdin = os.Stdin
-			toitPkg.Stdout = os.Stdout
-			toitPkg.Stderr = os.Stderr
-			if err := toitPkg.Run(); err != nil {
-				return err
-			}
-			return nil
-		},
+func PkgCmd(info Info, analyticsClient analytics.Client) *cobra.Command {
+	track := func(ctx context.Context, te *tracking.Event) error {
+		properties := segment.Properties{
+			"tpkg":   true,
+			"jaguar": true,
+		}
+		for k, v := range te.Properties {
+			properties[k] = v
+		}
+		analyticsClient.Enqueue(segment.Track{
+			Event:      te.Name,
+			Properties: properties,
+		})
+		return nil
 	}
-	return cmd
+
+	s := store.NewViper("", info.SDKVersion, false, false)
+	pkg, err := commands.Pkg(commands.DefaultRunWrapper, track, s, nil)
+	if err != nil {
+		panic(err)
+	}
+	return pkg
 }

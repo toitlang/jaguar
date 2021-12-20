@@ -35,40 +35,12 @@ func ToitLspCmd() *cobra.Command {
 				return err
 			}
 
+			cmd.SilenceErrors = true
 			toitLsp := sdk.ToitLsp(ctx, append([]string{"--toitc", sdk.ToitcPath()}, args...))
 			toitLsp.Stdin = os.Stdin
 			toitLsp.Stdout = os.Stdout
 			toitLsp.Stderr = os.Stderr
-			if err := toitLsp.Run(); err != nil {
-				return err
-			}
-			return nil
-		},
-	}
-	return cmd
-}
-
-func ToitPkgCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "pkg",
-		Short:        "Run the Toit package manager",
-		Long:         "Run the Toit package manager.\n\nUse 'jag toit pkg -- --help' for detailed help.",
-		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			sdk, err := GetSDK()
-			if err != nil {
-				return err
-			}
-
-			toitPkg := sdk.ToitPkg(ctx, append([]string{"pkg"}, args...))
-			toitPkg.Stdin = os.Stdin
-			toitPkg.Stdout = os.Stdout
-			toitPkg.Stderr = os.Stderr
-			if err := toitPkg.Run(); err != nil {
-				return err
-			}
-			return nil
+			return toitLsp.Run()
 		},
 	}
 	return cmd
