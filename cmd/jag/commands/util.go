@@ -60,6 +60,14 @@ func (s *SDK) ToitvmPath() string {
 	return filepath.Join(s.Path, "bin", executable("toitvm"))
 }
 
+func (s *SDK) ToitLspPath() string {
+	return filepath.Join(s.Path, "bin", executable("toitlsp"))
+}
+
+func (s *SDK) ToitPkgPath() string {
+	return filepath.Join(s.Path, "bin", executable("toitpkg"))
+}
+
 func (s *SDK) SystemMessageSnapshotPath() string {
 	return filepath.Join(s.Path, "snapshots", "system_message.snapshot")
 }
@@ -100,6 +108,14 @@ func (s *SDK) Toitc(ctx context.Context, args ...string) *exec.Cmd {
 
 func (s *SDK) Toitvm(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitvmPath(), args...)
+}
+
+func (s *SDK) ToitLsp(ctx context.Context, args[] string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
+}
+
+func (s *SDK) ToitPkg(ctx context.Context, args[] string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitPkgPath(), args...)
 }
 
 func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]byte, error) {
