@@ -39,7 +39,7 @@ go install github.com/toitlang/jaguar/cmd/jag@latest
 **Note:** We are working on making it possible to download the pre-built binaries instead of having
 to install a full Go development environment, but there are known issues with the signing on macOS:
 
-- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.exe)
+- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag.exe)
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux)
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos)
 
