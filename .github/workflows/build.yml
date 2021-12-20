@@ -21,12 +21,14 @@ jobs:
         run: |
           GOOS=linux JAG_BINARY=jag_linux make jag
           GOOS=darwin JAG_BINARY=jag_macos make jag
-          GOOS=windows JAG_BINARY=jag_windows.exe make jag
+          GOOS=windows JAG_BINARY=windows/jag.exe make jag
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: jag-build
-          path: build/jag_*
+          path: |
+            build/jag_*
+            build/windows/
       - name: Upload jag linux
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
@@ -46,41 +48,38 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: jag-build
+          path: build
       - name: Sign jag
+        working-directory: ./build/windows
         run: |
-          rm -Force jag.exe
-          mv jag_windows.exe jag.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag.exe
           powershell Compress-Archive -Force jag.exe jag.zip
       - name: Build installer
         run: |
-          & tools\windows_installer\build.bat ${{ github.ref }} $PWD\jag.exe $PWD\jag_installer.exe
+          & tools\windows_installer\build.bat ${{ github.ref }} $PWD\build\windows\jag.exe $PWD\jag_installer.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD\jag_installer.exe
+          move $PWD\jag_installer.exe build/windows/jag_installer.exe
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: jag-signed-windows
-          path: jag.exe
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: jag-signed-windows-installer
-          path: jag_installer.exe
+          path: build/windows
+
       - name: Upload jag Windows (exe)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jag.exe
+          file: build/windows/jag.exe
           tag: ${{ github.ref }}
-          asset_name: jag_windows.exe
+          asset_name: jag.exe
           overwrite: true
       - name: Upload jag Windows (zip)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jag_windows.zip
+          file: build/windows/jag.zip
           tag: ${{ github.ref }}
           asset_name: jag_windows.zip
           overwrite: true
@@ -89,7 +88,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: jag_installer.exe
+          file: build/windows/jag_installer.exe
           tag: ${{ github.ref }}
           asset_name: jag_installer.exe
           overwrite: true
