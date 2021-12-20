@@ -54,7 +54,6 @@ jobs:
           powershell Compress-Archive -Force jag.exe jag.zip
       - name: Build installer
         run: |
-          ls tools/windows_installer
           & tools\windows_installer\build.bat ${{ github.ref }} $PWD\jag.exe $PWD\jag_installer.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD\jag_installer.exe
       - name: Upload artifacts
