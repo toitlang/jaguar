@@ -26,6 +26,16 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
+			entrypoint := args[0]
+			if stat, err := os.Stat(entrypoint); err != nil {
+				if os.IsNotExist(err) {
+					return fmt.Errorf("no such file or directory: '%s'", entrypoint)
+				}
+				return fmt.Errorf("can't stat file '%s', reason: %w", entrypoint, err)
+			} else if stat.IsDir() {
+				return fmt.Errorf("can't run directory: '%s'", entrypoint)
+			}
+
 			ctx := cmd.Context()
 			device, err := GetDevice(ctx, cfg, true)
 			if err != nil {
@@ -35,16 +45,6 @@ func RunCmd() *cobra.Command {
 			sdk, err := GetSDK()
 			if err != nil {
 				return err
-			}
-
-			entrypoint := args[0]
-			if stat, err := os.Stat(entrypoint); err != nil {
-				if os.IsNotExist(err) {
-					return fmt.Errorf("the entrypoint '%s' did not exists", entrypoint)
-				}
-				return fmt.Errorf("could not stat entrypoint '%s', reason: %w", entrypoint, err)
-			} else if stat.IsDir() {
-				return fmt.Errorf("the path given '%s' was a directory", entrypoint)
 			}
 
 			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
