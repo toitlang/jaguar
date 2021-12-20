@@ -147,7 +147,7 @@ jobs:
 
   build_toit_images:
     runs-on: ubuntu-latest
-    # if: github.event_name == 'release'
+    if: github.event_name == 'release'
     steps:
       - name: Install dependencies
         run: |
