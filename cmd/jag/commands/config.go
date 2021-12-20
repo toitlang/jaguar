@@ -24,19 +24,19 @@ func ConfigCmd() *cobra.Command {
 func ConfigAnalyticsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "analytics",
-		Short: "configure reporting of anonymously tool usage statistics and crash reports.",
+		Short: "Configure reporting of anonymous tool usage statistics and crash reports.",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(
 		&cobra.Command{
 			Use:   "enable",
-			Short: "Enable reporting of anonymously tool usage statistics and crash reports",
+			Short: "Enable reporting of anonymous tool usage statistics and crash reports",
 			Args:  cobra.NoArgs,
 			RunE:  configAnalytics(false),
 		},
 		&cobra.Command{
 			Use:   "disable",
-			Short: "Disable reporting of anonymously tool usage statistics and crash reports",
+			Short: "Disable reporting of anonymous tool usage statistics and crash reports",
 			Args:  cobra.NoArgs,
 			RunE:  configAnalytics(true),
 		},
