@@ -32,13 +32,11 @@ Start by downloading and installing the `jag` binary for your host platform:
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag.dmg)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
-- [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux)
+- [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
+  (only as an archive)
 
 If you download the archive, you should unpack it and put the embedded `jag` or `jag.exe` binary 
-somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `.dmg` file.
-
-**Note for Linux users**: Once you've downloaded the binary, you will want to make sure it is renamed to `jag`, 
-made executable through `chmod u+x jag`, and put somewhere on your `PATH`.
+somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `jag.dmg` file.
 
 ---
 
@@ -95,6 +93,14 @@ jag watch examples/hello.toit
 ```
 
 and edit `examples/hello.toit` or any of the files it depends on in your favorite editor.
+
+# Visual Studio Code
+
+The Toit SDK used by Jaguar comes with support for [Visual Studio Code](https://code.visualstudio.com/download). 
+Once installed, you can add the [Toit language extension](https://marketplace.visualstudio.com/items?itemName=toit.toit)
+and get full language support for Toit, including syntax highlighting, integrated static analysis, and code completions.
+Jaguar already comes with everything you need, so if you can run `jag` from your `PATH`, the extension will automatically
+find the Toit SDK downloaded by Jaguar and use that.
 
 # Building it yourself
 
