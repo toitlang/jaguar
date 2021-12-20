@@ -26,7 +26,7 @@ version of the program gets to start again from `main`.
 
 ## How do I use it?
 
-Start by installing the `jag` binary:
+Start by downloading and installing the `jag` binary for your host platform:
 
 - [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
@@ -34,7 +34,8 @@ Start by installing the `jag` binary:
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux)
 
-If you download the archive, you should unpack it and put the embedded binary somewhere on your `PATH`.
+If you download the archive, you should unpack it and put the embedded `jag` or `jag.exe` binary 
+somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `.dmg` file.
 
 **Note for Linux users**: Once you've downloaded the binary, you will want to make sure it is renamed to `jag`, 
 made executable through `chmod u+x jag`, and put somewhere on your `PATH`.
