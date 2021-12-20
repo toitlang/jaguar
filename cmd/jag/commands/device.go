@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
 const (
@@ -63,4 +65,33 @@ func (d Device) Run(ctx context.Context, b []byte) error {
 	}
 
 	return nil
+}
+
+func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, error) {
+	var autoSelectDeviceID *string
+	if cfg.IsSet("device") {
+		var d Device
+		if err := cfg.UnmarshalKey("device", &d); err != nil {
+			return nil, err
+		}
+		if checkPing {
+			if d.Ping(ctx) {
+				return &d, nil
+			}
+			autoSelectDeviceID = &d.ID
+			fmt.Printf("Failed to ping '%s'.\n", d.Name)
+		} else {
+			return &d, nil
+		}
+	}
+
+	d, err := scanAndPickDevice(ctx, scanTimeout, scanPort, autoSelectDeviceID)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Set("device", d)
+	if err := cfg.WriteConfig(); err != nil {
+		return nil, err
+	}
+	return d, nil
 }

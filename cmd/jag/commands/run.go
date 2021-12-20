@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func RunCmd() *cobra.Command {
@@ -21,7 +22,7 @@ func RunCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := GetConfig()
+			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func getToitSDKURL(version string) string {
@@ -37,7 +38,7 @@ func getEsptoolURL(version string) string {
 	if currOS == "darwin" {
 		currOS = "macos"
 	}
-	return executable(fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/esptool-%s/esptool_%s_%s", version, currOS, version))
+	return directory.Executable(fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/esptool-%s/esptool_%s_%s", version, currOS, version))
 }
 
 const (
@@ -79,7 +80,7 @@ func SetupCmd(info Info) *cobra.Command {
 }
 
 func downloadESP32Image(ctx context.Context, version string) error {
-	imagePath, err := GetESP32ImageCachePath()
+	imagePath, err := directory.GetESP32ImageCachePath()
 	if err != nil {
 		return err
 	}
@@ -115,7 +116,7 @@ func downloadESP32Image(ctx context.Context, version string) error {
 }
 
 func downloadSnapshot(ctx context.Context, version string) error {
-	snapshotPath, err := GetSnapshotCachePath()
+	snapshotPath, err := directory.GetSnapshotCachePath()
 	if err != nil {
 		return err
 	}
@@ -142,7 +143,7 @@ func downloadSnapshot(ctx context.Context, version string) error {
 }
 
 func downloadEsptool(ctx context.Context, version string) error {
-	esptoolPath, err := GetEsptoolCachePath()
+	esptoolPath, err := directory.GetEsptoolCachePath()
 	if err != nil {
 		return err
 	}
@@ -169,7 +170,7 @@ func downloadEsptool(ctx context.Context, version string) error {
 }
 
 func downloadSDK(ctx context.Context, version string) error {
-	sdkPath, err := GetSDKCachePath()
+	sdkPath, err := directory.GetSDKCachePath()
 	if err != nil {
 		return err
 	}

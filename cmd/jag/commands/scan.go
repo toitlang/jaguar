@@ -14,6 +14,7 @@ import (
 
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 const (
@@ -28,7 +29,7 @@ func ScanCmd() *cobra.Command {
 		Long: "Scan for Jaguar devices by listening for UDP packets broadcasted by the devices.\n" +
 			"To use a Jaguar device, you need to be on the same network as the device.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := GetConfig()
+			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}

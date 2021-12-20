@@ -18,6 +18,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func WatchCmd() *cobra.Command {
@@ -27,7 +28,7 @@ func WatchCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := GetConfig()
+			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}
@@ -52,7 +53,6 @@ func WatchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
 
 			watcher, err := newWatcher()
 			if err != nil {
