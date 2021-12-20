@@ -2,7 +2,6 @@
     "source": ["build/macos/jag"],
     "bundle_id": "org.toitlang.jag",
     "apple_id": {
-        "username": "@env:AC_USERNAME",
         "password": "@env:AC_PASSWORD"
     },
     "sign": {
