@@ -114,6 +114,7 @@ Now start with flashing the Jaguar application onto your ESP32. This is easily d
 within the `$TOIT_PATH` directory:
 
 ``` sh
+(cd $JAGUAR_PATH; toit pkg install)
 make flash ESP32_ENTRY=$JAGUAR_PATH/src/jaguar.toit \
   ESP32_PORT=/dev/ttyUSB0 \
   ESP32_WIFI_SSID="<ssid>" \
