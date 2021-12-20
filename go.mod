@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/viper v1.9.0
+	github.com/toitlang/tpkg v0.0.0-20211220115217-4c19b222e14a
 	go.bug.st/serial v1.3.3
 	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
 	golang.org/x/sys v0.0.0-20211213223007-03aa0b5f6827 // indirect

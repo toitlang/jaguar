@@ -35,7 +35,7 @@ func JagCmd(info Info) *cobra.Command {
 		WatchCmd(),
 		SetPortCmd(),
 		ToitCmd(),
-		PkgCmd(),
+		PkgCmd(info),
 		VersionCmd(info),
 	)
 	return cmd
