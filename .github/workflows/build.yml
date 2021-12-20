@@ -94,13 +94,17 @@ jobs:
   sign_jag_macos:
     runs-on: macos-latest
     needs: [build_jag]
-   # if: github.event_name == 'release'
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v2
       - uses: actions/download-artifact@v2
         with:
           name: jag-build
           path: build
+
+      - name: setup binary rights
+        run: |
+          chmod +x build/macos/jag
 
       - name: import signing keychain
         uses: apple-actions/import-codesign-certs@v1
