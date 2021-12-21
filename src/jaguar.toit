@@ -59,12 +59,12 @@ main args:
     device_id_header := request.headers.single DEVICE_ID_HEADER
     sdk_version_header := request.headers.single SDK_VERSION_HEADER
 
-    // Validate Device ID
+    // Validate device ID
     if device_id_header != id.stringify:
       logger.info "Denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
       writer.write_headers 403
 
-    // Validate SDK Version
+    // Validate SDK version
     else if sdk_version_header != vm_sdk_version:
       logger.info "Denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
       writer.write_headers 406
