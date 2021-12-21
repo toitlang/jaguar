@@ -18,6 +18,7 @@ import .system_message_handler
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
+SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
 
 HTTP_PORT ::= 9000
 manager ::= ProgramManager --logger=logger
@@ -56,13 +57,23 @@ main args:
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     device_id_header := request.headers.single DEVICE_ID_HEADER
+    sdk_version_header := request.headers.single SDK_VERSION_HEADER
+
+    // Validate Device ID
     if device_id_header != id.stringify:
       logger.info "Denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
       writer.write_headers 403
-    if request.path == "/code" and request.method == "PUT":
+
+    // Validate SDK Version
+    else if sdk_version_header != vm_sdk_version:
+      logger.info "Denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
+      writer.write_headers 406
+
+    else if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
       writer.write
         json.encode {"status": "success"}
+
     else if request.path == "/ping" and request.method == "GET":
       writer.write
         json.encode {"status": "OK"}
