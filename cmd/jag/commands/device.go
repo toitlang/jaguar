@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	JaguarDeviceIDHeader = "X-Jaguar-Device-ID"
+	JaguarDeviceIDHeader   = "X-Jaguar-Device-ID"
+	JaguarSDKVersionHeader = "X-Jaguar-SDK-Version"
 )
 
 type Device struct {
@@ -34,6 +35,7 @@ const (
 )
 
 func (d Device) Ping(ctx context.Context) bool {
+	info := GetInfo(ctx)
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", d.Address+"/ping", nil)
@@ -41,6 +43,7 @@ func (d Device) Ping(ctx context.Context) bool {
 		return false
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
+	req.Header.Set(JaguarSDKVersionHeader, info.SDKVersion)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false
@@ -50,11 +53,13 @@ func (d Device) Ping(ctx context.Context) bool {
 }
 
 func (d Device) Run(ctx context.Context, b []byte) error {
+	info := GetInfo(ctx)
 	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/code", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
+	req.Header.Set(JaguarSDKVersionHeader, info.SDKVersion)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

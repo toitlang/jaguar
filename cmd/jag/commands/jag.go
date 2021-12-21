@@ -5,15 +5,31 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/analytics"
 	segment "gopkg.in/segmentio/analytics-go.v3"
+)
+
+type ctxKey string
+
+const (
+	ctxKeyInfo ctxKey = "info"
 )
 
 type Info struct {
 	Version    string
 	Date       string
 	SDKVersion string
+}
+
+func SetInfo(ctx context.Context, info Info) context.Context {
+	return context.WithValue(ctx, ctxKeyInfo, info)
+}
+
+func GetInfo(ctx context.Context) Info {
+	return ctx.Value(ctxKeyInfo).(Info)
 }
 
 func JagCmd(info Info) *cobra.Command {

@@ -4,7 +4,11 @@
 
 package main
 
-import "github.com/toitlang/jaguar/cmd/jag/commands"
+import (
+	"context"
+
+	"github.com/toitlang/jaguar/cmd/jag/commands"
+)
 
 var (
 	date       = "2021-12-20T20:58:49Z"
@@ -13,9 +17,11 @@ var (
 )
 
 func main() {
-	commands.JagCmd(commands.Info{
+	info := commands.Info{
 		Date:       date,
 		Version:    version,
 		SDKVersion: sdkVersion,
-	}).Execute()
+	}
+	ctx := commands.SetInfo(context.Background(), info)
+	commands.JagCmd(info).ExecuteContext(ctx)
 }
