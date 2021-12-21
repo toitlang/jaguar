@@ -96,7 +96,7 @@ func FlashCmd() *cobra.Command {
 				wifiPassword = string(pw)
 			}
 
-			sdk, err := GetSDK()
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}

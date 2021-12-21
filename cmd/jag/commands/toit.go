@@ -30,7 +30,7 @@ func ToitLspCmd() *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			sdk, err := GetSDK()
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
