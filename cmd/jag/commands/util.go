@@ -104,7 +104,7 @@ func (s *SDK) validate(ctx context.Context, skipSDKVersionCheck bool) error {
 	if !skipSDKVersionCheck {
 		info := GetInfo(ctx)
 		if info.SDKVersion != s.Version() {
-			return fmt.Errorf("SDK Version mismatch. Jaguar SDK version '%s', loaded SDK version '%s'", info.SDKVersion, s.Version())
+			return fmt.Errorf("invalid Toit SDK, %s is required, but found %s", info.SDKVersion, s.Version())
 		}
 	}
 
