@@ -74,9 +74,6 @@ image-snapshot: $(BUILD_DIR)/image.snapshot
 $(BUILD_DIR)/image/:
 	mkdir -p $@
 
-$(BUILD_DIR)/image/ota_data_initial.bin: $(TOIT_REPO_PATH)/build/host/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_REPO_PATH)/build/esp32/ota_data_initial.bin $@
-
 $(BUILD_DIR)/image/bootloader/:
 	mkdir -p $@
 
@@ -90,7 +87,7 @@ $(BUILD_DIR)/image/partitions.bin: $(TOIT_REPO_PATH)/build/host/esp32/ $(BUILD_D
 	cp $(TOIT_REPO_PATH)/build/esp32/partitions.bin $@
 
 .PHONY: image
-image: $(BUILD_DIR)/image.snapshot $(BUILD_DIR)/image/ota_data_initial.bin $(BUILD_DIR)/image/bootloader/bootloader.bin $(BUILD_DIR)/image/toit.bin $(BUILD_DIR)/image/partitions.bin
+image: $(BUILD_DIR)/image.snapshot $(BUILD_DIR)/image/bootloader/bootloader.bin $(BUILD_DIR)/image/toit.bin $(BUILD_DIR)/image/partitions.bin
 
 .PHONY: install-esp-idf
 install-esp-idf:
