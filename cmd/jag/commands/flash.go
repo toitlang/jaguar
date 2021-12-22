@@ -159,10 +159,9 @@ func FlashCmd() *cobra.Command {
 			flashArgs := []string{
 				"--chip", "esp32", "--port", port, "--baud", strconv.Itoa(int(baud)), "--before", "default_reset", "--after", "hard_reset", "write_flash", "-z", "--flash_mode", "dio",
 				"--flash_freq", "40m", "--flash_size", "detect",
-				"0xd000", filepath.Join(esp32BinPath, "ota_data_initial.bin"),
 				"0x1000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
-				"0x10000", binTmpFile.Name(),
 				"0x8000", filepath.Join(esp32BinPath, "partitions.bin"),
+				"0x10000", binTmpFile.Name(),
 			}
 
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
