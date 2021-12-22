@@ -39,7 +39,7 @@ func SimulateCmd() *cobra.Command {
 				name = GetRandomName(id[:])
 			}
 
-			sdk, err := GetSDK()
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}

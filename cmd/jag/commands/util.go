@@ -26,7 +26,7 @@ type SDK struct {
 	Path string
 }
 
-func GetSDK() (*SDK, error) {
+func GetSDK(ctx context.Context) (*SDK, error) {
 	toit, ok := os.LookupEnv(directory.ToitPathEnv)
 	if !ok {
 		sdkCachePath, err := directory.GetSDKCachePath()
@@ -42,7 +42,7 @@ func GetSDK() (*SDK, error) {
 	res := &SDK{
 		Path: toit,
 	}
-	return res, res.validate()
+	return res, res.validate(ctx, ok)
 }
 
 func (s *SDK) ToitcPath() string {
@@ -56,9 +56,8 @@ func (s *SDK) ToitvmPath() string {
 func (s *SDK) ToitLspPath() string {
 	return filepath.Join(s.Path, "bin", directory.Executable("toitlsp"))
 }
-
-func (s *SDK) ToitPkgPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toitpkg"))
+func (s *SDK) VersionPath() string {
+	return filepath.Join(s.Path, "VERSION")
 }
 
 func (s *SDK) SystemMessageSnapshotPath() string {
@@ -73,10 +72,20 @@ func (s *SDK) InjectConfigPath() string {
 	return filepath.Join(s.Path, "snapshots", "inject_config.snapshot")
 }
 
-func (s *SDK) validate() error {
+func (s *SDK) Version() string {
+	b, err := ioutil.ReadFile(s.VersionPath())
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+func (s *SDK) validate(ctx context.Context, skipSDKVersionCheck bool) error {
 	paths := []string{
 		s.ToitcPath(),
 		s.ToitvmPath(),
+		s.ToitLspPath(),
+		s.VersionPath(),
 		s.SystemMessageSnapshotPath(),
 		s.SnapshotToImagePath(),
 		s.InjectConfigPath(),
@@ -90,8 +99,15 @@ func (s *SDK) validate() error {
 		} else if stat.IsDir() {
 			return fmt.Errorf("invalid Toit SDK, '%s' was a directory", p)
 		}
-
 	}
+
+	if !skipSDKVersionCheck {
+		info := GetInfo(ctx)
+		if info.SDKVersion != s.Version() {
+			return fmt.Errorf("invalid Toit SDK, %s is required, but found %s", info.SDKVersion, s.Version())
+		}
+	}
+
 	return nil
 }
 
@@ -105,10 +121,6 @@ func (s *SDK) Toitvm(ctx context.Context, args ...string) *exec.Cmd {
 
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
-}
-
-func (s *SDK) ToitPkg(ctx context.Context, args []string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitPkgPath(), args...)
 }
 
 func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]byte, error) {

@@ -49,7 +49,7 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
-			sdk, err := GetSDK()
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
