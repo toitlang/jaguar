@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/cheggaaa/pb/v3"
@@ -54,6 +55,31 @@ func SetupCmd(info Info) *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			check, err := cmd.Flags().GetBool("check")
+			if err != nil {
+				return err
+			}
+
+			if check {
+				if _, err := GetSDK(ctx); err != nil {
+					return err
+				}
+
+				if err := validateESP32Image(); err != nil {
+					return err
+				}
+
+				if _, err := directory.GetSnapshotPath(); err != nil {
+					return err
+				}
+
+				if _, err := directory.GetEsptoolPath(); err != nil {
+					return err
+				}
+				fmt.Println("Jaguar setup is valid.")
+				return nil
+			}
+
 			if err := downloadSDK(ctx, info.SDKVersion); err != nil {
 				return err
 			}
@@ -76,7 +102,26 @@ func SetupCmd(info Info) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolP("check", "c", false, "if set, will check the local setup")
 	return cmd
+}
+
+func validateESP32Image() error {
+	esp32BinPath, err := directory.GetESP32ImagePath()
+	if err != nil {
+		return err
+	}
+	paths := []string{
+		filepath.Join(esp32BinPath, "toit.bin"),
+		filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
+		filepath.Join(esp32BinPath, "partitions.bin"),
+	}
+	for _, p := range paths {
+		if err := checkFilepath(p, "invalid ESP32 image"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func downloadESP32Image(ctx context.Context, version string) error {
