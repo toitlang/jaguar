@@ -42,6 +42,33 @@ func SetPortCmd() *cobra.Command {
 	return cmd
 }
 
+func PortsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "ports",
+		Short:        "List available ports",
+		Args:         cobra.NoArgs,
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			all, err := cmd.Flags().GetBool("all")
+			if err != nil {
+				return err
+			}
+
+			ports, err := getPorts(all)
+			if err != nil {
+				return err
+			}
+			for _, p := range ports {
+				fmt.Println(p)
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().Bool("all", false, "if set, will show all available ports")
+	return cmd
+}
+
 func PortExists(port string) (bool, error) {
 	ports, err := serial.GetPortsList()
 	if err != nil {
@@ -81,13 +108,7 @@ func CheckPort(port string) (string, error) {
 }
 
 func pickPort(all bool) (string, error) {
-	ports, err := serial.GetPortsList()
-	if err != nil {
-		return "", err
-	}
-	if !all {
-		ports = filterPorts(ports)
-	}
+	ports, err := getPorts(all)
 	if len(ports) == 0 {
 		return "", fmt.Errorf("no serial ports detected. Have you installed the driver to the ESP32 you have connected?")
 	}
@@ -104,6 +125,17 @@ func pickPort(all bool) (string, error) {
 	}
 
 	return ports[i], nil
+}
+
+func getPorts(all bool) ([]string, error) {
+	ports, err := serial.GetPortsList()
+	if err != nil {
+		return nil, err
+	}
+	if !all {
+		ports = filterPorts(ports)
+	}
+	return ports, nil
 }
 
 func filterPorts(ports []string) []string {
