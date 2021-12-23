@@ -88,9 +88,9 @@ func (d Device) Run(ctx context.Context, b []byte) error {
 	return nil
 }
 
-func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, error) {
-	var autoSelectDeviceID *string
-	if cfg.IsSet("device") {
+func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool, deviceSelect deviceSelect) (*Device, error) {
+	manualPick := deviceSelect != nil
+	if cfg.IsSet("device") && !manualPick {
 		var d Device
 		if err := cfg.UnmarshalKey("device", &d); err != nil {
 			return nil, err
@@ -99,20 +99,25 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool) (*Device, 
 			if d.Ping(ctx) {
 				return &d, nil
 			}
-			autoSelectDeviceID = &d.ID
+			deviceSelect = deviceIDSelect(d.ID)
 			fmt.Printf("Failed to ping '%s'.\n", d.Name)
 		} else {
 			return &d, nil
 		}
 	}
 
-	d, err := scanAndPickDevice(ctx, scanTimeout, scanPort, autoSelectDeviceID)
+	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, scanPort, deviceSelect, manualPick)
 	if err != nil {
 		return nil, err
 	}
-	cfg.Set("device", d)
-	if err := cfg.WriteConfig(); err != nil {
-		return nil, err
+	if !manualPick {
+		if autoSelected {
+			fmt.Printf("Found device '%s' again\n", d.Name)
+		}
+		cfg.Set("device", d)
+		if err := cfg.WriteConfig(); err != nil {
+			return nil, err
+		}
 	}
 	return d, nil
 }

@@ -61,7 +61,7 @@ func ScanCmd() *cobra.Command {
 				return outputter.Encode(Devices{devices})
 			}
 
-			device, err := scanAndPickDevice(ctx, timeout, port, nil)
+			device, _, err := scanAndPickDevice(ctx, timeout, port, nil, false)
 			if err != nil {
 				return err
 			}
@@ -77,24 +77,50 @@ func ScanCmd() *cobra.Command {
 	return cmd
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelectDeviceID *string) (*Device, error) {
+type deviceSelect interface {
+	Match(d Device) bool
+}
+
+type deviceIDSelect string
+
+func (s deviceIDSelect) Match(d Device) bool {
+	return string(s) == d.ID
+}
+
+func (s deviceIDSelect) String() string {
+	return fmt.Sprintf("device with ID: '%s'", string(s))
+}
+
+type deviceNameSelect string
+
+func (s deviceNameSelect) Match(d Device) bool {
+	return string(s) == d.Name
+}
+
+func (s deviceNameSelect) String() string {
+	return fmt.Sprintf("device with name: '%s'", string(s))
+}
+
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
 	fmt.Println("Scanning ...")
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := scan(scanCtx, port)
 	cancel()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if len(devices) == 0 {
-		return nil, fmt.Errorf("didn't find any Jaguar devices")
+		return nil, false, fmt.Errorf("didn't find any Jaguar devices")
 	}
-	if autoSelectDeviceID != nil {
+	if autoSelect != nil {
 		for _, d := range devices {
-			if d.ID == *autoSelectDeviceID {
-				fmt.Printf("Found device '%s' again\n", d.Name)
-				return &d, nil
+			if autoSelect.Match(d) {
+				return &d, true, nil
 			}
+		}
+		if manualPick {
+			return nil, false, fmt.Errorf("couldn't find %s", autoSelect)
 		}
 	}
 
@@ -106,11 +132,11 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 
 	i, _, err := prompt.Run()
 	if err != nil {
-		return nil, fmt.Errorf("you didn't select anything")
+		return nil, false, fmt.Errorf("you didn't select anything")
 	}
 
 	res := devices[i]
-	return &res, nil
+	return &res, false, nil
 }
 
 func scan(ctx context.Context, port uint) ([]Device, error) {
