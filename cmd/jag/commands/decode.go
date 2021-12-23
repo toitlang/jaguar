@@ -44,7 +44,12 @@ func DecodeCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				device, err := GetDevice(ctx, cfg, true, nil)
+				deviceSelect, err := parseDeviceFlag(cmd)
+				if err != nil {
+					return err
+				}
+
+				device, err := GetDevice(ctx, cfg, true, deviceSelect)
 				if err != nil {
 					return err
 				}
@@ -63,6 +68,7 @@ func DecodeCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringP("device", "d", "", "manually set a device name or ID")
 	cmd.Flags().Bool("system", false, "if set, will decode the system message using the Jaguar snapshot")
 	return cmd
 }
