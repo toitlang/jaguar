@@ -12,7 +12,7 @@ import (
 func ConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "config",
-		Short:  "Configure jaguar",
+		Short:  "Configure Jaguar",
 		Hidden: true,
 	}
 

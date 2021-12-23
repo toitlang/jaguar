@@ -13,7 +13,7 @@ import (
 func VersionCmd(info Info) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "version",
-		Short:        "Prints the version of jaguar",
+		Short:        "Prints the version of Jaguar",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
