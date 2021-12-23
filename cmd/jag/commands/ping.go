@@ -13,16 +13,22 @@ import (
 
 func PingCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ping",
-		Short: "Ping a Jaguar device to see if it is active",
+		Use:          "ping",
+		Short:        "Ping a Jaguar device to see if it is active",
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}
 
+			deviceSelect, err := parseDeviceFlag(cmd)
+			if err != nil {
+				return err
+			}
+
 			ctx := cmd.Context()
-			device, err := GetDevice(ctx, cfg, false)
+			device, err := GetDevice(ctx, cfg, false, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -36,6 +42,7 @@ func PingCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringP("device", "d", "", "manually set a device name or ID")
 	cmd.Flags().DurationP("timeout", "t", pingTimeout, "how long to wait for a reply")
 	return cmd
 }

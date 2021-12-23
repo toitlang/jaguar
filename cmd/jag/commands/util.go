@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
+	"github.com/xtgo/uuid"
 	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 )
@@ -298,6 +299,21 @@ func parseOutputFlag(cmd *cobra.Command) (encoder, error) {
 	default:
 		return nil, fmt.Errorf("--ouput flag '%s' was not recognized. Must be either json, yaml or short.", output)
 	}
+}
+
+func parseDeviceFlag(cmd *cobra.Command) (deviceSelect, error) {
+	if !cmd.Flags().Changed("device") {
+		return nil, nil
+	}
+
+	d, err := cmd.Flags().GetString("device")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := uuid.Parse(d); err == nil {
+		return deviceIDSelect(d), nil
+	}
+	return deviceNameSelect(d), nil
 }
 
 type shortEncoder struct {

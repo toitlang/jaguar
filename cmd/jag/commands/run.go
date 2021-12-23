@@ -38,7 +38,12 @@ func RunCmd() *cobra.Command {
 			}
 
 			ctx := cmd.Context()
-			device, err := GetDevice(ctx, cfg, true)
+			deviceSelect, err := parseDeviceFlag(cmd)
+			if err != nil {
+				return err
+			}
+
+			device, err := GetDevice(ctx, cfg, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -62,7 +67,6 @@ func RunCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
-	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
+	cmd.Flags().StringP("device", "d", "", "manually set a device name or ID")
 	return cmd
 }
