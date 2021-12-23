@@ -16,11 +16,56 @@ import (
 	"go.bug.st/serial"
 )
 
-func SetPortCmd() *cobra.Command {
+func PortCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "set-port",
-		Short:        "Select the serial port you want to use",
+		Use:          "port",
+		Short:        "Get current port or list available ports",
 		Args:         cobra.NoArgs,
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			all, err := cmd.Flags().GetBool("all")
+			if err != nil {
+				return err
+			}
+
+			outputter, err := parseOutputFlag(cmd)
+			if err != nil {
+				return err
+			}
+
+			if outputter != nil {
+				ports, err := getPorts(all)
+				if err != nil {
+					return err
+				}
+				return outputter.Encode(ports)
+			}
+
+			cfg, err := directory.GetWorkspaceConfig()
+			if err != nil {
+				return err
+			}
+
+			if !cfg.IsSet("port") {
+				return fmt.Errorf("port was not set, use 'jag port set' to pick a port")
+			}
+			fmt.Println(cfg.GetString("port"))
+			return nil
+		},
+	}
+
+	cmd.AddCommand(PortSetCmd())
+	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
+	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
+	cmd.Flags().Bool("all", false, "if set, will show all available ports")
+	return cmd
+}
+
+func PortSetCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "set [<port>]",
+		Short:        "Select the serial port you want to use",
+		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			all, err := cmd.Flags().GetBool("all")
@@ -33,35 +78,13 @@ func SetPortCmd() *cobra.Command {
 				return err
 			}
 
+			if len(args) == 1 {
+				cfg.Set("port", args[0])
+				return cfg.WriteConfig()
+			}
+
 			_, err = GetPort(cfg, all, true)
 			return err
-		},
-	}
-
-	cmd.Flags().Bool("all", false, "if set, will show all available ports")
-	return cmd
-}
-
-func PortsCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "ports",
-		Short:        "List available ports",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			all, err := cmd.Flags().GetBool("all")
-			if err != nil {
-				return err
-			}
-
-			ports, err := getPorts(all)
-			if err != nil {
-				return err
-			}
-			for _, p := range ports {
-				fmt.Println(p)
-			}
-			return nil
 		},
 	}
 
@@ -109,33 +132,39 @@ func CheckPort(port string) (string, error) {
 
 func pickPort(all bool) (string, error) {
 	ports, err := getPorts(all)
-	if len(ports) == 0 {
+	if ports.Len() == 0 {
 		return "", fmt.Errorf("no serial ports detected. Have you installed the driver to the ESP32 you have connected?")
 	}
 
 	prompt := promptui.Select{
 		Label:     "Choose what serial port you want to use",
-		Items:     ports,
+		Items:     ports.Elements(),
 		Templates: &promptui.SelectTemplates{},
 	}
 
 	i, _, err := prompt.Run()
 	if err != nil {
+		fmt.Println("Error", err)
 		return "", fmt.Errorf("you didn't select anything")
 	}
 
-	return ports[i], nil
+	return string(ports.Ports[i]), nil
 }
 
-func getPorts(all bool) ([]string, error) {
+func getPorts(all bool) (Ports, error) {
 	ports, err := serial.GetPortsList()
 	if err != nil {
-		return nil, err
+		return Ports{}, err
 	}
 	if !all {
 		ports = filterPorts(ports)
 	}
-	return ports, nil
+
+	var res Ports
+	for _, p := range ports {
+		res.Ports = append(res.Ports, Port(p))
+	}
+	return res, nil
 }
 
 func filterPorts(ports []string) []string {
@@ -201,4 +230,30 @@ func GetPort(cfg *viper.Viper, all bool, reset bool) (string, error) {
 		return "", err
 	}
 	return port, nil
+}
+
+type Ports struct {
+	Ports []Port `mapstructure:"ports" yaml:"ports" json:"ports"`
+}
+
+type Port string
+
+func (p Port) Short() string {
+	return string(p)
+}
+
+func (p Port) String() string {
+	return string(p)
+}
+
+func (p Ports) Len() int {
+	return len(p.Ports)
+}
+
+func (p Ports) Elements() []Short {
+	var res []Short
+	for _, p := range p.Ports {
+		res = append(res, p)
+	}
+	return res
 }
