@@ -42,7 +42,7 @@ func PingCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("device", "d", "", "manually set a device name or ID")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
 	cmd.Flags().DurationP("timeout", "t", pingTimeout, "how long to wait for a reply")
 	return cmd
 }

@@ -67,6 +67,6 @@ func RunCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("device", "d", "", "manually set a device name or ID")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
 	return cmd
 }
