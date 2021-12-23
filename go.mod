@@ -18,4 +18,5 @@ require (
 	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
 	golang.org/x/sys v0.0.0-20211213223007-03aa0b5f6827 // indirect
 	gopkg.in/segmentio/analytics-go.v3 v3.1.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

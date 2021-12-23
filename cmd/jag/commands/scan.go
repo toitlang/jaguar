@@ -29,6 +29,7 @@ func ScanCmd() *cobra.Command {
 		Long: "Scan for Jaguar devices by listening for UDP packets broadcasted by the devices.\n" +
 			"To use a Jaguar device, you need to be on the same network as the device.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
@@ -43,9 +44,24 @@ func ScanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cmd.SilenceUsage = true
 
-			device, err := scanAndPickDevice(cmd.Context(), timeout, port, nil)
+			outputter, err := parseOutputFlag(cmd)
+			if err != nil {
+				return err
+			}
+
+			cmd.SilenceUsage = true
+			if outputter != nil {
+				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
+				devices, err := scan(scanCtx, port)
+				cancel()
+				if err != nil {
+					return err
+				}
+				return outputter.Encode(Devices{devices})
+			}
+
+			device, err := scanAndPickDevice(ctx, timeout, port, nil)
 			if err != nil {
 				return err
 			}
@@ -54,6 +70,8 @@ func ScanCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
+	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
 	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
 	return cmd

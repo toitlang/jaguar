@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,8 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"golang.org/x/crypto/ssh/terminal"
+	"gopkg.in/yaml.v2"
 )
 
 type SDK struct {
@@ -266,4 +269,62 @@ func ReadPassword() ([]byte, error) {
 	}()
 
 	return terminal.ReadPassword(fd)
+}
+
+type encoder interface {
+	Encode(interface{}) error
+}
+
+func parseOutputFlag(cmd *cobra.Command) (encoder, error) {
+	list, err := cmd.Flags().GetBool("list")
+	if err != nil {
+		return nil, err
+	}
+	if !list {
+		return nil, nil
+	}
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return nil, err
+	}
+
+	switch strings.ToLower(output) {
+	case "json":
+		return json.NewEncoder(os.Stdout), nil
+	case "yaml":
+		return yaml.NewEncoder(os.Stdout), nil
+	case "short":
+		return newShortEncoder(os.Stdout), nil
+	default:
+		return nil, fmt.Errorf("--ouput flag '%s' was not recognized. Must be either json, yaml or short.", output)
+	}
+}
+
+type shortEncoder struct {
+	w io.Writer
+}
+
+func newShortEncoder(w io.Writer) *shortEncoder {
+	return &shortEncoder{
+		w: w,
+	}
+}
+
+type Elements interface {
+	Elements() []Short
+}
+
+type Short interface {
+	Short() string
+}
+
+func (s *shortEncoder) Encode(v interface{}) error {
+	es, ok := v.(Elements)
+	if !ok {
+		return fmt.Errorf("value type %T was not compatible with the Elements interface", v)
+	}
+	for _, e := range es.Elements() {
+		fmt.Fprintln(s.w, e.Short())
+	}
+	return nil
 }
