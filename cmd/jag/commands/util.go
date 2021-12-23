@@ -31,13 +31,14 @@ type SDK struct {
 
 func GetSDK(ctx context.Context) (*SDK, error) {
 	toit, ok := os.LookupEnv(directory.ToitPathEnv)
+	info := GetInfo(ctx)
 	if !ok {
 		sdkCachePath, err := directory.GetSDKCachePath()
 		if err != nil {
 			return nil, err
 		}
 		if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
-			return nil, fmt.Errorf("you must setup the Toit SDK using 'jag setup'")
+			return nil, fmt.Errorf("no SDK found in '%s', but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", sdkCachePath, info.Version, info.SDKVersion)
 		}
 		toit = sdkCachePath
 	}
@@ -45,7 +46,7 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 	res := &SDK{
 		Path: toit,
 	}
-	return res, res.validate(ctx, ok)
+	return res, res.validate(info, ok)
 }
 
 func (s *SDK) ToitcPath() string {
@@ -83,7 +84,13 @@ func (s *SDK) Version() string {
 	return strings.TrimSpace(string(b))
 }
 
-func (s *SDK) validate(ctx context.Context, skipSDKVersionCheck bool) error {
+func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
+	if !skipSDKVersionCheck {
+		if info.SDKVersion != s.Version() {
+			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version(), info.Version, info.SDKVersion)
+		}
+	}
+
 	paths := []string{
 		s.ToitcPath(),
 		s.ToitvmPath(),
@@ -94,23 +101,23 @@ func (s *SDK) validate(ctx context.Context, skipSDKVersionCheck bool) error {
 		s.InjectConfigPath(),
 	}
 	for _, p := range paths {
-		if stat, err := os.Stat(p); err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("invalid Toit SDK, missing '%s'", p)
-			}
-			return fmt.Errorf("invalid Toit SDK, failed to load '%s', reason: %w", p, err)
-		} else if stat.IsDir() {
-			return fmt.Errorf("invalid Toit SDK, '%s' was a directory", p)
+		if err := checkFilepath(p, "invalid Toit SDK"); err != nil {
+			return fmt.Errorf("%w.\nRun 'jag setup' to fix this.", err)
 		}
 	}
 
-	if !skipSDKVersionCheck {
-		info := GetInfo(ctx)
-		if info.SDKVersion != s.Version() {
-			return fmt.Errorf("invalid Toit SDK, %s is required, but found %s", info.SDKVersion, s.Version())
-		}
-	}
+	return nil
+}
 
+func checkFilepath(p string, invalidMsg string) error {
+	if stat, err := os.Stat(p); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("%s, missing '%s'", invalidMsg, p)
+		}
+		return fmt.Errorf("%s, failed to load '%s', reason: %w", invalidMsg, p, err)
+	} else if stat.IsDir() {
+		return fmt.Errorf("%s, '%s' was a directory", invalidMsg, p)
+	}
 	return nil
 }
 
