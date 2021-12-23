@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,8 +19,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"golang.org/x/crypto/ssh/terminal"
+	"gopkg.in/yaml.v2"
 )
 
 type SDK struct {
@@ -266,4 +269,28 @@ func ReadPassword() ([]byte, error) {
 	}()
 
 	return terminal.ReadPassword(fd)
+}
+
+type encoder interface {
+	Encode(interface{}) error
+}
+
+func parseOutputFlag(cmd *cobra.Command) (encoder, error) {
+	var outputter encoder
+	if cmd.Flags().Changed("output") {
+		output, err := cmd.Flags().GetString("output")
+		if err != nil {
+			return nil, err
+		}
+
+		switch strings.ToLower(output) {
+		case "json":
+			outputter = json.NewEncoder(os.Stdout)
+		case "yaml":
+			outputter = yaml.NewEncoder(os.Stdout)
+		default:
+			return nil, fmt.Errorf("--ouput flag '%s' was not recognized. Must be either yaml or json.", output)
+		}
+	}
+	return outputter, nil
 }
