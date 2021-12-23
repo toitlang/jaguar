@@ -58,9 +58,7 @@ func ScanCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				return outputter.Encode(map[string][]Device{
-					"devices": devices,
-				})
+				return outputter.Encode(Devices{devices})
 			}
 
 			device, err := scanAndPickDevice(ctx, timeout, port, nil)
@@ -72,7 +70,8 @@ func ScanCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Set to pick output format (json, yaml)")
+	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
+	cmd.Flags().StringP("output", "o", "short", "Set to pick output format (json, yaml) (works only with --list)")
 	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
 	return cmd

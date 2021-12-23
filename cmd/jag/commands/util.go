@@ -276,21 +276,55 @@ type encoder interface {
 }
 
 func parseOutputFlag(cmd *cobra.Command) (encoder, error) {
-	var outputter encoder
-	if cmd.Flags().Changed("output") {
-		output, err := cmd.Flags().GetString("output")
-		if err != nil {
-			return nil, err
-		}
-
-		switch strings.ToLower(output) {
-		case "json":
-			outputter = json.NewEncoder(os.Stdout)
-		case "yaml":
-			outputter = yaml.NewEncoder(os.Stdout)
-		default:
-			return nil, fmt.Errorf("--ouput flag '%s' was not recognized. Must be either yaml or json.", output)
-		}
+	list, err := cmd.Flags().GetBool("list")
+	if err != nil {
+		return nil, err
 	}
-	return outputter, nil
+	if !list {
+		return nil, nil
+	}
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return nil, err
+	}
+
+	switch strings.ToLower(output) {
+	case "json":
+		return json.NewEncoder(os.Stdout), nil
+	case "yaml":
+		return yaml.NewEncoder(os.Stdout), nil
+	case "short":
+		return newShortEncoder(os.Stdout), nil
+	default:
+		return nil, fmt.Errorf("--ouput flag '%s' was not recognized. Must be either json, yaml or short.", output)
+	}
+}
+
+type shortEncoder struct {
+	w io.Writer
+}
+
+func newShortEncoder(w io.Writer) *shortEncoder {
+	return &shortEncoder{
+		w: w,
+	}
+}
+
+type Elements interface {
+	Elements() []Short
+}
+
+type Short interface {
+	Short() string
+}
+
+func (s *shortEncoder) Encode(v interface{}) error {
+	es, ok := v.(Elements)
+	if !ok {
+		return fmt.Errorf("value type %T was not compatible with the Elements interface", v)
+	}
+	for _, e := range es.Elements() {
+		fmt.Fprintln(s.w, e.Short())
+	}
+	return nil
 }
