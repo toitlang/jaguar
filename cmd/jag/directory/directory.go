@@ -142,7 +142,7 @@ func GetSnapshotPath() (string, error) {
 		return "", err
 	}
 	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the jaguar snapshot using 'jag setup'", snapshotPath)
+		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the Jaguar snapshot using 'jag setup'", snapshotPath)
 	}
 	return snapshotPath, nil
 }

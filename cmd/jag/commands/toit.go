@@ -28,6 +28,7 @@ func ToitLspCmd() *cobra.Command {
 		Short:        "Start the Toit LSP server",
 		Long:         "Start the Toit LSP server.\n\nUse 'jag toit lsp -- --help' for detailed help.",
 		SilenceUsage: true,
+		Hidden:       true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			sdk, err := GetSDK(ctx)

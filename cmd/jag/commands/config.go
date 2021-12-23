@@ -11,8 +11,9 @@ import (
 
 func ConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "config",
-		Short: "Configure jaguar",
+		Use:    "config",
+		Short:  "Configure Jaguar",
+		Hidden: true,
 	}
 
 	cmd.AddCommand(
