@@ -19,6 +19,18 @@ const (
 	JaguarSDKVersionHeader = "X-Jaguar-SDK-Version"
 )
 
+type Devices struct {
+	Devices []Device `mapstructure:"devices" yaml:"devices" json:"devices"`
+}
+
+func (d Devices) Elements() []Short {
+	var res []Short
+	for _, d := range d.Devices {
+		res = append(res, d)
+	}
+	return res
+}
+
 type Device struct {
 	ID       string `mapstructure:"id" yaml:"id" json:"id"`
 	Name     string `mapstructure:"name" yaml:"name" json:"name"`
@@ -28,6 +40,10 @@ type Device struct {
 
 func (d Device) String() string {
 	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name, d.Address, d.WordSize*8)
+}
+
+func (d Device) Short() string {
+	return d.Name
 }
 
 const (
