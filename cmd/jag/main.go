@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	"github.com/toitlang/jaguar/cmd/jag/commands"
 )
@@ -23,5 +24,7 @@ func main() {
 		SDKVersion: sdkVersion,
 	}
 	ctx := commands.SetInfo(context.Background(), info)
-	commands.JagCmd(info).ExecuteContext(ctx)
+	if err := commands.JagCmd(info).ExecuteContext(ctx); err != nil {
+		os.Exit(1)
+	}
 }
