@@ -49,12 +49,12 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, true, deviceSelect)
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
 
-			sdk, err := GetSDK(ctx)
+			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -192,7 +192,7 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 		if err != nil {
 			return
 		}
-		if err := device.Run(runCtx, b); err != nil {
+		if err := device.Run(runCtx, sdk, b); err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
