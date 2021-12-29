@@ -27,7 +27,8 @@ import (
 )
 
 type SDK struct {
-	Path string
+	Path    string
+	Version string
 }
 
 func GetSDK(ctx context.Context) (*SDK, error) {
@@ -44,8 +45,17 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 		toit = sdkCachePath
 	}
 
+	versionPath := filepath.Join(toit, "VERSION")
+
+	version := ""
+	versionBytes, err := ioutil.ReadFile(versionPath)
+	if err == nil {
+		version = strings.TrimSpace(string(versionBytes))
+	}
+
 	res := &SDK{
-		Path: toit,
+		Path:    toit,
+		Version: version,
 	}
 	return res, res.validate(info, ok)
 }
@@ -61,6 +71,7 @@ func (s *SDK) ToitvmPath() string {
 func (s *SDK) ToitLspPath() string {
 	return filepath.Join(s.Path, "bin", directory.Executable("toitlsp"))
 }
+
 func (s *SDK) VersionPath() string {
 	return filepath.Join(s.Path, "VERSION")
 }
@@ -77,18 +88,10 @@ func (s *SDK) InjectConfigPath() string {
 	return filepath.Join(s.Path, "snapshots", "inject_config.snapshot")
 }
 
-func (s *SDK) Version() string {
-	b, err := ioutil.ReadFile(s.VersionPath())
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(b))
-}
-
 func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	if !skipSDKVersionCheck {
-		if info.SDKVersion != s.Version() {
-			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version(), info.Version, info.SDKVersion)
+		if info.SDKVersion != s.Version {
+			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version, info.Version, info.SDKVersion)
 		}
 	}
 

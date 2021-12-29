@@ -50,8 +50,7 @@ const (
 	pingTimeout = 400 * time.Millisecond
 )
 
-func (d Device) Ping(ctx context.Context) bool {
-	info := GetInfo(ctx)
+func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", d.Address+"/ping", nil)
@@ -59,7 +58,7 @@ func (d Device) Ping(ctx context.Context) bool {
 		return false
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, info.SDKVersion)
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false
@@ -68,14 +67,13 @@ func (d Device) Ping(ctx context.Context) bool {
 	return res.StatusCode == http.StatusOK
 }
 
-func (d Device) Run(ctx context.Context, b []byte) error {
-	info := GetInfo(ctx)
+func (d Device) Run(ctx context.Context, sdk *SDK, b []byte) error {
 	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/code", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, info.SDKVersion)
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
@@ -88,7 +86,7 @@ func (d Device) Run(ctx context.Context, b []byte) error {
 	return nil
 }
 
-func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool, deviceSelect deviceSelect) (*Device, error) {
+func GetDevice(ctx context.Context, cfg *viper.Viper, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (*Device, error) {
 	manualPick := deviceSelect != nil
 	if cfg.IsSet("device") && !manualPick {
 		var d Device
@@ -96,7 +94,7 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, checkPing bool, deviceSele
 			return nil, err
 		}
 		if checkPing {
-			if d.Ping(ctx) {
+			if d.Ping(ctx, sdk) {
 				return &d, nil
 			}
 			deviceSelect = deviceIDSelect(d.ID)

@@ -43,12 +43,12 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, true, deviceSelect)
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
 
-			sdk, err := GetSDK(ctx)
+			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return nil
 			}
-			if err := device.Run(ctx, b); err != nil {
+			if err := device.Run(ctx, sdk, b); err != nil {
 				fmt.Println("Error:", err)
 				return nil
 			}

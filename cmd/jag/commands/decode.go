@@ -49,7 +49,7 @@ func DecodeCmd() *cobra.Command {
 					return err
 				}
 
-				device, err := GetDevice(ctx, cfg, true, deviceSelect)
+				device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
 				if err != nil {
 					return err
 				}

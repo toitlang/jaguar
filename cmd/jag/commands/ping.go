@@ -28,11 +28,16 @@ func PingCmd() *cobra.Command {
 			}
 
 			ctx := cmd.Context()
-			device, err := GetDevice(ctx, cfg, false, deviceSelect)
+			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
-			if !device.Ping(ctx) {
+
+			device, err := GetDevice(ctx, cfg, sdk, false, deviceSelect)
+			if err != nil {
+				return err
+			}
+			if !device.Ping(ctx, sdk) {
 				cmd.SilenceUsage = true
 				return fmt.Errorf("couldn't ping the device")
 			}
