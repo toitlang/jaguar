@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import device
 import log
 import uuid
 
@@ -9,17 +10,36 @@ IMAGE_WORD_SIZE  ::= BYTES_PER_WORD
 IMAGE_CHUNK_SIZE ::= (BITS_PER_WORD + 1) * IMAGE_WORD_SIZE
 IMAGE_PAGE_SIZE  ::= BYTES_PER_WORD == 4 ? 4 * KB : 32 * KB
 
+// Build a string key that is short enough to be used by device.FlashStore
+// and that is bound to the Toit SDK version, so we can try to avoid
+// finding stale information about programs in flash.
+JAGUAR_LAST_PROGRAM_ ::=
+    (uuid.uuid5 "jaguar.programs.last" vm_sdk_version).stringify.copy 0 13
+
 class ProgramManager:
   program_/Program? := null
   writer_/FlashImageWriter_? := null
   logger_/log.Logger
+  store_/device.FlashStore ::= device.FlashStore
 
   next_offset_/int := 0
 
   constructor --logger=log.default:
     logger_ = logger
 
+  last -> Program?:
+    stored ::= store_.get JAGUAR_LAST_PROGRAM_
+    if not stored: return null
+    return Program.from_map stored logger_
+
+  last= program/Program? -> none:
+    if program:
+      store_.set JAGUAR_LAST_PROGRAM_ program.to_map
+    else:
+      store_.delete JAGUAR_LAST_PROGRAM_
+
   new image_size/int -> none:
+    last = null
     if program_:
       program_.kill
       program_ = null
@@ -44,6 +64,7 @@ class ProgramManager:
     id ::= uuid.NIL
     writer_.commit id.bytes_
     program_ = Program.internal_ writer_.offset writer_.size logger_
+    last = program_
     return program_
 
   close -> none:
@@ -60,6 +81,10 @@ class Program:
   */
   constructor.internal_ .offset_ .size_ .logger_:
     // Do nothing.
+
+  constructor.from_map map/Map .logger_:
+    offset_ = map["offset"]
+    size_ = map["size"]
 
   /**
   Whether this program is currently running.
@@ -94,6 +119,11 @@ class Program:
   stringify -> string:
     return "flash @ [$offset_,$(offset_ + size_)]"
 
+  /**
+  Returns a map representation of the program.
+  */
+  to_map -> Map:
+    return {"offset": offset_, "size": size_}
 
 // -------------------------------------------------------
 // Implementation details.

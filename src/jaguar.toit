@@ -51,7 +51,18 @@ main args:
   network := net.open
   socket := network.tcp_listen port
   address := "http://$network.address:$socket.local_address.port"
-  logger.info "Running Jaguar device '$name' (id: '$id') on '$address'"
+  logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
+
+  exception := catch --trace:
+    last := manager.last
+    if last:
+      gid ::= programs_registry_next_gid_
+      logger.info "program $gid re-starting from $last"
+      last.run gid
+  if exception:
+    // Don't keep trying to run malformed programs.
+    manager.last = null
+
   task::
     identify id name address
   server := http.Server --logger=logger
@@ -61,12 +72,12 @@ main args:
 
     // Validate device ID
     if device_id_header != id.stringify:
-      logger.info "Denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
+      logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
       writer.write_headers 403
 
     // Validate SDK version
     else if sdk_version_header != vm_sdk_version:
-      logger.info "Denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
+      logger.info "denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
       writer.write_headers 406
 
     else if request.path == "/code" and request.method == "PUT":
