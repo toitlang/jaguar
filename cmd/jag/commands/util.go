@@ -90,7 +90,9 @@ func (s *SDK) InjectConfigPath() string {
 
 func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	if !skipSDKVersionCheck {
-		if info.SDKVersion != s.Version {
+		if s.Version == "" {
+			return fmt.Errorf("SDK in '%s' is too old. Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, info.Version, info.SDKVersion)
+		} else if info.SDKVersion != s.Version {
 			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version, info.Version, info.SDKVersion)
 		}
 	}
