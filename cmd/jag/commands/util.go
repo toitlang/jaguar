@@ -60,16 +60,20 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 	return res, res.validate(info, ok)
 }
 
-func (s *SDK) ToitcPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toitc"))
+func (s *SDK) ToitCompilePath() string {
+	return filepath.Join(s.Path, "bin", directory.Executable("toit.compile"))
 }
 
-func (s *SDK) ToitvmPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toitvm"))
+func (s *SDK) ToitRunPath() string {
+	return filepath.Join(s.Path, "bin", directory.Executable("toit.run"))
+}
+
+func (s *SDK) ToitRunSnapshotPath() string {
+	return filepath.Join(s.Path, "bin", directory.Executable("run_boot.snapshot"))
 }
 
 func (s *SDK) ToitLspPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toitlsp"))
+	return filepath.Join(s.Path, "bin", directory.Executable("toit.lsp"))
 }
 
 func (s *SDK) VersionPath() string {
@@ -98,8 +102,9 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	}
 
 	paths := []string{
-		s.ToitcPath(),
-		s.ToitvmPath(),
+		s.ToitCompilePath(),
+		s.ToitRunPath(),
+		s.ToitRunSnapshotPath(),
 		s.ToitLspPath(),
 		s.VersionPath(),
 		s.SystemMessageSnapshotPath(),
@@ -127,12 +132,12 @@ func checkFilepath(p string, invalidMsg string) error {
 	return nil
 }
 
-func (s *SDK) Toitc(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitcPath(), args...)
+func (s *SDK) ToitCompile(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitCompilePath(), args...)
 }
 
-func (s *SDK) Toitvm(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitvmPath(), args...)
+func (s *SDK) ToitRun(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitRunPath(), args...)
 }
 
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
@@ -146,7 +151,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]b
 	}
 	snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
 
-	buildSnap := s.Toitc(ctx, "-w", snapshot, entrypoint)
+	buildSnap := s.ToitCompile(ctx, "-w", snapshot, entrypoint)
 	buildSnap.Stderr = os.Stderr
 	buildSnap.Stdout = os.Stdout
 	if err := buildSnap.Run(); err != nil {
@@ -165,7 +170,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]b
 		bits = "-m64"
 	}
 
-	buildImage := s.Toitvm(ctx, s.SnapshotToImagePath(), "--binary", bits, snapshot, image.Name())
+	buildImage := s.ToitRun(ctx, s.SnapshotToImagePath(), "--binary", bits, snapshot, image.Name())
 	buildImage.Stderr = os.Stderr
 	buildImage.Stdout = os.Stdout
 	if err := buildImage.Run(); err != nil {

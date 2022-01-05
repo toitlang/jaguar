@@ -49,7 +49,7 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			simCmd := sdk.Toitvm(ctx, "-b", "none", snapshot, strconv.Itoa(int(port)), id.String(), name)
+			simCmd := sdk.ToitRun(ctx, "-b", "none", snapshot, strconv.Itoa(int(port)), id.String(), name)
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = os.Stdout
 			return simCmd.Run()

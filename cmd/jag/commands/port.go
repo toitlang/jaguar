@@ -132,7 +132,7 @@ func CheckPort(port string) (string, error) {
 
 func pickPort(all bool) (string, error) {
 	ports, err := getPorts(all)
-	if ports.Len() == 0 {
+	if err != nil || ports.Len() == 0 {
 		return "", fmt.Errorf("no serial ports detected. Have you installed the driver to the ESP32 you have connected?")
 	}
 

@@ -96,7 +96,7 @@ func newWatcher() (*watcher, error) {
 }
 
 func (w *watcher) Close() error {
-	return w.Close()
+	return w.watcher.Close()
 }
 
 func (w *watcher) Events() chan fsnotify.Event {
@@ -164,7 +164,7 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 		if tmpFile, err := ioutil.TempFile("", "*.txt"); err == nil {
 			defer os.Remove(tmpFile.Name())
 			tmpFile.Close()
-			cmd := sdk.Toitc(ctx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", "--analyze", entrypoint)
+			cmd := sdk.ToitCompile(ctx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", "--analyze", entrypoint)
 			if err := cmd.Run(); err == nil {
 				if b, err := ioutil.ReadFile(tmpFile.Name()); err == nil {
 					paths = parseDependeniesToDirs(b)
