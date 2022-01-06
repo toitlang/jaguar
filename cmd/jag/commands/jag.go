@@ -75,6 +75,7 @@ func JagCmd(info Info) *cobra.Command {
 		PkgCmd(info, analyticsClient),
 		ConfigCmd(),
 		VersionCmd(info),
+		CheckoutCmd(),
 	)
 	return cmd
 }
