@@ -46,16 +46,12 @@ jag-macos-sign:
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
-.PHONY: $(TOIT_REPO_PATH)/build/host/sdk/bin/toit.pkg
-$(TOIT_REPO_PATH)/build/host/sdk/bin/toit.pkg:
-	make -C $(TOIT_REPO_PATH) build/host/sdk/bin/toit.pkg
+.PHONY: $(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg
+$(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg:
+	make -C $(TOIT_REPO_PATH) tools
 
 .packages: $(JAG_TOIT_PATH)/bin/toit.pkg $(TOIT_SOURCE)
 	$(JAG_TOIT_PATH)/bin/toit.pkg pkg install
-
-.PHONY: $(TOIT_REPO_PATH)/build/host/sdk/bin/toit.compiler
-$(TOIT_REPO_PATH)/build/host/sdk/bin/toit.compiler:
-	make -C $(TOIT_REPO_PATH) build/host/sdk/bin/toit.compiler
 
 $(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compiler $(TOIT_SOURCE) $(BUILD_DIR) .packages
 	$(JAG_TOIT_PATH)/bin/toit.compiler -w ./$@ ./src/jaguar.toit
