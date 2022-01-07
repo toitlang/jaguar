@@ -51,13 +51,13 @@ main args:
   network := net.open
   socket := network.tcp_listen port
   address := "http://$network.address:$socket.local_address.port"
-  logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
+  logger.info "Running Jaguar device '$name' (id: '$id') on '$address'"
 
   exception := catch --trace:
     last := manager.last
     if last:
       gid ::= programs_registry_next_gid_
-      logger.info "program $gid re-starting from $last"
+      logger.info "Program $gid re-starting from $last"
       last.run gid
   if exception:
     // Don't keep trying to run malformed programs.
@@ -72,13 +72,13 @@ main args:
 
     // Validate device ID
     if device_id_header != id.stringify:
-      logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
-      writer.write_headers 403
+      logger.info "Denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
+      writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
 
     // Validate SDK version
     else if sdk_version_header != vm_sdk_version:
-      logger.info "denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
-      writer.write_headers 406
+      logger.info "Denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
+      writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
 
     else if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
@@ -90,7 +90,7 @@ main args:
         json.encode {"status": "OK"}
 
 install_program program_size/int reader/reader.Reader -> none:
-  logger.debug "installing program with $program_size bytes"
+  logger.debug "Installing program with $program_size bytes"
   manager.new program_size
   written_size := 0
   image_reader := AlignedReader reader IMAGE_CHUNK_SIZE
@@ -98,10 +98,10 @@ install_program program_size/int reader/reader.Reader -> none:
     written_size += data.size
     manager.write data
   program := manager.commit
-  logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
+  logger.debug "Installing program with $program_size bytes -> wrote $written_size bytes"
 
   gid ::= programs_registry_next_gid_
-  logger.info "program $gid starting from $program"
+  logger.info "Program $gid starting from $program"
   program.run gid
 
 identify id/uuid.Uuid name/string address/string -> none:
