@@ -1,4 +1,3 @@
-
 # Jaguar: Live reloading for your ESP32
 
 Jaguar enables live reloading when developing for the ESP32. Develop, update, and restart 
@@ -25,6 +24,8 @@ program, we stop any old version of the program and free the resources it has co
 version of the program gets to start again from `main`.
 
 ## How do I use it?
+
+([See below if you'd rather build it yourself from source.](#building-it-yourself))
 
 Start by downloading and installing the `jag` binary for your host platform:
 
@@ -135,21 +136,21 @@ Let's assume your git clones can be referenced like this:
 
 ``` sh
 export TOIT_PATH=<path to https://github.com/toitlang/toit clone>
-export JAGUAR_PATH=<path to https://github.com/toitlang/jaguar clone>
+export JAG_PATH=<path to https://github.com/toitlang/jaguar clone>
 ```
 
 Now start with flashing the Jaguar application onto your ESP32. This is easily doable from
 within the `$TOIT_PATH` directory:
 
 ``` sh
-$TOIT_PATH/build/host/sdk/bin/toitpkg pkg install --project-root=$JAGUAR_PATH
-make flash ESP32_ENTRY=$JAGUAR_PATH/src/jaguar.toit \
+$TOIT_PATH/build/host/sdk/bin/toitpkg pkg install --project-root=$JAG_PATH
+make flash ESP32_ENTRY=$JAG_PATH/src/jaguar.toit \
   ESP32_PORT=/dev/ttyUSB0 \
   ESP32_WIFI_SSID="<ssid>" \
   ESP32_WIFI_PASSWORD="<password>"
 ```
 
-For building Jaguar, all you need to do is run from within your `$JAGUAR_PATH` directory:
+For building Jaguar, all you need to do is run from within your `$JAG_PATH` directory:
 
 ``` sh
 make
