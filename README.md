@@ -25,9 +25,8 @@ version of the program gets to start again from `main`.
 
 ## How do I use it?
 
-([See below if you'd rather build it yourself from source.](#building-it-yourself))
-
-Start by downloading and installing the `jag` binary for your host platform:
+Unless you want to [build Jaguar from source](#building-it-yourself), start by
+downloading and installing the `jag` binary for your host platform:
 
 - [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
