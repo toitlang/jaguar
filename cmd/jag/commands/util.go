@@ -69,7 +69,7 @@ func (s *SDK) ToitRunPath() string {
 }
 
 func (s *SDK) ToitRunSnapshotPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("run_boot.snapshot"))
+	return filepath.Join(s.Path, "bin", "toit.run.snapshot")
 }
 
 func (s *SDK) ToitLspPath() string {
