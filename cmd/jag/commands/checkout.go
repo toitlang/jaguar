@@ -5,10 +5,14 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -27,15 +31,18 @@ func CheckoutCmd() *cobra.Command {
 		Short:        "Checkout a repository or example",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
+		Hidden:       true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
 			url := args[0]
-			if _, err := checkout(url, cwd); err != nil {
+
+			if _, err := checkout(cmd.Context(), url, cwd); err != nil {
 				return err
 			}
+
 			return nil
 		},
 	}
@@ -43,15 +50,16 @@ func CheckoutCmd() *cobra.Command {
 	return cmd
 }
 
-func checkout(url string, cwd string) (string, error) {
+func checkout(ctx context.Context, url string, cwd string) (string, error) {
 	proj, err := parseURL(url)
 	if err != nil {
 		return "", err
 	}
 
-	path := filepath.Join(cwd, proj.Project)
-	fmt.Printf("Downloading %s into %s\n", proj.URL, proj.Project)
-	_, err = git.PlainClone(path, false, &git.CloneOptions{
+	name := proj.Name()
+	repoPath := filepath.Join(cwd, name)
+	fmt.Printf("Downloading %s into %s\n", proj.URL, name)
+	_, err = git.PlainCloneContext(ctx, repoPath, false, &git.CloneOptions{
 		URL:           proj.URL,
 		ReferenceName: plumbing.NewBranchReferenceName(proj.Branch),
 		Progress:      os.Stdout,
@@ -60,7 +68,29 @@ func checkout(url string, cwd string) (string, error) {
 		return "", fmt.Errorf("failed to clone repository, reason: %w", err)
 	}
 
-	return proj.Project, nil
+	jag, err := os.Executable()
+	if err != nil {
+		os.RemoveAll(repoPath)
+		return "", err
+	}
+
+	exampleDirectory := filepath.Join(repoPath, path.Dir(proj.File))
+	relDirectory := exampleDirectory
+	if dir, err := filepath.Rel(cwd, exampleDirectory); err == nil {
+		relDirectory = dir
+	}
+	fmt.Println("Installing toit dependencies in", relDirectory)
+	cmd := exec.CommandContext(ctx, jag, "pkg", "install")
+	cmd.Dir = exampleDirectory
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		os.RemoveAll(repoPath)
+		return "", err
+	}
+
+	return exampleDirectory, nil
 }
 
 type Repository struct {
@@ -68,6 +98,10 @@ type Repository struct {
 	File    string
 	URL     string
 	Branch  string
+}
+
+func (r *Repository) Name() string {
+	return strings.TrimSuffix(path.Base(r.File), path.Ext(r.File))
 }
 
 func parseURL(url string) (*Repository, error) {
