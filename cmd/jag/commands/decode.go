@@ -61,7 +61,7 @@ func DecodeCmd() *cobra.Command {
 				snapshot = filepath.Join(snapshotsCache, device.ID+".snapshot")
 			}
 
-			decodeCmd := sdk.Toitvm(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", args[0])
+			decodeCmd := sdk.ToitRun(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", args[0])
 			decodeCmd.Stderr = os.Stderr
 			decodeCmd.Stdout = os.Stdout
 			return decodeCmd.Run()

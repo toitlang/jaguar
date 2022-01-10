@@ -46,19 +46,15 @@ jag-macos-sign:
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
-.PHONY: $(TOIT_REPO_PATH)/build/host/sdk/bin/toitpkg
-$(TOIT_REPO_PATH)/build/host/sdk/bin/toitpkg:
-	make -C $(TOIT_REPO_PATH) build/host/sdk/bin/toitpkg
+.PHONY: $(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg
+$(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg:
+	make -C $(TOIT_REPO_PATH) tools
 
-.packages: $(JAG_TOIT_PATH)/bin/toitpkg $(TOIT_SOURCE)
-	$(JAG_TOIT_PATH)/bin/toitpkg pkg install
+.packages: $(JAG_TOIT_PATH)/bin/toit.pkg $(TOIT_SOURCE)
+	$(JAG_TOIT_PATH)/bin/toit.pkg pkg install
 
-.PHONY: $(TOIT_REPO_PATH)/build/host/sdk/bin/toitc
-$(TOIT_REPO_PATH)/build/host/sdk/bin/toitc:
-	make -C $(TOIT_REPO_PATH) build/host/sdk/bin/toitc
-
-$(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toitc $(TOIT_SOURCE) $(BUILD_DIR) .packages
-	$(JAG_TOIT_PATH)/bin/toitc -w ./$@ ./src/jaguar.toit
+$(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compiler $(TOIT_SOURCE) $(BUILD_DIR) .packages
+	$(JAG_TOIT_PATH)/bin/toit.compiler -w ./$@ ./src/jaguar.toit
 
 IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 .PHONY: $(TOIT_REPO_PATH)/build/host/esp32/
