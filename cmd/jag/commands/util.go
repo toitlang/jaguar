@@ -31,6 +31,15 @@ type SDK struct {
 	Version string
 }
 
+func printFixLine() {
+	toit, ok := os.LookupEnv(directory.ToitPathEnv)
+    if ok {
+		fmt.Fprintf(os.Stderr, "Run 'make' in $%s (%s) to fix this.\n", directory.ToitPathEnv, toit);
+    } else {
+		os.Stderr.WriteString("Run 'jag setup' to fix this.\n")
+    }
+}
+
 func GetSDK(ctx context.Context) (*SDK, error) {
 	toit, ok := os.LookupEnv(directory.ToitPathEnv)
 	info := GetInfo(ctx)
@@ -40,7 +49,10 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 			return nil, err
 		}
 		if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
-			return nil, fmt.Errorf("no SDK found in '%s', but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", sdkCachePath, info.Version, info.SDKVersion)
+			errorString := fmt.Errorf("no SDK found in '%s', but Jaguar %s needs version %s.", sdkCachePath, info.Version, info.SDKVersion)
+            fmt.Fprintf(os.Stderr, "%s.\n", errorString)
+            printFixLine()
+            return nil, errorString
 		}
 		toit = sdkCachePath
 	}
@@ -95,9 +107,15 @@ func (s *SDK) InjectConfigPath() string {
 func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	if !skipSDKVersionCheck {
 		if s.Version == "" {
-			return fmt.Errorf("SDK in '%s' is too old. Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, info.Version, info.SDKVersion)
+			errorString := fmt.Errorf("SDK in '%s' is too old. Jaguar %s needs version %s", s.Path, info.Version, info.SDKVersion)
+            fmt.Fprintf(os.Stderr, "%s.\n", errorString)
+            printFixLine()
+            return errorString
 		} else if info.SDKVersion != s.Version {
-			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version, info.Version, info.SDKVersion)
+			errorString := fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s", s.Path, s.Version, info.Version, info.SDKVersion)
+            fmt.Fprintf(os.Stderr, "%s.\n", errorString)
+            printFixLine()
+            return errorString
 		}
 	}
 
@@ -113,7 +131,10 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	}
 	for _, p := range paths {
 		if err := checkFilepath(p, "invalid Toit SDK"); err != nil {
-			return fmt.Errorf("%w.\nRun 'jag setup' to fix this.", err)
+			errorString := fmt.Errorf("%w", err)
+            fmt.Fprintf(os.Stderr, "%s.\n", errorString)
+            printFixLine()
+            return errorString
 		}
 	}
 
