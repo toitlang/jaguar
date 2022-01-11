@@ -90,7 +90,7 @@ func checkout(ctx context.Context, url string, cwd string) (string, error) {
 		return "", err
 	}
 
-	return exampleDirectory, nil
+	return filepath.Join(repoPath, proj.File), nil
 }
 
 type Repository struct {
@@ -102,6 +102,10 @@ type Repository struct {
 
 func (r *Repository) Name() string {
 	return strings.TrimSuffix(path.Base(r.File), path.Ext(r.File))
+}
+
+func isRepoURL(url string) bool {
+	return githubRegexp.MatchString(url) || bitbucketRegexp.MatchString(url) || gitlabRegexp.MatchString(url)
 }
 
 func parseURL(url string) (*Repository, error) {

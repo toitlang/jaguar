@@ -28,12 +28,23 @@ func WatchCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
 			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
 			}
 
 			entrypoint := args[0]
+			if isRepoURL(entrypoint) {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return err
+				}
+				if entrypoint, err = checkout(ctx, entrypoint, cwd); err != nil {
+					return err
+				}
+			}
+
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
 					return fmt.Errorf("no such file or directory: '%s'", entrypoint)
@@ -43,7 +54,6 @@ func WatchCmd() *cobra.Command {
 				return fmt.Errorf("can't watch directory: '%s'", entrypoint)
 			}
 
-			ctx := cmd.Context()
 			deviceSelect, err := parseDeviceFlag(cmd)
 			if err != nil {
 				return err
