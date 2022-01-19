@@ -147,7 +147,6 @@ jobs:
 
   build_toit_images:
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
     steps:
       - name: Install dependencies
         run: |
@@ -172,6 +171,7 @@ jobs:
           tar -czf build/image.tar.gz -C ./build -h image
           cp ./build/image.snapshot ./build/jaguar.snapshot
       - name: Upload image artifacts
+        if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
