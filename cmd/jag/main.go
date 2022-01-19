@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	date       = "2022-01-19T11:36:45Z"
-	version    = "v0.7.1"
+	date       = "2022-01-19T12:11:55Z"
+	version    = "v0.7.2"
 	sdkVersion = "v0.15.0"
 )
 
