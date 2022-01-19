@@ -59,6 +59,7 @@ $(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compiler $(TOIT_SOURCE) 
 IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 .PHONY: $(TOIT_REPO_PATH)/build/host/esp32/
 $(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE) .packages
+	(cd $(TOIT_REPO_PATH); git fetch --tags)
 	IDF_PATH=$(IDF_PATH) make -C $(TOIT_REPO_PATH) ESP32_ENTRY=$(CURR_DIR)/src/jaguar.toit esp32
 
 $(BUILD_DIR)/image.snapshot: $(BUILD_DIR) $(TOIT_REPO_PATH)/build/host/esp32/ .packages
