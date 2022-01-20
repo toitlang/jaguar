@@ -46,21 +46,23 @@ jag-macos-sign:
 .PHONY: snapshot
 snapshot: $(BUILD_DIR)/jaguar.snapshot
 
+.PHONY: toit-git-tags
+toit-git-tags:
+	(cd $(TOIT_REPO_PATH); git fetch --tags --recurse-submodules=no)
+
 .PHONY: $(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg
-$(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg:
-	make -C $(TOIT_REPO_PATH) tools
+$(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg: toit-git-tags
+	make -C $(TOIT_REPO_PATH) all
 
 .packages: $(JAG_TOIT_PATH)/bin/toit.pkg $(TOIT_SOURCE)
-	$(JAG_TOIT_PATH)/bin/toit.pkg pkg install
+	$(JAG_TOIT_PATH)/bin/toit.pkg install
 
 $(BUILD_DIR)/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compiler $(TOIT_SOURCE) $(BUILD_DIR) .packages
 	$(JAG_TOIT_PATH)/bin/toit.compiler -w ./$@ ./src/jaguar.toit
 
-IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 .PHONY: $(TOIT_REPO_PATH)/build/host/esp32/
-$(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE) .packages
-	(cd $(TOIT_REPO_PATH); git fetch --tags)
-	IDF_PATH=$(IDF_PATH) make -C $(TOIT_REPO_PATH) ESP32_ENTRY=$(CURR_DIR)/src/jaguar.toit esp32
+$(TOIT_REPO_PATH)/build/host/esp32/: $(TOIT_SOURCE) .packages toit-git-tags
+	make -C $(TOIT_REPO_PATH) ESP32_ENTRY=$(CURR_DIR)/src/jaguar.toit esp32
 
 $(BUILD_DIR)/image.snapshot: $(BUILD_DIR) $(TOIT_REPO_PATH)/build/host/esp32/ .packages
 	cp $(TOIT_REPO_PATH)/build/snapshot $@
@@ -86,6 +88,7 @@ $(BUILD_DIR)/image/partitions.bin: $(TOIT_REPO_PATH)/build/host/esp32/ $(BUILD_D
 .PHONY: image
 image: $(BUILD_DIR)/image.snapshot $(BUILD_DIR)/image/bootloader/bootloader.bin $(BUILD_DIR)/image/toit.bin $(BUILD_DIR)/image/partitions.bin
 
+IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 .PHONY: install-esp-idf
 install-esp-idf:
 	IDF_PATH=$(IDF_PATH) $(IDF_PATH)/install.sh

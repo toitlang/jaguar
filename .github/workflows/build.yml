@@ -2,7 +2,6 @@ name: Build
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
   release:
@@ -162,10 +161,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: "recursive"
-
+      - name: Install esp-idf tools
+        run: make install-esp-idf
       - name: Build artifacts
         run: |
-          make install-esp-idf
           . ./third_party/toit/third_party/esp-idf/export.sh
           make image
           tar -czf build/image.tar.gz -C ./build -h image

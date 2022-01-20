@@ -1,7 +1,7 @@
 # Jaguar: Live reloading for your ESP32
 
-Jaguar enables live reloading when developing for the ESP32. Develop, update, and restart 
-your code in less than two seconds via WiFi. Use the really fast development cycle to iterate 
+Jaguar enables live reloading when developing for the ESP32. Develop, update, and restart
+your code in less than two seconds via WiFi. Use the really fast development cycle to iterate
 quickly and learn fast!
 
 ## What is it?
@@ -35,10 +35,10 @@ downloading and installing the `jag` binary for your host platform:
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
   (only as an archive)
 
-If you download the archive, you should unpack it and put the embedded `jag` or `jag.exe` binary 
+If you download the archive, you should unpack it and put the embedded `jag` or `jag.exe` binary
 somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `jag.dmg` file.
 
-Next step is to let `jag` download and configure the Toit SDK and the associated tools for 
+Next step is to let `jag` download and configure the Toit SDK and the associated tools for
 flashing the Jaguar application onto your ESP32:
 
 ``` sh
@@ -85,7 +85,7 @@ and edit `hello.toit` or any of the files it depends on in your favorite editor.
 
 # Visual Studio Code
 
-The Toit SDK used by Jaguar comes with support for [Visual Studio Code](https://code.visualstudio.com/download). 
+The Toit SDK used by Jaguar comes with support for [Visual Studio Code](https://code.visualstudio.com/download).
 Once installed, you can add the [Toit language extension](https://marketplace.visualstudio.com/items?itemName=toit.toit)
 and get full language support for Toit, including syntax highlighting, integrated static analysis, and code completions.
 Jaguar already comes with everything you need, so if you can run `jag` from your `PATH`, the extension will automatically
@@ -93,8 +93,8 @@ find the Toit SDK downloaded by Jaguar and use that.
 
 # Crash reporting
 
-If you have not opted-out of Jaguar's crash reporting and usage analytics, the `jag` binary will gather 
-crash reports and usage statistics and forward them to [Segment](https://segment.com/). We use the statistics 
+If you have not opted-out of Jaguar's crash reporting and usage analytics, the `jag` binary will gather
+crash reports and usage statistics and forward them to [Segment](https://segment.com/). We use the statistics
 to improve Jaguar and the gathered data may include:
 
 - Basic information: The version of Jaguar and the name and version of your host operating system.
@@ -116,7 +116,7 @@ The crash reporting component is [work in progress](https://github.com/toitlang/
 
 # Installing via Go
 
-You can also install using `go install`. First you'll need to have a [Go development environment](https://go.dev) 
+You can also install using `go install`. First you'll need to have a [Go development environment](https://go.dev)
 properly set up (1.16+) and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
 you can install the `jag` command line tool through:
 
@@ -142,7 +142,7 @@ Now start with flashing the Jaguar application onto your ESP32. This is easily d
 within the `$TOIT_PATH` directory:
 
 ``` sh
-$TOIT_PATH/build/host/sdk/bin/toit.pkg pkg install --project-root=$JAG_PATH
+$TOIT_PATH/build/host/sdk/bin/toit.pkg install --project-root=$JAG_PATH
 make flash ESP32_ENTRY=$JAG_PATH/src/jaguar.toit \
   ESP32_PORT=/dev/ttyUSB0 \
   ESP32_WIFI_SSID="<ssid>" \
