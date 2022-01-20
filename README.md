@@ -35,7 +35,13 @@ downloading and installing the `jag` binary for your host platform:
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
   (only as an archive)
 
-If you download the archive, you should unpack it and put the embedded `jag` or `jag.exe` binary
+On macOS, you can also use [Homebrew](https://brew.sh/) to mange the installation of `jag`:
+
+``` sh
+brew install toitlang/toit/jag
+```
+
+If you download an archive, you should unpack it and put the embedded `jag` or `jag.exe` binary
 somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `jag.dmg` file.
 
 Next step is to let `jag` download and configure the Toit SDK and the associated tools for
