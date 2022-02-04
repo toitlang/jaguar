@@ -12,7 +12,7 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/segmentio/backo-go v1.0.0 // indirect
 	github.com/spf13/viper v1.9.0
-	github.com/toitlang/tpkg v0.0.0-20211220115217-4c19b222e14a
+	github.com/toitlang/tpkg v0.0.0-20220204122114-8cf6c818b89f
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	go.bug.st/serial v1.3.3
 	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b
