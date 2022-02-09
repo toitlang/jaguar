@@ -28,13 +28,13 @@ logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 
 main args:
   try:
+    install_system_message_handler logger
     serve args
-  finally:
-    esp.deep_sleep (Duration --s=1)
+  finally: | is_exception exception |
+    logger.error "rebooting due to $(exception.value)"
+    esp32.deep_sleep (Duration --s=1)
 
 serve args:
-  install_system_message_handler logger
-
   port := HTTP_PORT
   if args.size >= 1:
     port = int.parse args[0]
