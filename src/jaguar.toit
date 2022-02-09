@@ -29,9 +29,9 @@ logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 main args:
   try:
     install_system_message_handler logger
-    serve args
-  finally: | is_exception exception |
-    logger.error "rebooting due to $(exception.value)"
+    exception := catch --trace: serve args
+    logger.error "rebooting due to $(exception)"
+  finally:
     esp32.deep_sleep (Duration --s=1)
 
 serve args:
