@@ -71,8 +71,7 @@ serve args:
     failures := 0
     attempts := 3
     while failures < attempts:
-      exception = catch --unwind=(: it == "OUT OF MEMORY" ):
-        run id name port
+      exception = catch: run id name port
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
