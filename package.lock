@@ -3,5 +3,5 @@ prefixes:
 packages:
   pkg-http:
     url: github.com/toitlang/pkg-http
-    version: 1.5.0
-    hash: 538c761a0f01d532ab9982a3f8f996e552311f4b
+    version: 1.7.0
+    hash: 821585ec5d44ee1ca9015214d30db0936dd9ae9e
