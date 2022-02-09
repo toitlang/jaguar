@@ -149,7 +149,7 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			injectCmd := sdk.ToitRun(ctx, sdk.InjectConfigPath(), configFile.Name(), binTmpFile.Name())
+			injectCmd := sdk.ToitRun(ctx, sdk.InjectConfigPath(), configFile.Name(), "--unique_id="+id.String(), binTmpFile.Name())
 			injectCmd.Stderr = os.Stderr
 			injectCmd.Stdout = os.Stdout
 			if err := injectCmd.Run(); err != nil {
