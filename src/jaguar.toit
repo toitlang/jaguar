@@ -27,6 +27,12 @@ manager ::= ProgramManager --logger=logger
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 
 main args:
+  try:
+    serve args
+  finally:
+    esp.deep_sleep (Duration --s=1)
+
+serve args:
   install_system_message_handler logger
 
   port := HTTP_PORT
@@ -65,7 +71,8 @@ main args:
     failures := 0
     attempts := 3
     while failures < attempts:
-      exception = catch: run id name port
+      exception = catch --unwind=(: it == "OUT OF MEMORY" ):
+        run id name port
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
