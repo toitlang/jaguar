@@ -69,7 +69,7 @@ main args:
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
-    backoff := Duration --s=4
+    backoff := Duration --s=5
     logger.info "backing off for $backoff"
     sleep backoff
 
