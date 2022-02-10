@@ -6,6 +6,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -80,6 +81,13 @@ func SetupCmd(info Info) *cobra.Command {
 				return nil
 			}
 
+			sdkPath, err := directory.GetSDKCachePath()
+			if err != nil {
+				return err
+			}
+			downloaderPath := filepath.Join(sdkPath, "JAGUAR")
+			os.Remove(downloaderPath)
+
 			if err := downloadSDK(ctx, info.SDKVersion); err != nil {
 				return err
 			}
@@ -93,6 +101,15 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if err := downloadEsptool(ctx, esptoolVersion); err != nil {
+				return err
+			}
+
+			downloaderBytes, err := json.Marshal(&info)
+			if err != nil {
+				return err
+			}
+
+			if err := os.WriteFile(downloaderPath, downloaderBytes, 0666); err != nil {
 				return err
 			}
 
