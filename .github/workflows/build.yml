@@ -56,9 +56,15 @@ jobs:
         run: |
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag.exe
           powershell Compress-Archive -Force jag.exe jag.zip
+      - name: Version number
+        id: version
+        run: |
+          $versionV = "${{ github.event.release.tag_name }}"
+          $version = $versionV.Substring(1)
+          echo ::set-output name=version::$version
       - name: Build installer
         run: |
-          & tools\windows_installer\build.bat ${{ github.event.release.tag_name }} $PWD\build\windows\jag.exe $PWD\jag_installer.exe
+          & tools\windows_installer\build.bat ${{ steps.version.outputs.version }} $PWD\build\windows\jag.exe $PWD\jag_installer.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD\jag_installer.exe
           move $PWD\jag_installer.exe build/windows/jag_installer.exe
       - name: Upload artifacts
