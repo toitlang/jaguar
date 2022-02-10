@@ -89,6 +89,30 @@ jobs:
           asset_name: jag_installer.exe
           overwrite: true
 
+  winget:
+    name: Publish winget package
+    runs-on: windows-latest
+    needs: [sign_jag_windows]
+    if: github.event_name == 'release'
+    steps:
+      - name: Version number
+        id: version
+        run: |
+          $versionV = "${{ github.event.release.tag_name }}"
+          $version = $versionV.Substring(1)
+          echo "::set-output name=version::$version"
+
+      - name: Download winget binary
+        run: |
+          iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Update manifest
+        run: |
+          $github = Get-Content '${{ github.event_path }}' | ConvertFrom-Json
+          $installerUrl = $github.release.assets | Where-Object -Property name -match 'jag_installer.exe' | Select -ExpandProperty browser_download_url -First 1
+
+          .\wingetcreate.exe update Toit.Jaguar -s -v ${{ steps.version.outputs.version }} -u $installerUrl -t ${{ secrets.WINGET_JAGUAR_PAT }}
+
   sign_jag_macos:
     runs-on: macos-latest
     needs: [build_jag]
