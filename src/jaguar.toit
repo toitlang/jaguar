@@ -7,9 +7,11 @@ import http
 import log
 import net
 import net.udp
+import net.tcp
 import reader
 import esp32
 import uuid
+import monitor
 
 import .aligned_reader
 import .programs
@@ -22,9 +24,17 @@ SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
 
 HTTP_PORT ::= 9000
 manager ::= ProgramManager --logger=logger
-logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget
+logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 
 main args:
+  try:
+    install_system_message_handler logger
+    exception := catch --trace: serve args
+    logger.error "rebooting due to $(exception)"
+  finally:
+    esp32.deep_sleep (Duration --s=1)
+
+serve args:
   port := HTTP_PORT
   if args.size >= 1:
     port = int.parse args[0]
@@ -47,47 +57,71 @@ main args:
   else:
     name = image_config.get "name" --if_absent=: name
 
-  install_system_message_handler logger
-  network := net.open
-  socket := network.tcp_listen port
-  address := "http://$network.address:$socket.local_address.port"
-  logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
-
   exception := catch --trace:
     last := manager.last
     if last:
       gid ::= programs_registry_next_gid_
       logger.info "program $gid re-starting from $last"
-      last.run gid
+      if not last.run gid:
+        // Don't keep trying to run outdated programs. This is a
+        // common scenario when reflashing, so we do this without
+        // generating a stack trace.
+        logger.info "program $gid re-starting from $last => (obsolete)"
+        manager.last = null
   if exception:
     // Don't keep trying to run malformed programs.
     manager.last = null
 
-  task::
-    identify id name address
-  server := http.Server --logger=logger
-  server.listen socket:: | request/http.Request writer/http.ResponseWriter |
-    device_id_header := request.headers.single DEVICE_ID_HEADER
-    sdk_version_header := request.headers.single SDK_VERSION_HEADER
+  while true:
+    failures := 0
+    attempts := 3
+    while failures < attempts:
+      exception = catch: run id name port
+      if not exception: continue
+      failures++
+      logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
+    backoff := Duration --s=5
+    logger.info "backing off for $backoff"
+    sleep backoff
 
-    // Validate device ID
-    if device_id_header != id.stringify:
-      logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
-      writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
+run id/uuid.Uuid name/string port/int:
+  broadcast_task := null
+  server_task := null
+  network/net.Interface? := null
+  error := null
 
-    // Validate SDK version
-    else if sdk_version_header != vm_sdk_version:
-      logger.info "denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
-      writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
+  try:
+    network = net.open
+    socket/tcp.ServerSocket := network.tcp_listen port
+    address := "http://$network.address:$socket.local_address.port"
+    logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
 
-    else if request.path == "/code" and request.method == "PUT":
-      install_program request.content_length request.body
-      writer.write
-        json.encode {"status": "success"}
+    // We run two tasks concurrently: One broadcasts the device identity
+    // via UDP and one serves incoming HTTP requests. If one of the tasks
+    // fail, we take the other one down to clean up nicely.
+    done := monitor.Semaphore
+    server_task = task::
+      try:
+        error = catch: serve_incoming_requests socket id
+      finally:
+        server_task = null
+        if broadcast_task: broadcast_task.cancel
+        done.up
 
-    else if request.path == "/ping" and request.method == "GET":
-      writer.write
-        json.encode {"status": "OK"}
+    broadcast_task = task::
+      try:
+        error = catch: broadcast_identity network id name address
+      finally:
+        broadcast_task = null
+        if server_task: server_task.cancel
+        done.up
+
+    // Wait for both tasks to finish.
+    2.repeat: done.down
+
+  finally:
+    if network: network.close
+    if error: throw error
 
 install_program program_size/int reader/reader.Reader -> none:
   logger.debug "installing program with $program_size bytes"
@@ -104,8 +138,7 @@ install_program program_size/int reader/reader.Reader -> none:
   logger.info "program $gid starting from $program"
   program.run gid
 
-identify id/uuid.Uuid name/string address/string -> none:
-  network := net.open
+broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   socket := network.udp_open
   socket.broadcast = true
   msg := udp.Datagram
@@ -125,3 +158,28 @@ identify id/uuid.Uuid name/string address/string -> none:
   while true:
     socket.send msg
     sleep --ms=200
+
+serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid:
+  server := http.Server --logger=logger
+  server.listen socket:: | request/http.Request writer/http.ResponseWriter |
+    device_id_header := request.headers.single DEVICE_ID_HEADER
+    sdk_version_header := request.headers.single SDK_VERSION_HEADER
+
+    // Validate device ID.
+    if device_id_header != id.stringify:
+      logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
+      writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
+
+    // Validate SDK version.
+    else if sdk_version_header != vm_sdk_version:
+      logger.info "denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
+      writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
+
+    else if request.path == "/code" and request.method == "PUT":
+      install_program request.content_length request.body
+      writer.write
+        json.encode {"status": "success"}
+
+    else if request.path == "/ping" and request.method == "GET":
+      writer.write
+        json.encode {"status": "OK"}

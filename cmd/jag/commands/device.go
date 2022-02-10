@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -64,6 +65,7 @@ func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
 		return false
 	}
 
+	io.ReadAll(res.Body) // Avoid closing connection prematurely.
 	return res.StatusCode == http.StatusOK
 }
 
@@ -79,6 +81,7 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte) error {
 		return err
 	}
 
+	io.ReadAll(res.Body) // Avoid closing connection prematurely.
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("got non-OK from device: %s", res.Status)
 	}
