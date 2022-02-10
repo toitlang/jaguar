@@ -10,11 +10,11 @@ IMAGE_WORD_SIZE  ::= BYTES_PER_WORD
 IMAGE_CHUNK_SIZE ::= (BITS_PER_WORD + 1) * IMAGE_WORD_SIZE
 IMAGE_PAGE_SIZE  ::= BYTES_PER_WORD == 4 ? 4 * KB : 32 * KB
 
-// Build a string key that is short enough to be used by device.FlashStore
-// and that is bound to the Toit SDK version, so we can try to avoid
-// finding stale information about programs in flash.
+// Build a string key that is short enough to be used by device.FlashStore.
+// We intentionally reuse the key across Jaguar firmware versions because we
+// don't want to leave lots of unused stuff in the flash store.
 JAGUAR_LAST_PROGRAM_ ::=
-    (uuid.uuid5 "jaguar.programs.last" vm_sdk_version).stringify.copy 0 13
+    (uuid.uuid5 "jaguar" "program.last").stringify.copy 0 13
 
 class ProgramManager:
   program_/Program? := null
@@ -96,10 +96,13 @@ class Program:
   /**
   Runs the program as a separate process in a new process group with
     the given group id.
-  Returns the id of the newly spawned process.
+  Returns the id of the newly spawned process or null if the program
+    isn't valid for the current Jaguar firmware version.
   */
-  run gid -> int:
-    return programs_registry_spawn_ offset_ size_ gid
+  run gid -> int?:
+    catch --unwind=(: it != "OUT_OF_BOUNDS"):
+      return programs_registry_spawn_ offset_ size_ gid
+    return null
 
   /**
   Kills the program and makes sure it does not run.
