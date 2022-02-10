@@ -19,9 +19,9 @@ const (
 )
 
 type Info struct {
-	Version    string
-	Date       string
-	SDKVersion string
+	Version    string `mapstructure:"version" yaml:"version" json:"version"`
+	Date       string `mapstructure:"date" yaml:"date" json:"date"`
+	SDKVersion string `mapstructure:"sdkVersion" yaml:"sdkVersion" json:"sdkVersion"`
 }
 
 func SetInfo(ctx context.Context, info Info) context.Context {
