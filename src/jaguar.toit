@@ -62,7 +62,12 @@ serve args:
     if last:
       gid ::= programs_registry_next_gid_
       logger.info "program $gid re-starting from $last"
-      last.run gid
+      if not last.run gid:
+        // Don't keep trying to run outdated programs. This is a
+        // common scenario when reflashing, so we do this without
+        // generating a stack trace.
+        logger.info "program $gid re-starting from $last => (obsolete)"
+        manager.last = null
   if exception:
     // Don't keep trying to run malformed programs.
     manager.last = null
