@@ -80,7 +80,7 @@ func (s *SDK) VersionPath() string {
 	return filepath.Join(s.Path, "VERSION")
 }
 
-func (s *SDK) DownloaderPath() string {
+func (s *SDK) DownloaderInfoPath() string {
 	return filepath.Join(s.Path, "JAGUAR")
 }
 
@@ -104,18 +104,18 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version, info.Version, info.SDKVersion)
 		}
 
-		downloaderBytes, err := ioutil.ReadFile(s.DownloaderPath())
+		downloaderInfoBytes, err := ioutil.ReadFile(s.DownloaderInfoPath())
 		if err != nil {
 			return fmt.Errorf("SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this.", s.Path)
 		}
 
-		downloader := Info{}
-		err = json.Unmarshal(downloaderBytes, &downloader)
+		downloaderInfo := Info{}
+		err = json.Unmarshal(downloaderInfoBytes, &downloaderInfo)
 		if err != nil {
 			return fmt.Errorf("SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this.", s.Path)
 		}
 
-		if downloader != info {
+		if downloaderInfo != info {
 			return fmt.Errorf("SDK in '%s' was not downloaded by this version of Jaguar.\nRun 'jag setup' to fix this.", s.Path)
 		}
 	}
