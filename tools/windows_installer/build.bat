@@ -1,4 +1,4 @@
-set VERSION=%1
+set TOIT_VERSION=%1
 set BIN_PATH=%2
 set BUILD_DIRECTORY=%3
 

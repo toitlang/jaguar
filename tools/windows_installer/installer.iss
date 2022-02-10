@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Jaguar"
-#define MyAppPublisher "(c) 2021 Toitware ApS"
+#define MyAppPublisher "Toitware ApS"
 #define MyAppURL "https://www.toitlang.org"
 
 [Setup]
