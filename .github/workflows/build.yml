@@ -220,8 +220,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/.ccache
-          key: esp32-ccache-${{ github.sha }}
-          restore-keys: esp32-ccache-
+          key: image-ccache-${{ github.sha }}
+          restore-keys: image-ccache-
 
       - name: Ccache symlinks
         run: |
