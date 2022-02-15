@@ -44,8 +44,19 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "
 Name: envPath; Description: "Add the Jaguar CLI application directory to the PATH variable"
 
 [Registry]
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: envPath; Check: NeedsAddPath(ExpandConstant('{app}'))
 
-
-
-
+[Code]
+function NeedsAddPath(AppPath: string): boolean;
+var
+  OldPath: string;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OldPath) then
+  begin
+    Result := True;
+    exit;
+  end;
+  { Look for the path enclosed in semicolons. }
+  { The Pos function returns 0 if not found. }
+  Result := Pos(';' + AppPath + ';', ';' + OldPath + ';') = 0;
+end;
