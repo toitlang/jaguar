@@ -123,20 +123,23 @@ run id/uuid.Uuid name/string port/int:
     if network: network.close
     if error: throw error
 
-install_program program_size/int reader/reader.Reader -> none:
-  logger.debug "installing program with $program_size bytes"
-  manager.new program_size
-  written_size := 0
-  image_reader := AlignedReader reader IMAGE_CHUNK_SIZE
-  while data := image_reader.read:
-    written_size += data.size
-    manager.write data
-  program := manager.commit
-  logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
+install_mutex ::= monitor.Mutex
 
-  gid ::= programs_registry_next_gid_
-  logger.info "program $gid starting from $program"
-  program.run gid
+install_program program_size/int reader/reader.Reader -> none:
+  with_timeout --ms=20_000: install_mutex.do:
+    logger.debug "installing program with $program_size bytes"
+    manager.new program_size
+    written_size := 0
+    image_reader := AlignedReader reader IMAGE_CHUNK_SIZE
+    while data := image_reader.read:
+      written_size += data.size
+      manager.write data
+    program := manager.commit
+    logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
+
+    gid ::= programs_registry_next_gid_
+    logger.info "program $gid starting from $program"
+    program.run gid
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   socket := network.udp_open
