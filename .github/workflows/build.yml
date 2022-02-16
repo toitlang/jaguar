@@ -248,6 +248,14 @@ jobs:
           tar -czf build/image.tar.gz -C ./build -h image
           cp ./build/image.snapshot ./build/jaguar.snapshot
 
+      - name: Upload elf
+        uses: actions/upload-artifact@v2
+        if: github.event_name == 'release'
+        with:
+          name: image-elf
+          path: |
+            third_party/toit/build/esp32/toit.elf
+
       - name: Upload image artifacts
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
