@@ -126,7 +126,7 @@ run id/uuid.Uuid name/string port/int:
 install_mutex ::= monitor.Mutex
 
 install_program program_size/int reader/reader.Reader -> none:
-  with_timeout --ms=20_000: install_mutex.do:
+  with_timeout --ms=60_000: install_mutex.do:
     logger.debug "installing program with $program_size bytes"
     manager.new program_size
     written_size := 0
