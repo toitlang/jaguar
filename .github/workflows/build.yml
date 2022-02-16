@@ -199,7 +199,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install ninja-build cmake
+          sudo apt-get install ninja-build cmake ccache
           ninja --version
           cmake --version
           gcc --version
@@ -216,9 +216,34 @@ jobs:
       - name: Install esp-idf tools
         run: make install-esp-idf
 
+      - name: Ccache cache
+        uses: actions/cache@v2
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: image-ccache-${{ github.sha }}
+          restore-keys: image-ccache-
+
+      - name: Ccache symlinks
+        run: |
+          mkdir ccache_interceptors
+          cd ccache_interceptors
+          ln -s $(command -v ccache) xtensa-esp32-elf-gcc
+          ln -s $(command -v ccache) xtensa-esp32-elf-g++
+
       - name: Build artifacts
+        env:
+          IDF_CCACHE_ENABLE: 1
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+          CCACHE_BASEDIR: ${{ github.workspace }}
+          CCACHE_COMPRESS: true
+          CCACHE_COMPRESSLEVEL: '6'
+          CCACHE_MAXSIZE: 400M
         run: |
           . ./third_party/toit/third_party/esp-idf/export.sh
+
+          # Make sure the ccache interceptors are before any other path.
+          export PATH="$PWD/ccache_interceptors":$PATH
+
           make image
           tar -czf build/image.tar.gz -C ./build -h image
           cp ./build/image.snapshot ./build/jaguar.snapshot
