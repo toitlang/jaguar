@@ -16,6 +16,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+ArchitecturesAllowed=x64
 ChangesEnvironment=yes
 DefaultDirName={autopf}\jaguar
 DefaultGroupName={#MyAppName}
