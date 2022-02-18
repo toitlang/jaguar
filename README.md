@@ -58,6 +58,28 @@ application onto it. This will ask you for the serial port to use and the WiFi c
 jag flash
 ```
 
+---
+*NOTE*
+
+To flash you will need to access the device `/dev/ttyUSB0`.  On Linux that
+means you probably need to be a member of some group, normally either `uucp` or
+`dialout`.  To see which groups you are a member of and which group owns the
+device, plug in an ESP32 to the USB port and try:
+
+``` sh
+groups
+ls -g /dev/ttyUSB0
+```
+
+If you lack a group membership, you can add it with
+
+``` sh
+sudo usermod -aG dialout $USER
+```
+
+You will have to log out and log back in for this to take effect.
+---
+
 Now it is possible to monitor the serial output from the device:
 
 ``` sh
