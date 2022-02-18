@@ -62,6 +62,7 @@ serve args:
     if last:
       gid ::= programs_registry_next_gid_
       logger.info "program $gid re-starting from $last"
+      manager.program_ = last  // TODO(kasper): Rework the manager/process relationship to get rid of this. 
       if not last.run gid:
         // Don't keep trying to run outdated programs. This is a
         // common scenario when reflashing, so we do this without
