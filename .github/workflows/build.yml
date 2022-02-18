@@ -128,10 +128,7 @@ jobs:
 
       - name: Update manifest
         run: |
-          $github = Get-Content '${{ github.event_path }}' | ConvertFrom-Json
-          $installerUrl = $github.release.assets | Where-Object -Property name -match 'jag_installer.exe' | Select -ExpandProperty browser_download_url -First 1
-
-          .\wingetcreate.exe update Toit.Jaguar -s -v ${{ steps.version.outputs.version }} -u $installerUrl -t ${{ secrets.WINGET_JAGUAR_PAT }}
+          .\wingetcreate.exe update Toit.Jaguar -s -v ${{ steps.version.outputs.version }} -u https://github.com/toitlang/jaguar/releases/download/${{ github.event.release.tag_name }}/jag_installer.exe -t ${{ secrets.WINGET_JAGUAR_PAT }}
 
   sign_jag_macos:
     runs-on: macos-latest
