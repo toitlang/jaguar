@@ -14,7 +14,7 @@ require (
 	github.com/segmentio/backo-go v1.0.0 // indirect
 	github.com/spf13/viper v1.9.0
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90
-	github.com/toitlang/tpkg v0.0.0-20220204122114-8cf6c818b89f
+	github.com/toitlang/tpkg v0.0.0-20220208100452-339a2ab582da
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.3.3
 	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b

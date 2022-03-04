@@ -419,8 +419,8 @@ github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69
 github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90 h1:ccVm9C6f5YMcVv6t9MXahIDkqVvzD6vklkJTIE4D2nY=
 github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90/go.mod h1:YZhsh86DfZgAShPKeg1eBLVrmuQxWcR9H4TdpgNvSnw=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
-github.com/toitlang/tpkg v0.0.0-20220204122114-8cf6c818b89f h1:XibbEuwU9/+79AG4g29zdCU9KuxAnq8q8qdn7HWId5Q=
-github.com/toitlang/tpkg v0.0.0-20220204122114-8cf6c818b89f/go.mod h1:H6CzLD7CRMKdRBtl89DlFGvKa2mCjzp9HGboSGaSJAE=
+github.com/toitlang/tpkg v0.0.0-20220208100452-339a2ab582da h1:0ceMqGm+rpgikrfjcY4pKIFnsWB5K4OBuA61OWPggTY=
+github.com/toitlang/tpkg v0.0.0-20220208100452-339a2ab582da/go.mod h1:8+mRIFIKJxHMEAu8H5MxkaY/fLALKSEguBBIm8D0lG8=
 github.com/xanzy/ssh-agent v0.3.0 h1:wUMzuKtKilRgBAD1sUb8gOwwRr2FGoBVumcjoOACClI=
 github.com/xanzy/ssh-agent v0.3.0/go.mod h1:3s9xbODqPuuhK9JV1R321M/FlMZSBvE5aY6eAcqrDh0=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
