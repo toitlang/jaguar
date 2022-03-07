@@ -84,6 +84,7 @@ jobs:
           & tools\windows_installer\build.bat ${{ steps.version.outputs.version }} $PWD\build\windows\jag.exe $PWD\jag_installer_x64.exe
           signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD\jag_installer_x64.exe
           move $PWD\jag_installer_x64.exe build/windows/jag_installer_x64.exe
+          cp build/windows/jag_installer_x64.exe build/windows/jag_installer.exe
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
@@ -100,13 +101,22 @@ jobs:
           asset_name: jag_windows.zip
           overwrite: true
 
-      - name: Upload jag Windows (installer)
+      - name: Upload jag Windows (installer_x64)
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer_x64.exe
           tag: ${{ github.ref }}
           asset_name: jag_installer_x64.exe
+          overwrite: true
+
+      - name: Upload jag Windows (installer)
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/windows/jag_installer.exe
+          tag: ${{ github.ref }}
+          asset_name: jag_installer.exe
           overwrite: true
 
   winget:
