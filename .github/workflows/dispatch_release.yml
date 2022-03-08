@@ -1,0 +1,17 @@
+name: Update homebrew
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.LEON_REPOSITORY_DISPATCH }}
+          repository: toitlang/homebrew-toit
+          event-type: new-release
+          client-payload: '{"ref": "${{ github.ref_name }}"}'
