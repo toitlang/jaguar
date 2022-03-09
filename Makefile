@@ -5,6 +5,14 @@
 BUILD_DIR := build
 CURR_DIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
+ifeq ($(OS),Windows_NT)
+  EXE_SUFFIX=.exe
+  DETECTED_OS=$(OS)
+else
+  EXE_SUFFIX=
+  DETECTED_OS=$(shell uname)
+endif
+
 GO_SOURCE := $(shell find cmd -name '*.go')
 TOIT_SOURCE := $(shell find src -name '*.toit') package.lock package.yaml
 THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
@@ -15,7 +23,7 @@ BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 BUILD_VERSION ?= $(shell ./tools/gitversion)
 BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
 
-JAG_BINARY ?= jag
+JAG_BINARY ?= jag$(EXE_SUFFIX)
 
 .PHONY: jag
 jag: $(BUILD_DIR)/$(JAG_BINARY)
