@@ -78,6 +78,7 @@ sudo usermod -aG dialout $USER
 ```
 
 You will have to log out and log back in for this to take effect.
+
 ---
 
 Now it is possible to monitor the serial output from the device:
