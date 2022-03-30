@@ -253,7 +253,6 @@ jobs:
 
           make image
           tar -czf build/image.tar.gz -C ./build -h image
-          cp ./build/image.snapshot ./build/jaguar.snapshot
 
       - name: Upload elf
         uses: actions/upload-artifact@v2
@@ -272,12 +271,3 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
-
-      - name: Upload jaguar.snapshot artifact
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/jaguar.snapshot
-          tag: ${{ github.ref }}
-          overwrite: true

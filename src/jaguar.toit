@@ -12,23 +12,27 @@ import reader
 import esp32
 import uuid
 import monitor
+import device
 
-import .aligned_reader
-import .programs
-import .system_message_handler
+import system.containers
 
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
 
+// Build a string key that is short enough to be used by device.FlashStore.
+// We intentionally reuse the key across Jaguar firmware versions because we
+// don't want to leave lots of unused stuff in the flash store.
+JAGUAR_LAST_PROGRAM ::=
+    (uuid.uuid5 "jaguar" "program.last").stringify.copy 0 13
+store/device.FlashStore ::= device.FlashStore
+
 HTTP_PORT ::= 9000
-manager ::= ProgramManager --logger=logger
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 
 main args:
   try:
-    install_system_message_handler logger
     exception := catch --trace: serve args
     logger.error "rebooting due to $(exception)"
   finally:
@@ -57,27 +61,11 @@ serve args:
   else:
     name = image_config.get "name" --if_absent=: name
 
-  exception := catch --trace:
-    last := manager.last
-    if last:
-      gid ::= programs_registry_next_gid_
-      logger.info "program $gid re-starting from $last"
-      manager.program_ = last  // TODO(kasper): Rework the manager/process relationship to get rid of this. 
-      if not last.run gid:
-        // Don't keep trying to run outdated programs. This is a
-        // common scenario when reflashing, so we do this without
-        // generating a stack trace.
-        logger.info "program $gid re-starting from $last => (obsolete)"
-        manager.last = null
-  if exception:
-    // Don't keep trying to run malformed programs.
-    manager.last = null
-
   while true:
     failures := 0
     attempts := 3
     while failures < attempts:
-      exception = catch: run id name port
+      exception := catch: run id name port
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
@@ -128,19 +116,23 @@ install_mutex ::= monitor.Mutex
 
 install_program program_size/int reader/reader.Reader -> none:
   with_timeout --ms=60_000: install_mutex.do:
-    logger.debug "installing program with $program_size bytes"
-    manager.new program_size
-    written_size := 0
-    image_reader := AlignedReader reader IMAGE_CHUNK_SIZE
-    while data := image_reader.read:
-      written_size += data.size
-      manager.write data
-    program := manager.commit
-    logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
+    last := store.get JAGUAR_LAST_PROGRAM
+    if last:
+      containers.uninstall (uuid.Uuid last)
+      store.delete JAGUAR_LAST_PROGRAM
 
-    gid ::= programs_registry_next_gid_
-    logger.info "program $gid starting from $program"
-    program.run gid
+    logger.debug "installing program with $program_size bytes"
+    written_size := 0
+    writer := containers.ContainerImageWriter program_size
+    while data := reader.read:
+      written_size += data.size
+      writer.write data
+    program := writer.commit
+
+    logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
+    logger.info "starting program $program"
+    store.set JAGUAR_LAST_PROGRAM program.to_byte_array
+    containers.start program
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   socket := network.udp_open
