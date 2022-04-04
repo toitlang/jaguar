@@ -170,6 +170,7 @@ export JAG_PATH=<path to https://github.com/toitlang/jaguar clone>
 First, we need to build the `toit.pkg` support from the `$TOIT_PATH` directory:
 
 ``` sh
+cd $TOIT_PATH
 make sdk
 ```
 
@@ -177,9 +178,9 @@ Now we can compile the Jaguar assets necessary for flashing Jaguar onto your
 device. This is easily doable from within the `$JAG_PATH` directory.
 
 ``` sh
+cd $JAG_PATH
 $TOIT_PATH/build/host/sdk/bin/toit.pkg install --project-root=$JAG_PATH
-export IDF_PATH=$TOIT_PATH/third_party/esp-idf
-source IDF_PATH/export.sh
+source $TOIT_PATH/third_party/esp-idf/export.sh
 make
 ```
 
@@ -187,6 +188,7 @@ You can now flash Jaguar onto your device by telling it where to find the Toit S
 and the pre-built image for the Jaguar application for the ESP32:
 
 ``` sh
+cd $JAG_PATH
 export JAG_TOIT_PATH=$TOIT_PATH/build/host/sdk
 export JAG_ESP32_IMAGE_PATH=$JAG_PATH/build/image
 export JAG_ESPTOOL_PATH=$IDF_PATH/components/esptool_py/esptool/esptool.py
@@ -197,6 +199,7 @@ The Jaguar command-line tool in `build/jag` now uses the environment variables f
 to find the Toit SDK, so you start using it:
 
 ``` sh
+cd $JAG_PATH
 build/jag scan
 ```
 
