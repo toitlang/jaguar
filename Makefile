@@ -16,14 +16,20 @@ endif
 GO_SOURCE := $(shell find cmd -name '*.go')
 TOIT_SOURCE := $(shell find src -name '*.toit') package.lock package.yaml
 THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
-TOIT_REPO_PATH ?= $(THIRD_PARTY_TOIT_PATH)
-JAG_TOIT_PATH ?= $(TOIT_REPO_PATH)/build/host/sdk
+
+TOIT_PATH ?= $(THIRD_PARTY_TOIT_PATH)
+JAG_TOIT_PATH ?= $(TOIT_PATH)/build/host/sdk
+JAG_ENTRY_POINT ?= $(CURR_DIR)/src/jaguar.toit
+IDF_PATH ?= $(TOIT_PATH)/third_party/esp-idf
 
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 BUILD_VERSION ?= $(shell ./tools/gitversion)
 BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
 
 JAG_BINARY ?= jag$(EXE_SUFFIX)
+
+.PHONY: all
+all: jag image
 
 .PHONY: jag
 jag: $(BUILD_DIR)/$(JAG_BINARY)
@@ -53,18 +59,18 @@ jag-macos-sign:
 
 .PHONY: toit-git-tags
 toit-git-tags:
-	(cd $(TOIT_REPO_PATH); git fetch --tags --recurse-submodules=no)
+	(cd $(TOIT_PATH); git fetch --tags --recurse-submodules=no)
 
 .PHONY: $(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg
 $(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg: toit-git-tags
-	make -C $(TOIT_REPO_PATH) all
+	make -C $(TOIT_PATH) sdk
 
 .packages: $(JAG_TOIT_PATH)/bin/toit.pkg $(TOIT_SOURCE)
 	$(JAG_TOIT_PATH)/bin/toit.pkg install
 
-.PHONY: $(TOIT_REPO_PATH)/build/esp32/
-$(TOIT_REPO_PATH)/build/esp32/: $(TOIT_SOURCE) .packages toit-git-tags
-	make -C $(TOIT_REPO_PATH) esp32
+.PHONY: $(TOIT_PATH)/build/esp32/
+$(TOIT_PATH)/build/esp32/: $(TOIT_SOURCE) .packages toit-git-tags
+	make -C $(TOIT_PATH) esp32
 
 $(BUILD_DIR)/image/:
 	mkdir -p $@
@@ -72,23 +78,23 @@ $(BUILD_DIR)/image/:
 $(BUILD_DIR)/image/bootloader/:
 	mkdir -p $@
 
-$(BUILD_DIR)/image/toit.bin: $(TOIT_REPO_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_REPO_PATH)/build/esp32/toit.bin $@
+$(BUILD_DIR)/image/toit.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
+	cp $(TOIT_PATH)/build/esp32/toit.bin $@
 
-$(BUILD_DIR)/image/bootloader/bootloader.bin: $(TOIT_REPO_PATH)/build/esp32/ $(BUILD_DIR)/image/bootloader/
-	cp $(TOIT_REPO_PATH)/build/esp32/bootloader/bootloader.bin $@
+$(BUILD_DIR)/image/bootloader/bootloader.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/bootloader/
+	cp $(TOIT_PATH)/build/esp32/bootloader/bootloader.bin $@
 
-$(BUILD_DIR)/image/partitions.bin: $(TOIT_REPO_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_REPO_PATH)/build/esp32/partitions.bin $@
+$(BUILD_DIR)/image/partitions.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
+	cp $(TOIT_PATH)/build/esp32/partitions.bin $@
 
-$(BUILD_DIR)/image/jaguar.bin: $(TOIT_REPO_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_REPO_PATH)/build/esp32/programs.bin $@
+$(BUILD_DIR)/image/jaguar.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
+	cp $(TOIT_PATH)/build/esp32/programs.bin $@
 
-$(BUILD_DIR)/image/system.snapshot: $(BUILD_DIR)/image/ $(TOIT_REPO_PATH)/build/esp32/
-	cp $(TOIT_REPO_PATH)/build/esp32/system.snapshot $@
+$(BUILD_DIR)/image/system.snapshot: $(BUILD_DIR)/image/ $(TOIT_PATH)/build/esp32/
+	cp $(TOIT_PATH)/build/esp32/system.snapshot $@
 
 .PHONY: $(BUILD_DIR)/image/jaguar.snapshot  # Force recompilation.
-$(BUILD_DIR)/image/jaguar.snapshot: $(CURR_DIR)/src/jaguar.toit $(BUILD_DIR)/image/  .packages
+$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_ENTRY_POINT) $(BUILD_DIR)/image/ .packages
 	$(JAG_TOIT_PATH)/bin/toit.compile -w $@ $<
 
 .PHONY: image
@@ -98,7 +104,6 @@ image: $(BUILD_DIR)/image/partitions.bin
 image: $(BUILD_DIR)/image/system.snapshot
 image: $(BUILD_DIR)/image/jaguar.snapshot
 
-IDF_PATH ?= $(TOIT_REPO_PATH)/third_party/esp-idf
 .PHONY: install-esp-idf
 install-esp-idf:
 	IDF_PATH=$(IDF_PATH) $(IDF_PATH)/install.sh
