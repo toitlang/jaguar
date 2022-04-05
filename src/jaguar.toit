@@ -12,7 +12,6 @@ import reader
 import esp32
 import uuid
 import monitor
-import device
 
 import system.containers
 
@@ -20,13 +19,6 @@ IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
-
-// Build a string key that is short enough to be used by device.FlashStore.
-// We intentionally reuse the key across Jaguar firmware versions because we
-// don't want to leave lots of unused stuff in the flash store.
-JAGUAR_LAST_PROGRAM ::=
-    (uuid.uuid5 "jaguar" "program.last").stringify.copy 0 13
-store/device.FlashStore ::= device.FlashStore
 
 HTTP_PORT ::= 9000
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
@@ -116,10 +108,11 @@ install_mutex ::= monitor.Mutex
 
 install_program program_size/int reader/reader.Reader -> none:
   with_timeout --ms=60_000: install_mutex.do:
-    last := store.get JAGUAR_LAST_PROGRAM
-    if last:
-      containers.uninstall (uuid.Uuid last)
-      store.delete JAGUAR_LAST_PROGRAM
+    // Uninstall everything but Jaguar.
+    images := containers.images
+    jaguar := containers.current
+    images.do: | id/uuid.Uuid |
+      if id != jaguar: containers.uninstall id
 
     logger.debug "installing program with $program_size bytes"
     written_size := 0
@@ -131,7 +124,6 @@ install_program program_size/int reader/reader.Reader -> none:
 
     logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
     logger.info "starting program $program"
-    store.set JAGUAR_LAST_PROGRAM program.to_byte_array
     containers.start program
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:

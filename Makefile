@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 BUILD_DIR := build
-CURR_DIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 ifeq ($(OS),Windows_NT)
   EXE_SUFFIX=.exe
@@ -15,11 +14,11 @@ endif
 
 GO_SOURCE := $(shell find cmd -name '*.go')
 TOIT_SOURCE := $(shell find src -name '*.toit') package.lock package.yaml
-THIRD_PARTY_TOIT_PATH = $(CURR_DIR)/third_party/toit
+THIRD_PARTY_TOIT_PATH = $(CURDIR)/third_party/toit
 
 TOIT_PATH ?= $(THIRD_PARTY_TOIT_PATH)
 JAG_TOIT_PATH ?= $(TOIT_PATH)/build/host/sdk
-JAG_ENTRY_POINT ?= $(CURR_DIR)/src/jaguar.toit
+JAG_ENTRY_POINT ?= $(CURDIR)/src/jaguar.toit
 IDF_PATH ?= $(TOIT_PATH)/third_party/esp-idf
 
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -39,10 +38,10 @@ $(BUILD_DIR):
 
 .PHONY: update-jag-info
 update-jag-info: $(BUILD_DIR)
-	sed 's/date       = .*/date       = "$(BUILD_DATE)"/' $(CURR_DIR)/cmd/jag/main.go | \
+	sed 's/date       = .*/date       = "$(BUILD_DATE)"/' $(CURDIR)/cmd/jag/main.go | \
 	sed 's/version    = .*/version    = "$(BUILD_VERSION)"/' | \
 	sed 's/sdkVersion = .*/sdkVersion = "$(BUILD_SDK_VERSION)"/' > $(BUILD_DIR)/new_main.go
-	mv $(BUILD_DIR)/new_main.go $(CURR_DIR)/cmd/jag/main.go
+	mv $(BUILD_DIR)/new_main.go $(CURDIR)/cmd/jag/main.go
 
 GO_BUILD_FLAGS := CGO_ENABLED=1 GODEBUG=netdns=go
 GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
