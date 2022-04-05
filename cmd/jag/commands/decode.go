@@ -39,8 +39,10 @@ func DecodeCmd() *cobra.Command {
 
 			var snapshot string
 			if system {
+				// TODO(kasper): This is now wrong. We shouldn't try to use the Jaguar snapshot
+				// to decode system errors.
 				var err error
-				if snapshot, err = directory.GetSnapshotPath(); err != nil {
+				if snapshot, err = directory.GetJaguarSnapshotPath(); err != nil {
 					return err
 				}
 			} else {

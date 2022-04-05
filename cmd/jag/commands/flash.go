@@ -111,6 +111,11 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
+			jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+			if err != nil {
+				return err
+			}
+
 			configFile, err := os.CreateTemp("", "*.json")
 			if err != nil {
 				return err
@@ -156,12 +161,26 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
+			jaguarImageFile, err := os.CreateTemp("", "*.image")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(jaguarImageFile.Name())
+
+			snapshotToImageCmd := sdk.ToitRun(ctx, sdk.SnapshotToImagePath(), "--unique_id", id.String(), "-m32", "--binary", "--relocate=0x3f430000", jaguarSnapshotPath, jaguarImageFile.Name())
+			snapshotToImageCmd.Stderr = os.Stderr
+			snapshotToImageCmd.Stdout = os.Stdout
+			if err := snapshotToImageCmd.Run(); err != nil {
+				return err
+			}
+
 			flashArgs := []string{
 				"--chip", "esp32", "--port", port, "--baud", strconv.Itoa(int(baud)), "--before", "default_reset", "--after", "hard_reset", "write_flash", "-z", "--flash_mode", "dio",
 				"--flash_freq", "40m", "--flash_size", "detect",
-				"0x1000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
-				"0x8000", filepath.Join(esp32BinPath, "partitions.bin"),
-				"0x10000", binTmpFile.Name(),
+				"0x001000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
+				"0x008000", filepath.Join(esp32BinPath, "partitions.bin"),
+				"0x010000", binTmpFile.Name(),
+				"0x200000", jaguarImageFile.Name(),
 			}
 
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)

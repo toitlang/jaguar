@@ -44,12 +44,12 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			snapshot, err := directory.GetSnapshotPath()
+			snapshot, err := directory.GetJaguarSnapshotPath()
 			if err != nil {
 				return err
 			}
 
-			simCmd := sdk.ToitRun(ctx, "-b", "none", snapshot, strconv.Itoa(int(port)), id.String(), name)
+			simCmd := sdk.ToitRun(ctx, snapshot, strconv.Itoa(int(port)), id.String(), name)
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = os.Stdout
 			return simCmd.Run()

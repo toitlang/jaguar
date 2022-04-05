@@ -27,10 +27,6 @@ func getToitSDKURL(version string) string {
 	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, currOS)
 }
 
-func getSnapshotURL(version string) string {
-	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/jaguar.snapshot", version)
-}
-
 func getESP32ImageURL(version string) string {
 	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/image.tar.gz", version)
 }
@@ -70,7 +66,7 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if _, err := directory.GetSnapshotPath(); err != nil {
+				if _, err := directory.GetJaguarSnapshotPath(); err != nil {
 					return err
 				}
 
@@ -93,10 +89,6 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if err := downloadESP32Image(ctx, info.Version); err != nil {
-				return err
-			}
-
-			if err := downloadSnapshot(ctx, info.Version); err != nil {
 				return err
 			}
 
@@ -174,33 +166,6 @@ func downloadESP32Image(ctx context.Context, version string) error {
 	}
 	gzipReader.Close()
 	fmt.Println("Successfully installed ESP32 image into", imagePath)
-	return nil
-}
-
-func downloadSnapshot(ctx context.Context, version string) error {
-	snapshotPath, err := directory.GetSnapshotCachePath()
-	if err != nil {
-		return err
-	}
-
-	snapshotURL := getSnapshotURL(version)
-	fmt.Printf("Downloading snapshot from %s ...\n", snapshotURL)
-	bundle, err := download(ctx, snapshotURL)
-	if err != nil {
-		return err
-	}
-	defer bundle.Close()
-
-	f, err := os.OpenFile(snapshotPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if _, err := io.Copy(f, bundle); err != nil {
-		return err
-	}
-	bundle.Close()
-	fmt.Println("Successfully installed snapshot into", snapshotPath)
 	return nil
 }
 

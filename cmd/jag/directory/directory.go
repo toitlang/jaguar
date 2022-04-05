@@ -20,17 +20,15 @@ const (
 	SnapshotCachePathEnv = "JAG_SNAPSHOT_CACHE_PATH"
 	configFile           = ".jaguar"
 
-	// EntryPointEnv snapshot of the Jaguar program.
-	EntryPointEnv = "JAG_ENTRY_POINT"
-	// ToitPathEnv path to the Toit sdk build.
+	// ToitPathEnv: Path to the Toit SDK build.
 	ToitPathEnv = "JAG_TOIT_PATH"
-	// EsptoolPathEnv path to the esptool.
+	// EsptoolPathEnv: Path to the esptool.
 	EsptoolPathEnv = "JAG_ESPTOOL_PATH"
-	// ESP32BinEnv path to the jaguar esp32 binary image.
-	ESP32BinEnv = "JAG_ESP32_BIN_PATH"
-	// WifiSSIDEnv if set will use this wifi ssid
+	// ImageEnv: Path to the Jaguar pre-built image for the ESP32.
+	Esp32ImageEnv = "JAG_ESP32_IMAGE_PATH"
+	// WifiSSIDEnv if set will use this wifi ssid.
 	WifiSSIDEnv = "JAG_WIFI_SSID"
-	// WifiPasswordEnv if set will use this wifi password
+	// WifiPasswordEnv if set will use this wifi password.
 	WifiPasswordEnv = "JAG_WIFI_PASSWORD"
 )
 
@@ -108,7 +106,7 @@ func GetESP32ImageCachePath() (string, error) {
 }
 
 func GetESP32ImagePath() (string, error) {
-	imagePath, ok := os.LookupEnv(ESP32BinEnv)
+	imagePath, ok := os.LookupEnv(Esp32ImageEnv)
 	if ok {
 		return imagePath, nil
 	}
@@ -123,24 +121,13 @@ func GetESP32ImagePath() (string, error) {
 	return imagePath, nil
 }
 
-func GetSnapshotCachePath() (string, error) {
-	home, err := os.UserHomeDir()
+func GetJaguarSnapshotPath() (string, error) {
+	imagePath, err := GetESP32ImagePath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "jaguar", "jaguar.snapshot"), nil
-}
+	snapshotPath := filepath.Join(imagePath, "jaguar.snapshot")
 
-func GetSnapshotPath() (string, error) {
-	snapshotPath, ok := os.LookupEnv(EntryPointEnv)
-	if ok {
-		return snapshotPath, nil
-	}
-
-	snapshotPath, err := GetSnapshotCachePath()
-	if err != nil {
-		return "", err
-	}
 	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
 		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the Jaguar snapshot using 'jag setup'", snapshotPath)
 	}
