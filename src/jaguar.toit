@@ -112,7 +112,12 @@ install_program program_size/int reader/reader.Reader -> none:
     images := containers.images
     jaguar := containers.current
     images.do: | id/uuid.Uuid |
-      if id != jaguar: containers.uninstall id
+      // TODO(kasper): For now, we have to filter out the system
+      // process (NIL). It probably shouldn't be listed. Either way,
+      // the system image should react gracefully when someone tries
+      // to uninstall it.
+      if id != jaguar and id != uuid.NIL:
+        containers.uninstall id
 
     logger.debug "installing program with $program_size bytes"
     written_size := 0
