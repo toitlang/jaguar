@@ -14,18 +14,21 @@ endif
 
 GO_SOURCE := $(shell find cmd -name '*.go')
 TOIT_SOURCE := $(shell find src -name '*.toit') package.lock package.yaml
-THIRD_PARTY_TOIT_PATH = $(CURDIR)/third_party/toit
+JAG_TOIT_REPO_PATH ?= $(CURDIR)/third_party/toit
 
-TOIT_PATH ?= $(THIRD_PARTY_TOIT_PATH)
-JAG_TOIT_PATH ?= $(TOIT_PATH)/build/host/sdk
-JAG_ENTRY_POINT ?= $(CURDIR)/src/jaguar.toit
-IDF_PATH ?= $(TOIT_PATH)/third_party/esp-idf
+TOIT_PATH := $(JAG_TOIT_REPO_PATH)
+JAG_TOIT_PATH := $(TOIT_PATH)/build/host/sdk
+JAG_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
+IDF_PATH := $(TOIT_PATH)/third_party/esp-idf
 
+# The following variables are only executed when used.
+# This way we don't run the commands when the Makefile is run for
+#   commands that don't use them.
 BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-BUILD_VERSION ?= $(shell ./tools/gitversion)
+BUILD_VERSION = $(shell ./tools/gitversion)
 BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
 
-JAG_BINARY ?= jag$(EXE_SUFFIX)
+JAG_BINARY := jag$(EXE_SUFFIX)
 
 .PHONY: all
 all: jag image
@@ -93,7 +96,7 @@ $(BUILD_DIR)/image/system.snapshot: $(BUILD_DIR)/image/ $(TOIT_PATH)/build/esp32
 	cp $(TOIT_PATH)/build/esp32/system.snapshot $@
 
 .PHONY: $(BUILD_DIR)/image/jaguar.snapshot  # Force recompilation.
-$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_ENTRY_POINT) $(BUILD_DIR)/image/ .packages
+$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_ENTRY_POINT) $(BUILD_DIR)/image/ .packages install-dependencies
 	$(JAG_TOIT_PATH)/bin/toit.compile -w $@ $<
 
 .PHONY: image
@@ -106,6 +109,10 @@ image: $(BUILD_DIR)/image/jaguar.snapshot
 .PHONY: install-esp-idf
 install-esp-idf:
 	IDF_PATH=$(IDF_PATH) $(IDF_PATH)/install.sh
+
+.PHONY: install-packages
+install-dependencies: $(JAG_TOIT_PATH)/bin/toit.pkg
+	$(JAG_TOIT_PATH)/bin/toit.pkg --auto-sync=false --project-root=$(CURDIR) install
 
 clean:
 	rm -rf $(BUILD_DIR)

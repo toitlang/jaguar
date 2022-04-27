@@ -32,17 +32,9 @@ type SDK struct {
 }
 
 func GetSDK(ctx context.Context) (*SDK, error) {
-	toit, ok := os.LookupEnv(directory.ToitPathEnv)
-	info := GetInfo(ctx)
-	if !ok {
-		sdkCachePath, err := directory.GetSDKCachePath()
-		if err != nil {
-			return nil, err
-		}
-		if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
-			return nil, fmt.Errorf("no SDK found in '%s', but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", sdkCachePath, info.Version, info.SDKVersion)
-		}
-		toit = sdkCachePath
+	toit, err := directory.GetSDKPath()
+	if err != nil {
+		return nil, err
 	}
 
 	versionPath := filepath.Join(toit, "VERSION")
@@ -57,7 +49,9 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 		Path:    toit,
 		Version: version,
 	}
-	return res, res.validate(info, ok)
+	info := GetInfo(ctx)
+	_, skipVersionCheck := os.LookupEnv(directory.ToitRepoPathEnv)
+	return res, res.validate(info, skipVersionCheck)
 }
 
 func (s *SDK) ToitCompilePath() string {

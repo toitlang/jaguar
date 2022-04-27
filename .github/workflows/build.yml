@@ -18,9 +18,9 @@ jobs:
 
       - name: Build jag
         run: |
-          GOOS=linux JAG_BINARY=linux/jag make jag
-          GOOS=darwin JAG_BINARY=macos/jag make jag
-          GOOS=windows JAG_BINARY=windows/jag.exe make jag
+          GOOS=linux make JAG_BINARY=linux/jag jag
+          GOOS=darwin make JAG_BINARY=macos/jag jag
+          GOOS=windows make JAG_BINARY=windows/jag.exe jag
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
