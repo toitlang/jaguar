@@ -160,47 +160,40 @@ implementation yourself? Great! You will need to follow the instructions for
 [building Toit](https://github.com/toitlang/toit) and make sure you can flash a
 [simple example](https://github.com/toitlang/toit/blob/master/examples/hello.toit) onto your device.
 
-Let's assume your git clones can be referenced like this:
+We assume all the commands are executed from this directory (the checkout of
+the Jaguar repository).
 
+Start by setting the `JAG_TOIT_REPO_PATH`. Typically, this would  be
+the path to the third_party directory:
 ``` sh
-export TOIT_PATH=<path to https://github.com/toitlang/toit clone>
-export JAG_PATH=<path to https://github.com/toitlang/jaguar clone>
+export JAG_TOIT_REPO_PATH=$PWD/third_party/toit
 ```
+Alternatively, `JAG_TOIT_REPO_PATH` could point to a different checkout of Toit.
 
-First, we need to build the `toit.pkg` support from the `$TOIT_PATH` directory:
-
+Setup the ESP-IDF environment variables and PATHs, which will allow to compile
+ESP32 programs. The easiest is to just use the `export.sh` that comes with
+the ESP-IDF repository:
 ``` sh
-cd $TOIT_PATH
-make sdk
+source $JAG_TOIT_REPO_PATH/third_party/esp-idf/export.sh
 ```
+Note that Toit's ESP-IDF is patched. Don't use use a plain ESP-IDF checkout instead.
 
-Now we can compile the Jaguar assets necessary for flashing Jaguar onto your
-device. This is easily doable from within the `$JAG_PATH` directory.
-
+Compile everything.
 ``` sh
-cd $JAG_PATH
-$TOIT_PATH/build/host/sdk/bin/toit.pkg install --project-root=$JAG_PATH
-source $TOIT_PATH/third_party/esp-idf/export.sh
 make
 ```
+This will build the SDK from the `JAG_TOIT_REPO_PATH`, then use it to download
+the Toit dependencies (using `toit.pkg`) and finally build Jaguar; both the
+host executable, as well as the Toit program that runs on the device.
 
-You can now flash Jaguar onto your device by telling it where to find the Toit SDK
-and the pre-built image for the Jaguar application for the ESP32:
-
-``` sh
-cd $JAG_PATH
-export JAG_TOIT_PATH=$TOIT_PATH/build/host/sdk
-export JAG_ESP32_IMAGE_PATH=$JAG_PATH/build/image
-export JAG_ESPTOOL_PATH=$IDF_PATH/components/esptool_py/esptool/esptool.py
-build/jag flash --port=/dev/ttyUSB0 --wifi-ssid="<ssid>" --wifi-password="<password>"
-```
-
-The Jaguar command-line tool in `build/jag` now uses the environment variables from above
-to find the Toit SDK, so you start using it:
+You can now use Jaguar as usual:
 
 ``` sh
-cd $JAG_PATH
-build/jag scan
+build/jag flash
+sleep 3        # Give the device time to connect to the WiFi.
+build/jag scan # Select the new device.
+build/jag run $JAG_TOIT_REPO_PATH/examples/hello.toit
+build/jag monitor
 ```
 
 ## Contributing

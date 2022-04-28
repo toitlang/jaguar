@@ -7,6 +7,7 @@ package directory
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 
@@ -21,11 +22,7 @@ const (
 	configFile           = ".jaguar"
 
 	// ToitPathEnv: Path to the Toit SDK build.
-	ToitPathEnv = "JAG_TOIT_PATH"
-	// EsptoolPathEnv: Path to the esptool.
-	EsptoolPathEnv = "JAG_ESPTOOL_PATH"
-	// ImageEnv: Path to the Jaguar pre-built image for the ESP32.
-	Esp32ImageEnv = "JAG_ESP32_IMAGE_PATH"
+	ToitRepoPathEnv = "JAG_TOIT_REPO_PATH"
 	// WifiSSIDEnv if set will use this wifi ssid.
 	WifiSSIDEnv = "JAG_WIFI_SSID"
 	// WifiPasswordEnv if set will use this wifi password.
@@ -89,6 +86,21 @@ func GetSnapshotsCachePath() (string, error) {
 	return ensureDirectory(filepath.Join(home, ".cache", "jaguar", "snapshots"), nil)
 }
 
+func GetSDKPath() (string, error) {
+	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
+	if ok {
+		return filepath.Join(toitRepoPath, "build", "host", "sdk"), nil
+	}
+	sdkCachePath, err := GetSDKCachePath()
+	if err != nil {
+		return "", err
+	}
+	if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("no SDK found in '%s'.\nYou must setup the esp32 image using 'jag setup'", sdkCachePath)
+	}
+	return sdkCachePath, nil
+}
+
 func GetSDKCachePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -106,9 +118,9 @@ func GetESP32ImageCachePath() (string, error) {
 }
 
 func GetESP32ImagePath() (string, error) {
-	imagePath, ok := os.LookupEnv(Esp32ImageEnv)
+	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
-		return imagePath, nil
+		return filepath.Join(toitRepoPath, "build", "esp32"), nil
 	}
 
 	imagePath, err := GetESP32ImageCachePath()
@@ -122,6 +134,18 @@ func GetESP32ImagePath() (string, error) {
 }
 
 func GetJaguarSnapshotPath() (string, error) {
+	_, ok := os.LookupEnv(ToitRepoPathEnv)
+	if ok {
+		// We assume that the jag executable is inside the build directory of
+		// the Jaguar repository.
+		execPath, err := os.Executable()
+		if err != nil {
+			return "", err
+		}
+		dir := path.Dir(execPath)
+		return filepath.Join(dir, "image", "jaguar.snapshot"), nil
+	}
+
 	imagePath, err := GetESP32ImagePath()
 	if err != nil {
 		return "", err
@@ -143,9 +167,9 @@ func GetEsptoolCachePath() (string, error) {
 }
 
 func GetEsptoolPath() (string, error) {
-	esptoolPath, ok := os.LookupEnv(EsptoolPathEnv)
+	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
-		return esptoolPath, nil
+		return filepath.Join(toitRepoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
 	}
 
 	cachePath, err := GetEsptoolCachePath()
