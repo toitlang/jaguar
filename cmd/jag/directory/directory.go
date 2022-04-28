@@ -87,9 +87,9 @@ func GetSnapshotsCachePath() (string, error) {
 }
 
 func GetSDKPath() (string, error) {
-	toit_repo_path, ok := os.LookupEnv(ToitRepoPathEnv)
+	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
-		return filepath.Join(toit_repo_path, "build", "host", "sdk"), nil
+		return filepath.Join(toitRepoPath, "build", "host", "sdk"), nil
 	}
 	sdkCachePath, err := GetSDKCachePath()
 	if err != nil {
@@ -118,9 +118,9 @@ func GetESP32ImageCachePath() (string, error) {
 }
 
 func GetESP32ImagePath() (string, error) {
-	toit_repo_path, ok := os.LookupEnv(ToitRepoPathEnv)
+	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
-		return filepath.Join(toit_repo_path, "build", "esp32"), nil
+		return filepath.Join(toitRepoPath, "build", "esp32"), nil
 	}
 
 	imagePath, err := GetESP32ImageCachePath()
@@ -136,8 +136,8 @@ func GetESP32ImagePath() (string, error) {
 func GetJaguarSnapshotPath() (string, error) {
 	_, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
-		// We assume that the jaguar executable is inside the build directory
-		// of the Jag repository.
+		// We assume that the jag executable is inside the build directory of
+		// the Jaguar repository.
 		execPath, err := os.Executable()
 		if err != nil {
 			return "", err
@@ -167,9 +167,9 @@ func GetEsptoolCachePath() (string, error) {
 }
 
 func GetEsptoolPath() (string, error) {
-	toit_repo_path, ok := os.LookupEnv(ToitRepoPathEnv)
+	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
-		return filepath.Join(toit_repo_path, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
+		return filepath.Join(toitRepoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
 	}
 
 	cachePath, err := GetEsptoolCachePath()
