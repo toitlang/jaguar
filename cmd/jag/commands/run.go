@@ -56,11 +56,17 @@ func RunCmd() *cobra.Command {
 			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 			b, err := sdk.Build(ctx, device, entrypoint)
 			if err != nil {
-				return nil
+				// We assume the error has been printed.
+				// Mark the command as silent to avoid printing the error twice.
+				cmd.SilenceErrors = true
+				return err
 			}
 			if err := device.Run(ctx, sdk, b); err != nil {
 				fmt.Println("Error:", err)
-				return nil
+				// We just printed the error.
+				// Mark the command as silent to avoid printing the error twice.
+				cmd.SilenceErrors = true
+				return err
 			}
 			fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
 			return nil
