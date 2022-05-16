@@ -180,7 +180,7 @@ func FlashCmd() *cobra.Command {
 				"0x001000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
 				"0x008000", filepath.Join(esp32BinPath, "partitions.bin"),
 				"0x010000", binTmpFile.Name(),
-				"0x200000", jaguarImageFile.Name(),
+				"0x250000", jaguarImageFile.Name(),
 			}
 
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
