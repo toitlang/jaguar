@@ -66,6 +66,7 @@ func JagCmd(info Info) *cobra.Command {
 		RunCmd(),
 		SimulateCmd(),
 		DecodeCmd(),
+		LogCmd(),
 		SetupCmd(info),
 		FlashCmd(),
 		MonitorCmd(),
