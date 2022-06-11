@@ -12,8 +12,11 @@ import reader
 import esp32
 import uuid
 import monitor
+import websocket
 
 import system.containers
+
+import .logging
 
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
@@ -25,7 +28,9 @@ logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 
 main args:
   try:
-    exception := catch --trace: serve args
+    exception := catch --trace:
+      install_logging_service
+      serve args
     logger.error "rebooting due to $(exception)"
   finally:
     esp32.deep_sleep (Duration --s=1)
@@ -176,3 +181,8 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid:
     else if request.path == "/ping" and request.method == "GET":
       writer.write
         json.encode {"status": "OK"}
+
+    else if request.path == "/log" and request.method == "GET":
+      print_ "WS request"
+      session := websocket.Session.upgrade request writer
+      add_log_listener session
