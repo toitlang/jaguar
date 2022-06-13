@@ -7,6 +7,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
@@ -54,13 +55,29 @@ func RunCmd() *cobra.Command {
 			}
 
 			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
-			b, err := sdk.Build(ctx, device, entrypoint)
+
+			snapshotsCache, err := directory.GetSnapshotsCachePath()
+			if err != nil {
+				return err
+			}
+			snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
+
+			err = sdk.Compile(ctx, snapshot, entrypoint)
 			if err != nil {
 				// We assume the error has been printed.
 				// Mark the command as silent to avoid printing the error twice.
 				cmd.SilenceErrors = true
 				return err
 			}
+
+			b, err := sdk.Build(ctx, device, snapshot)
+			if err != nil {
+				// We assume the error has been printed.
+				// Mark the command as silent to avoid printing the error twice.
+				cmd.SilenceErrors = true
+				return err
+			}
+
 			if err := device.Run(ctx, sdk, b); err != nil {
 				fmt.Println("Error:", err)
 				// We just printed the error.
