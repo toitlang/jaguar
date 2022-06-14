@@ -20,6 +20,7 @@ func CompileCmd() *cobra.Command {
 			"can be run on a Jaguar device as a new program.  The snapshot also\n" +
 			"contains debug information that can be used by host-side tools.",
 		Args:         cobra.ExactArgs(1),
+		Hidden:       true,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			entrypoint := args[0]
