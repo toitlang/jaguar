@@ -157,20 +157,17 @@ func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
 }
 
-func (s *SDK) Build(ctx context.Context, device *Device, entrypoint string) ([]byte, error) {
-	snapshotsCache, err := directory.GetSnapshotsCachePath()
-	if err != nil {
-		return nil, err
-	}
-	snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
-
+func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string) error {
 	buildSnap := s.ToitCompile(ctx, "-w", snapshot, entrypoint)
 	buildSnap.Stderr = os.Stderr
 	buildSnap.Stdout = os.Stdout
 	if err := buildSnap.Run(); err != nil {
-		return nil, err
+		return err
 	}
+	return nil
+}
 
+func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byte, error) {
 	image, err := os.CreateTemp("", "*.image")
 	if err != nil {
 		return nil, err

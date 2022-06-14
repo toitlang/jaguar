@@ -64,6 +64,7 @@ func JagCmd(info Info) *cobra.Command {
 		ScanCmd(),
 		PingCmd(),
 		RunCmd(),
+		CompileCmd(),
 		SimulateCmd(),
 		DecodeCmd(),
 		SetupCmd(info),
