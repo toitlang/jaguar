@@ -5,13 +5,57 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/blakesmith/ar"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
+
+// Get the UUID out of a snapshot file, which is an ar archive.
+func GetUuid(filename string) (uuid.UUID, error) {
+	source, err := os.Open(filename)
+	if err != nil {
+		fmt.Printf("Failed to open '%s'n", filename)
+		return uuid.Nil, err
+	}
+	reader := ar.NewReader(source)
+	readAtLeastOneEntry := false
+	for {
+		header, err := reader.Next()
+		if err != nil {
+			if readAtLeastOneEntry {
+				fmt.Printf("Did not include UUID: '%s'n", filename)
+			} else {
+				fmt.Printf("Not a snapshot file: '%s'n", filename)
+			}
+			return uuid.Nil, err
+		}
+		if header.Name == "uuid" {
+			raw_uuid := make([]byte, 16)
+			bytes_read := 0
+			for bytes_read < 16 {
+				delta_bytes_read, err := reader.Read(raw_uuid[bytes_read:])
+				if err != nil {
+					return uuid.Nil, err
+				}
+				bytes_read += delta_bytes_read
+			}
+			if bytes_read != 16 {
+				fmt.Printf("UUID in snapshot too short: '%s'n", filename)
+				return uuid.Nil, errors.New("Not enough bytes in UUID")
+			}
+			return uuid.FromBytes(raw_uuid)
+		}
+	}
+}
 
 func RunCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -60,17 +104,72 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
 
-			err = sdk.Compile(ctx, snapshot, entrypoint)
+			var snapshot string = ""
+
+			if strings.HasSuffix(entrypoint, ".snapshot") || strings.HasSuffix(entrypoint, ".snap") {
+				snapshot = entrypoint
+			} else {
+				// We are running a toit file, so we need to compile it to a
+				// snapshot first.
+				tempdir, err := ioutil.TempDir("", "jag_run")
+				if err != nil {
+					return err
+				}
+				defer os.RemoveAll(tempdir)
+
+				snapshotFile, err := ioutil.TempFile(tempdir, "jag_snapshot")
+				if err != nil {
+					return err
+				}
+				snapshot = snapshotFile.Name()
+				err = sdk.Compile(ctx, snapshot, entrypoint)
+				if err != nil {
+					// We assume the error has been printed.
+					// Mark the command as silent to avoid printing the error twice.
+					cmd.SilenceErrors = true
+					return err
+				}
+			}
+
+			programId, err := GetUuid(snapshot)
 			if err != nil {
-				// We assume the error has been printed.
-				// Mark the command as silent to avoid printing the error twice.
-				cmd.SilenceErrors = true
 				return err
 			}
 
-			b, err := sdk.Build(ctx, device, snapshot)
+			cacheSnapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+
+			// Copy the snapshot into the cache dir so it is available for
+			// decoding stack traces etc.
+			if cacheSnapshot != snapshot {
+				dest, err := ioutil.TempFile(snapshotsCache, "jag_snapshot")
+				if err != nil {
+					fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
+					return err
+				}
+				defer dest.Close()
+				defer os.Remove(dest.Name())
+
+				source, err := os.Open(snapshot)
+				if err != nil {
+					fmt.Printf("Failed to read '%s'n", snapshot)
+					return err
+				}
+				defer source.Close()
+				defer dest.Close()
+
+				_, err = io.Copy(dest, source)
+				if err != nil {
+					fmt.Printf("Failed to write '%s'n", dest.Name())
+					return err
+				}
+				source.Close()
+
+				// Atomic move so no other process can see a half-written snapshot file.
+				err = os.Rename(dest.Name(), cacheSnapshot)
+			}
+
+			b, err := sdk.Build(ctx, device, cacheSnapshot)
 			if err != nil {
 				// We assume the error has been printed.
 				// Mark the command as silent to avoid printing the error twice.

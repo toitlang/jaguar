@@ -167,7 +167,7 @@ func FlashCmd() *cobra.Command {
 			}
 			defer os.Remove(jaguarImageFile.Name())
 
-			snapshotToImageCmd := sdk.ToitRun(ctx, sdk.SnapshotToImagePath(), "--unique_id", id.String(), "-m32", "--binary", "--offset=0x0", jaguarSnapshotPath, jaguarImageFile.Name())
+			snapshotToImageCmd := sdk.ToitRun(ctx, sdk.SnapshotToImagePath(), "--unique_id", id.String(), "-m32", "--binary", "--offset=0x0", "--output", jaguarImageFile.Name(), jaguarSnapshotPath)
 			snapshotToImageCmd.Stderr = os.Stderr
 			snapshotToImageCmd.Stdout = os.Stdout
 			if err := snapshotToImageCmd.Run(); err != nil {
