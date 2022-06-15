@@ -70,9 +70,18 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
+				if _, err := directory.GetSystemSnapshotPath(); err != nil {
+					return err
+				}
+
 				if _, err := directory.GetEsptoolPath(); err != nil {
 					return err
 				}
+
+				if err := copySnapshotsIntoCache(); err != nil {
+					return err
+				}
+
 				fmt.Println("Jaguar setup is valid.")
 				return nil
 			}
@@ -165,7 +174,58 @@ func downloadESP32Image(ctx context.Context, version string) error {
 		return fmt.Errorf("failed to extract the ESP32 image, reason: %w", err)
 	}
 	gzipReader.Close()
+
+	if err := copySnapshotsIntoCache(); err != nil {
+		return err
+	}
+
 	fmt.Println("Successfully installed ESP32 image into", imagePath)
+	return nil
+}
+
+func copySnapshotIntoCache(path string) error {
+	uuid, err := GetUuid(path)
+	if err != nil {
+		return err
+	}
+
+	cacheDirectory, err := directory.GetSnapshotsCachePath()
+	if err != nil {
+		return err
+	}
+
+	source, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(filepath.Join(cacheDirectory, uuid.String()+".snapshot"))
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
+}
+
+func copySnapshotsIntoCache() error {
+	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+	if err != nil {
+		return err
+	}
+	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
+		return err
+	}
+
+	systemSnapshotPath, err := directory.GetSystemSnapshotPath()
+	if err != nil {
+		return err
+	}
+	if err := copySnapshotIntoCache(systemSnapshotPath); err != nil {
+		return err
+	}
 	return nil
 }
 

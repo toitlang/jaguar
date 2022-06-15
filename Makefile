@@ -30,8 +30,12 @@ BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
 
 JAG_BINARY := jag$(EXE_SUFFIX)
 
+# The default ("all") target is deliberately not used on the
+# continuous builders, so we do not need to worry about failing
+# the setup check there.
 .PHONY: all
 all: jag image
+	$(BUILD_DIR)/$(JAG_BINARY) setup --check
 
 .PHONY: jag
 jag: $(BUILD_DIR)/$(JAG_BINARY)
