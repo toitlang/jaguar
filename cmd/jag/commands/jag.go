@@ -69,6 +69,7 @@ func JagCmd(info Info) *cobra.Command {
 		DecodeCmd(),
 		SetupCmd(info),
 		FlashCmd(),
+		FirmwareCmd(),
 		MonitorCmd(),
 		WatchCmd(),
 		PortCmd(),

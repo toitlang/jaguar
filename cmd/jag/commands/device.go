@@ -33,10 +33,11 @@ func (d Devices) Elements() []Short {
 }
 
 type Device struct {
-	ID       string `mapstructure:"id" yaml:"id" json:"id"`
-	Name     string `mapstructure:"name" yaml:"name" json:"name"`
-	Address  string `mapstructure:"address" yaml:"address" json:"address"`
-	WordSize int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
+	ID         string `mapstructure:"id" yaml:"id" json:"id"`
+	Name       string `mapstructure:"name" yaml:"name" json:"name"`
+	Address    string `mapstructure:"address" yaml:"address" json:"address"`
+	SDKVersion string `mapstructure:"sdkVersion" yaml:"sdkVersion" json:"sdkVersion"`
+	WordSize   int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
 }
 
 func (d Device) String() string {
@@ -71,6 +72,26 @@ func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
 
 func (d Device) Run(ctx context.Context, sdk *SDK, b []byte) error {
 	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/code", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID)
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	io.ReadAll(res.Body) // Avoid closing connection prematurely.
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("got non-OK from device: %s", res.Status)
+	}
+
+	return nil
+}
+
+func (d Device) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
+	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/firmware", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

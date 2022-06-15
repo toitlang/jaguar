@@ -5,9 +5,8 @@
 package commands
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,15 +16,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
-
-type binaryConfig struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-	Wifi struct {
-		Password string `json:"password"`
-		SSID     string `json:"ssid"`
-	} `json:"wifi"`
-}
 
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -96,11 +86,6 @@ func FlashCmd() *cobra.Command {
 				wifiPassword = string(pw)
 			}
 
-			sdk, err := GetSDK(ctx)
-			if err != nil {
-				return err
-			}
-
 			esptoolPath, err := directory.GetEsptoolPath()
 			if err != nil {
 				return err
@@ -111,76 +96,32 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
-			if err != nil {
-				return err
-			}
-
-			configFile, err := os.CreateTemp("", "*.json")
-			if err != nil {
-				return err
-			}
-			defer os.Remove(configFile.Name())
-
-			var config binaryConfig
-			config.Name = name
-			config.ID = id.String()
-			config.Wifi.Password = wifiPassword
-			config.Wifi.SSID = wifiSSID
-			if err := json.NewEncoder(configFile).Encode(config); err != nil {
-				configFile.Close()
-				return err
-			}
-			configFile.Close()
-
-			toitBin := filepath.Join(esp32BinPath, "toit.bin")
-
-			binTmpFile, err := os.CreateTemp("", "*.bin")
+			binTmpFile, err := BuildFirmwareImage(ctx, id.String(), name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
 			defer os.Remove(binTmpFile.Name())
 
-			binFile, err := os.Open(toitBin)
-			if err != nil {
-				binTmpFile.Close()
-				return err
-			}
-
-			_, err = io.Copy(binTmpFile, binFile)
-			binTmpFile.Close()
-			binFile.Close()
+			// Create a file with zap bytes (0xff) for clearing the OTA data partition.
+			zappedOtaDataFile, err := os.CreateTemp("", "*.otadata")
 			if err != nil {
 				return err
 			}
+			defer os.Remove(zappedOtaDataFile.Name())
 
-			injectCmd := sdk.ToitRun(ctx, sdk.InjectConfigPath(), configFile.Name(), "--unique_id", id.String(), binTmpFile.Name())
-			injectCmd.Stderr = os.Stderr
-			injectCmd.Stdout = os.Stdout
-			if err := injectCmd.Run(); err != nil {
-				return err
-			}
-
-			jaguarImageFile, err := os.CreateTemp("", "*.image")
+			_, err = zappedOtaDataFile.Write(bytes.Repeat([]byte{0xff}, 0x2000))
 			if err != nil {
 				return err
 			}
-			defer os.Remove(jaguarImageFile.Name())
-
-			snapshotToImageCmd := sdk.ToitRun(ctx, sdk.SnapshotToImagePath(), "--unique_id", id.String(), "-m32", "--binary", "--offset=0x0", "--output", jaguarImageFile.Name(), jaguarSnapshotPath)
-			snapshotToImageCmd.Stderr = os.Stderr
-			snapshotToImageCmd.Stdout = os.Stdout
-			if err := snapshotToImageCmd.Run(); err != nil {
-				return err
-			}
+			zappedOtaDataFile.Close()
 
 			flashArgs := []string{
 				"--chip", "esp32", "--port", port, "--baud", strconv.Itoa(int(baud)), "--before", "default_reset", "--after", "hard_reset", "write_flash", "-z", "--flash_mode", "dio",
 				"--flash_freq", "40m", "--flash_size", "detect",
 				"0x001000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
 				"0x008000", filepath.Join(esp32BinPath, "partitions.bin"),
+				"0x00d000", zappedOtaDataFile.Name(), // Force bootloader to boot from OTA 0.
 				"0x010000", binTmpFile.Name(),
-				"0x250000", jaguarImageFile.Name(),
 			}
 
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)

@@ -14,6 +14,7 @@ import uuid
 import monitor
 
 import system.containers
+import system.firmware
 
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
@@ -112,11 +113,7 @@ install_program program_size/int reader/reader.Reader -> none:
     images := containers.images
     jaguar := containers.current
     images.do: | id/uuid.Uuid |
-      // TODO(kasper): For now, we have to filter out the system
-      // process (NIL). It probably shouldn't be listed. Either way,
-      // the system image should react gracefully when someone tries
-      // to uninstall it.
-      if id != jaguar and id != uuid.NIL:
+      if id != jaguar:
         containers.uninstall id
 
     logger.debug "installing program with $program_size bytes"
@@ -131,6 +128,22 @@ install_program program_size/int reader/reader.Reader -> none:
     logger.info "starting program $program"
     containers.start program
 
+install_firmware firmware_size/int reader/reader.Reader -> none:
+  with_timeout --ms=120_000: install_mutex.do:
+    logger.info "installing firmware with $firmware_size bytes"
+    written_size := 0
+    writer := firmware.FirmwareWriter 0 firmware_size
+    last := null
+    while data := reader.read:
+      written_size += data.size
+      writer.write data
+      percent := (written_size * 100) / firmware_size
+      if percent != last:
+        logger.info "installing firmware with $firmware_size bytes ($percent%)"
+        last = percent
+    writer.commit
+    logger.info "installed firmware; rebooting"
+
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   socket := network.udp_open
   socket.broadcast = true
@@ -140,6 +153,7 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
       "payload": {
         "name": name,
         "id": id.stringify,
+        "sdkVersion": vm_sdk_version,
         "address": address,
         "wordSize": BYTES_PER_WORD,
       }
@@ -163,16 +177,27 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid:
       logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
       writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
 
-    // Validate SDK version.
+    // Handle pings.
+    else if request.path == "/ping" and request.method == "GET":
+      writer.write
+          json.encode {"status": "OK"}
+
+    // Handle firmware updates.
+    else if request.path == "/firmware" and request.method == "PUT":
+      install_firmware request.content_length request.body
+      writer.write
+          json.encode {"status": "OK"}
+      writer.detach.close  // Close connection nicely before rebooting.
+      sleep --ms=500
+      esp32.deep_sleep (Duration --ms=10)
+
+    // Validate SDK version before attempting to run code.
     else if sdk_version_header != vm_sdk_version:
       logger.info "denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
       writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
 
+    // Handle code running.
     else if request.path == "/code" and request.method == "PUT":
       install_program request.content_length request.body
       writer.write
-        json.encode {"status": "success"}
-
-    else if request.path == "/ping" and request.method == "GET":
-      writer.write
-        json.encode {"status": "OK"}
+          json.encode {"status": "OK"}
