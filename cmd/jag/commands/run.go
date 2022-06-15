@@ -137,18 +137,22 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			cacheSnapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+			cacheDestination := filepath.Join(snapshotsCache, programId.String()+".snapshot")
 
 			// Copy the snapshot into the cache dir so it is available for
-			// decoding stack traces etc.
-			if cacheSnapshot != snapshot {
-				dest, err := ioutil.TempFile(snapshotsCache, "jag_snapshot")
+			// decoding stack traces etc.  We want to add it to the cache in
+			// an atomic rename, but atomic renames only work within a single
+			// filesystem/mount point.  So we have to do this in two steps,
+			// first copying to a temp file in the cache dir, then renaming
+			// in that directory.
+			if cacheDestination != snapshot {
+				tempFileInCacheDirectory, err := ioutil.TempFile(snapshotsCache, "jag_snapshot")
 				if err != nil {
 					fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
 					return err
 				}
-				defer dest.Close()
-				defer os.Remove(dest.Name())
+				defer tempFileInCacheDirectory.Close()
+				defer os.Remove(tempFileInCacheDirectory.Name())
 
 				source, err := os.Open(snapshot)
 				if err != nil {
@@ -156,20 +160,20 @@ func RunCmd() *cobra.Command {
 					return err
 				}
 				defer source.Close()
-				defer dest.Close()
+				defer tempFileInCacheDirectory.Close()
 
-				_, err = io.Copy(dest, source)
+				_, err = io.Copy(tempFileInCacheDirectory, source)
 				if err != nil {
-					fmt.Printf("Failed to write '%s'n", dest.Name())
+					fmt.Printf("Failed to write '%s'n", tempFileInCacheDirectory.Name())
 					return err
 				}
-				source.Close()
+				tempFileInCacheDirectory.Close()
 
 				// Atomic move so no other process can see a half-written snapshot file.
-				err = os.Rename(dest.Name(), cacheSnapshot)
+				err = os.Rename(tempFileInCacheDirectory.Name(), cacheDestination)
 			}
 
-			b, err := sdk.Build(ctx, device, cacheSnapshot)
+			b, err := sdk.Build(ctx, device, cacheDestination)
 			if err != nil {
 				// We assume the error has been printed.
 				// Mark the command as silent to avoid printing the error twice.
