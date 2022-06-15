@@ -14,6 +14,7 @@ import uuid
 import monitor
 
 import system.containers
+import system.firmware
 
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
@@ -127,6 +128,22 @@ install_program program_size/int reader/reader.Reader -> none:
     logger.info "starting program $program"
     containers.start program
 
+install_firmware firmware_size/int reader/reader.Reader -> none:
+  with_timeout --ms=120_000: install_mutex.do:
+    logger.info "installing firmware with $firmware_size bytes"
+    written_size := 0
+    writer := firmware.FirmwareWriter 0 firmware_size
+    last := null
+    while data := reader.read:
+      written_size += data.size
+      writer.write data
+      percent := (written_size * 100) / firmware_size
+      if percent != last:
+        logger.info "installing firmware with $firmware_size bytes ($percent%)"
+        last = percent
+    writer.commit
+    logger.info "installed firmware; rebooting"
+
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   socket := network.udp_open
   socket.broadcast = true
@@ -164,6 +181,15 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid:
     else if request.path == "/ping" and request.method == "GET":
       writer.write
           json.encode {"status": "OK"}
+
+    // Handle firmware updates.
+    else if request.path == "/firmware" and request.method == "PUT":
+      install_firmware request.content_length request.body
+      writer.write
+          json.encode {"status": "OK"}
+      writer.detach.close  // Close connection nicely before rebooting.
+      sleep --ms=500
+      esp32.deep_sleep (Duration --ms=10)
 
     // Validate SDK version before attempting to run code.
     else if sdk_version_header != vm_sdk_version:

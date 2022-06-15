@@ -90,6 +90,26 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte) error {
 	return nil
 }
 
+func (d Device) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
+	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/firmware", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID)
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	io.ReadAll(res.Body) // Avoid closing connection prematurely.
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("got non-OK from device: %s", res.Status)
+	}
+
+	return nil
+}
+
 func GetDevice(ctx context.Context, cfg *viper.Viper, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (*Device, error) {
 	manualPick := deviceSelect != nil
 	if cfg.IsSet("device") && !manualPick {
