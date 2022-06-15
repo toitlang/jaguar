@@ -5,13 +5,57 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/blakesmith/ar"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
+
+// Get the UUID out of a snapshot file, which is an ar archive.
+func GetUuid(filename string) (uuid.UUID, error) {
+	source, err := os.Open(filename)
+	if err != nil {
+		fmt.Printf("Failed to open '%s'n", filename)
+		return uuid.Nil, err
+	}
+	reader := ar.NewReader(source)
+	readAtLeastOneEntry := false
+	for {
+		header, err := reader.Next()
+		if err != nil {
+			if readAtLeastOneEntry {
+				fmt.Printf("Did not include UUID: '%s'n", filename)
+			} else {
+				fmt.Printf("Not a snapshot file: '%s'n", filename)
+			}
+			return uuid.Nil, err
+		}
+		if header.Name == "uuid" {
+			raw_uuid := make([]byte, 16)
+			bytes_read := 0
+			for bytes_read < 16 {
+				delta_bytes_read, err := reader.Read(raw_uuid[bytes_read:])
+				if err != nil {
+					return uuid.Nil, err
+				}
+				bytes_read += delta_bytes_read
+			}
+			if bytes_read != 16 {
+				fmt.Printf("UUID in snapshot too short: '%s'n", filename)
+				return uuid.Nil, errors.New("Not enough bytes in UUID")
+			}
+			return uuid.FromBytes(raw_uuid)
+		}
+	}
+}
 
 func RunCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -60,17 +104,76 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snapshot := filepath.Join(snapshotsCache, device.ID+".snapshot")
 
-			err = sdk.Compile(ctx, snapshot, entrypoint)
+			var snapshot string = ""
+
+			if strings.HasSuffix(entrypoint, ".snapshot") || strings.HasSuffix(entrypoint, ".snap") {
+				snapshot = entrypoint
+			} else {
+				// We are running a toit file, so we need to compile it to a
+				// snapshot first.
+				tempdir, err := ioutil.TempDir("", "jag_run")
+				if err != nil {
+					return err
+				}
+				defer os.RemoveAll(tempdir)
+
+				snapshotFile, err := ioutil.TempFile(tempdir, "jag_snapshot")
+				if err != nil {
+					return err
+				}
+				snapshot = snapshotFile.Name()
+				err = sdk.Compile(ctx, snapshot, entrypoint)
+				if err != nil {
+					// We assume the error has been printed.
+					// Mark the command as silent to avoid printing the error twice.
+					cmd.SilenceErrors = true
+					return err
+				}
+			}
+
+			programId, err := GetUuid(snapshot)
 			if err != nil {
-				// We assume the error has been printed.
-				// Mark the command as silent to avoid printing the error twice.
-				cmd.SilenceErrors = true
 				return err
 			}
 
-			b, err := sdk.Build(ctx, device, snapshot)
+			cacheDestination := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+
+			// Copy the snapshot into the cache dir so it is available for
+			// decoding stack traces etc.  We want to add it to the cache in
+			// an atomic rename, but atomic renames only work within a single
+			// filesystem/mount point.  So we have to do this in two steps,
+			// first copying to a temp file in the cache dir, then renaming
+			// in that directory.
+			if cacheDestination != snapshot {
+				tempFileInCacheDirectory, err := ioutil.TempFile(snapshotsCache, "jag_snapshot")
+				if err != nil {
+					fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
+					return err
+				}
+				defer tempFileInCacheDirectory.Close()
+				defer os.Remove(tempFileInCacheDirectory.Name())
+
+				source, err := os.Open(snapshot)
+				if err != nil {
+					fmt.Printf("Failed to read '%s'n", snapshot)
+					return err
+				}
+				defer source.Close()
+				defer tempFileInCacheDirectory.Close()
+
+				_, err = io.Copy(tempFileInCacheDirectory, source)
+				if err != nil {
+					fmt.Printf("Failed to write '%s'n", tempFileInCacheDirectory.Name())
+					return err
+				}
+				tempFileInCacheDirectory.Close()
+
+				// Atomic move so no other process can see a half-written snapshot file.
+				err = os.Rename(tempFileInCacheDirectory.Name(), cacheDestination)
+			}
+
+			b, err := sdk.Build(ctx, device, cacheDestination)
 			if err != nil {
 				// We assume the error has been printed.
 				// Mark the command as silent to avoid printing the error twice.
