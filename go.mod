@@ -13,6 +13,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/segmentio/backo-go v1.0.0 // indirect
+	github.com/setanta314/ar v0.0.0-20190524173558-797cd0c6714c
 	github.com/spf13/viper v1.9.0
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90
 	github.com/toitlang/tpkg v0.0.0-20220208100452-339a2ab582da
