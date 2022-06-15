@@ -133,7 +133,7 @@ func GetESP32ImagePath() (string, error) {
 	return imagePath, nil
 }
 
-func GetJaguarSnapshotPath() (string, error) {
+func getImageSnapshotPath(name string) (string, error) {
 	_, ok := os.LookupEnv(ToitRepoPathEnv)
 	if ok {
 		// We assume that the jag executable is inside the build directory of
@@ -143,19 +143,27 @@ func GetJaguarSnapshotPath() (string, error) {
 			return "", err
 		}
 		dir := path.Dir(execPath)
-		return filepath.Join(dir, "image", "jaguar.snapshot"), nil
+		return filepath.Join(dir, "image", name), nil
 	}
 
 	imagePath, err := GetESP32ImagePath()
 	if err != nil {
 		return "", err
 	}
-	snapshotPath := filepath.Join(imagePath, "jaguar.snapshot")
+	snapshotPath := filepath.Join(imagePath, name)
 
 	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
 		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the Jaguar snapshot using 'jag setup'", snapshotPath)
 	}
 	return snapshotPath, nil
+}
+
+func GetJaguarSnapshotPath() (string, error) {
+	return getImageSnapshotPath("jaguar.snapshot")
+}
+
+func GetSystemSnapshotPath() (string, error) {
+	return getImageSnapshotPath("system.snapshot")
 }
 
 func GetEsptoolCachePath() (string, error) {

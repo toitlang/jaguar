@@ -124,6 +124,8 @@ func validateESP32Image() error {
 		filepath.Join(esp32BinPath, "toit.bin"),
 		filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
 		filepath.Join(esp32BinPath, "partitions.bin"),
+		filepath.Join(esp32BinPath, "jaguar.snapshot"),
+		filepath.Join(esp32BinPath, "system.snapshot"),
 	}
 	for _, p := range paths {
 		if err := checkFilepath(p, "invalid ESP32 image"); err != nil {
@@ -165,8 +167,52 @@ func downloadESP32Image(ctx context.Context, version string) error {
 		return fmt.Errorf("failed to extract the ESP32 image, reason: %w", err)
 	}
 	gzipReader.Close()
+
+	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+	if err != nil {
+		return err
+	}
+	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
+		return err
+	}
+
+	systemSnapshotPath, err := directory.GetSystemSnapshotPath()
+	if err != nil {
+		return err
+	}
+	if err := copySnapshotIntoCache(systemSnapshotPath); err != nil {
+		return err
+	}
+
 	fmt.Println("Successfully installed ESP32 image into", imagePath)
 	return nil
+}
+
+func copySnapshotIntoCache(path string) error {
+	uuid, err := GetUuid(path)
+	if err != nil {
+		return err
+	}
+
+	cacheDirectory, err := directory.GetSnapshotsCachePath()
+	if err != nil {
+		return err
+	}
+
+	source, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(filepath.Join(cacheDirectory, uuid.String()+".snapshot"))
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }
 
 func downloadEsptool(ctx context.Context, version string) error {
