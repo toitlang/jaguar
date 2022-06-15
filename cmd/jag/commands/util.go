@@ -180,7 +180,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byt
 		bits = "-m64"
 	}
 
-	buildImage := s.ToitRun(ctx, s.SnapshotToImagePath(), "--binary", bits, snapshot, image.Name())
+	buildImage := s.ToitRun(ctx, s.SnapshotToImagePath(), "--binary", bits, "--output", image.Name(), snapshot)
 	buildImage.Stderr = os.Stderr
 	buildImage.Stdout = os.Stdout
 	if err := buildImage.Run(); err != nil {
