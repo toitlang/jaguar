@@ -101,6 +101,8 @@ image: $(BUILD_DIR)/image/bootloader/bootloader.bin
 image: $(BUILD_DIR)/image/partitions.bin
 image: $(BUILD_DIR)/image/system.snapshot
 image: $(BUILD_DIR)/image/jaguar.snapshot
+image: $(BUILD_DIR)/$(JAG_BINARY)
+	$(BUILD_DIR)/$(JAG_BINARY) setup --check
 
 .PHONY: install-esp-idf
 install-esp-idf:
