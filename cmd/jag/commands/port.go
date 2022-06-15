@@ -55,7 +55,7 @@ func PortCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(PortSetCmd())
-	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
+	cmd.Flags().BoolP("list", "l", false, "If set, list the ports")
 	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
 	cmd.Flags().Bool("all", false, "if set, will show all available ports")
 	return cmd
