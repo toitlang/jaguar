@@ -12,8 +12,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/setanta314/ar"
 	"github.com/google/uuid"
+	"github.com/setanta314/ar"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
@@ -119,101 +119,109 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
-
-			snapshotsCache, err := directory.GetSnapshotsCachePath()
-			if err != nil {
-				return err
-			}
-
-			var snapshot string = ""
-
-			if IsSnapshot(entrypoint) {
-				snapshot = entrypoint
-			} else {
-				// We are running a toit file, so we need to compile it to a
-				// snapshot first.
-				tempdir, err := ioutil.TempDir("", "jag_run")
-				if err != nil {
-					return err
-				}
-				defer os.RemoveAll(tempdir)
-
-				snapshotFile, err := ioutil.TempFile(tempdir, "jag_run_*.snapshot")
-				if err != nil {
-					return err
-				}
-				snapshot = snapshotFile.Name()
-				err = sdk.Compile(ctx, snapshot, entrypoint)
-				if err != nil {
-					// We assume the error has been printed.
-					// Mark the command as silent to avoid printing the error twice.
-					cmd.SilenceErrors = true
-					return err
-				}
-			}
-
-			programId, err := GetUuid(snapshot)
-			if err != nil {
-				return err
-			}
-
-			cacheDestination := filepath.Join(snapshotsCache, programId.String()+".snapshot")
-
-			// Copy the snapshot into the cache dir so it is available for
-			// decoding stack traces etc.  We want to add it to the cache in
-			// an atomic rename, but atomic renames only work within a single
-			// filesystem/mount point.  So we have to do this in two steps,
-			// first copying to a temp file in the cache dir, then renaming
-			// in that directory.
-			if cacheDestination != snapshot {
-				tempFileInCacheDirectory, err := ioutil.TempFile(snapshotsCache, "jag_run_*.snapshot")
-				if err != nil {
-					fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
-					return err
-				}
-				defer tempFileInCacheDirectory.Close()
-				defer os.Remove(tempFileInCacheDirectory.Name())
-
-				source, err := os.Open(snapshot)
-				if err != nil {
-					fmt.Printf("Failed to read '%s'n", snapshot)
-					return err
-				}
-				defer source.Close()
-				defer tempFileInCacheDirectory.Close()
-
-				_, err = io.Copy(tempFileInCacheDirectory, source)
-				if err != nil {
-					fmt.Printf("Failed to write '%s'n", tempFileInCacheDirectory.Name())
-					return err
-				}
-				tempFileInCacheDirectory.Close()
-
-				// Atomic move so no other process can see a half-written snapshot file.
-				err = os.Rename(tempFileInCacheDirectory.Name(), cacheDestination)
-			}
-
-			b, err := sdk.Build(ctx, device, cacheDestination)
-			if err != nil {
-				// We assume the error has been printed.
-				// Mark the command as silent to avoid printing the error twice.
-				cmd.SilenceErrors = true
-				return err
-			}
-
-			if err := device.Run(ctx, sdk, b); err != nil {
-				fmt.Println("Error:", err)
-				// We just printed the error.
-				// Mark the command as silent to avoid printing the error twice.
-				cmd.SilenceErrors = true
-				return err
-			}
-			fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
-			return nil
+			return RunFile(cmd, device, sdk, entrypoint)
 		},
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
 	return cmd
+}
+
+func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string) error {
+	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
+	ctx := cmd.Context()
+
+	snapshotsCache, err := directory.GetSnapshotsCachePath()
+	if err != nil {
+		return err
+	}
+
+	var snapshot string = ""
+
+	if IsSnapshot(path) {
+		snapshot = path
+	} else {
+		// We are running a toit file, so we need to compile it to a
+		// snapshot first.
+		tempdir, err := ioutil.TempDir("", "jag_run")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(tempdir)
+
+		snapshotFile, err := ioutil.TempFile(tempdir, "jag_run_*.snapshot")
+		if err != nil {
+			return err
+		}
+		snapshot = snapshotFile.Name()
+		err = sdk.Compile(ctx, snapshot, path)
+		if err != nil {
+			// We assume the error has been printed.
+			// Mark the command as silent to avoid printing the error twice.
+			cmd.SilenceErrors = true
+			return err
+		}
+	}
+
+	programId, err := GetUuid(snapshot)
+	if err != nil {
+		return err
+	}
+
+	cacheDestination := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+
+	// Copy the snapshot into the cache dir so it is available for
+	// decoding stack traces etc.  We want to add it to the cache in
+	// an atomic rename, but atomic renames only work within a single
+	// filesystem/mount point.  So we have to do this in two steps,
+	// first copying to a temp file in the cache dir, then renaming
+	// in that directory.
+	if cacheDestination != snapshot {
+		tempFileInCacheDirectory, err := ioutil.TempFile(snapshotsCache, "jag_run_*.snapshot")
+		if err != nil {
+			fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
+			return err
+		}
+		defer tempFileInCacheDirectory.Close()
+		defer os.Remove(tempFileInCacheDirectory.Name())
+
+		source, err := os.Open(snapshot)
+		if err != nil {
+			fmt.Printf("Failed to read '%s'n", snapshot)
+			return err
+		}
+		defer source.Close()
+		defer tempFileInCacheDirectory.Close()
+
+		_, err = io.Copy(tempFileInCacheDirectory, source)
+		if err != nil {
+			fmt.Printf("Failed to write '%s'n", tempFileInCacheDirectory.Name())
+			return err
+		}
+		tempFileInCacheDirectory.Close()
+
+		// Atomic move so no other process can see a half-written snapshot file.
+		err = os.Rename(tempFileInCacheDirectory.Name(), cacheDestination)
+		if err != nil {
+			return err
+		}
+	}
+
+	b, err := sdk.Build(ctx, device, cacheDestination)
+	if err != nil {
+		// We assume the error has been printed.
+		// Mark the command as silent to avoid printing the error twice.
+		cmd.SilenceErrors = true
+		return err
+	}
+
+	if err := device.Run(ctx, sdk, b); err != nil {
+		fmt.Println("Error:", err)
+		// We just printed the error.
+		// Mark the command as silent to avoid printing the error twice.
+		cmd.SilenceErrors = true
+		return err
+	}
+	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
+	return nil
 }
