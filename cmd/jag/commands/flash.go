@@ -17,15 +17,6 @@ import (
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
-type binaryConfig struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-	Wifi struct {
-		Password string `json:"password"`
-		SSID     string `json:"ssid"`
-	} `json:"wifi"`
-}
-
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "flash",

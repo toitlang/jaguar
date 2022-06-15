@@ -14,6 +14,15 @@ import (
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
+type binaryConfig struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+	Wifi struct {
+		Password string `json:"password"`
+		SSID     string `json:"ssid"`
+	} `json:"wifi"`
+}
+
 func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
 	if err != nil {

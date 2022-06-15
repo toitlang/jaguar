@@ -33,10 +33,11 @@ func (d Devices) Elements() []Short {
 }
 
 type Device struct {
-	ID       string `mapstructure:"id" yaml:"id" json:"id"`
-	Name     string `mapstructure:"name" yaml:"name" json:"name"`
-	Address  string `mapstructure:"address" yaml:"address" json:"address"`
-	WordSize int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
+	ID         string `mapstructure:"id" yaml:"id" json:"id"`
+	Name       string `mapstructure:"name" yaml:"name" json:"name"`
+	Address    string `mapstructure:"address" yaml:"address" json:"address"`
+	SDKVersion string `mapstructure:"sdkVersion" yaml:"sdkVersion" json:"sdkVersion"`
+	WordSize   int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
 }
 
 func (d Device) String() string {
