@@ -18,19 +18,33 @@ import (
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
-// Checks whether a file is a snapshot file.  Actually only checks for an ar
+// Checks whether a file is a snapshot file.  Starts by checking for an ar
 // file, since snapshot files are ar files.
 func IsSnapshot(filename string) bool {
 	file, err := os.Open(filename)
 	if err != nil {
 		return false
 	}
+	defer file.Close()
 	magic_sequence := make([]byte, 8)
 	_, err = io.ReadAtLeast(file, magic_sequence, 8)
 	if err != nil {
 		return false
 	}
-	return bytes.Compare(magic_sequence, []byte("!<arch>\n")) == 0
+	if bytes.Compare(magic_sequence, []byte("!<arch>\n")) != 0 {
+		return false
+	}
+
+	file.Seek(0, io.SeekStart)
+	reader := ar.NewReader(file)
+	header, err := reader.Next()
+	if err != nil {
+		return false
+	}
+	if header.Name != "toit" {
+		return false
+	}
+	return true
 }
 
 // Get the UUID out of a snapshot file, which is an ar archive.
