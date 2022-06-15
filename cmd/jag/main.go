@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	date       = "2022-06-07T09:30:34Z"
-	version    = "v1.1.3"
-	sdkVersion = "v2.0.0-alpha.3"
+	date       = "2022-06-15T08:55:58Z"
+	version    = "v0.0.1-pre.269"
+	sdkVersion = "v1.7.0-pre.347+6d529ac"
 )
 
 func main() {
