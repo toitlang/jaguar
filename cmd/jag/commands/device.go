@@ -92,11 +92,11 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte) error {
 	return nil
 }
 
-// A Reader shim that prints a progress bar.
+// A Reader based on a byte array that prints a progress bar.
 type ProgressReader struct {
 	b         []byte
 	index     int
-	spinstate int
+	spinState int
 }
 
 func NewProgressReader(b []byte) *ProgressReader {
@@ -131,19 +131,19 @@ func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
 		parts = todoParts
 	}
 	spinStates := utf8.RuneCountInString(spin)
-	done_bytes_per_part := len(done) / parts
-	todo_bytes_per_part := len(todo) / parts
-	spin_bytes_per_part := len(spin) / spinStates
+	doneBytesPerPart := len(done) / parts
+	todoBytesPerPart := len(todo) / parts
+	spinBytesPerPart := len(spin) / spinStates
 
 	pos := percent / (100 / parts)
-	p.spinstate += spin_bytes_per_part
-	if p.spinstate == len(spin) {
-		p.spinstate = 0
+	p.spinState += spinBytesPerPart
+	if p.spinState == len(spin) {
+		p.spinState = 0
 	}
-	spinChar := spin[p.spinstate : p.spinstate+spin_bytes_per_part]
+	spinChar := spin[p.spinState : p.spinState+spinBytesPerPart]
 	fmt.Printf("   %3d%%  %4dk  %s  [", percent, p.index>>10, spinChar)
-	fmt.Printf(done[len(done)-pos*done_bytes_per_part:])
-	fmt.Printf(todo[:len(todo)-pos*todo_bytes_per_part])
+	fmt.Printf(done[len(done)-pos*doneBytesPerPart:])
+	fmt.Printf(todo[:len(todo)-pos*todoBytesPerPart])
 	fmt.Printf("] ")
 	return copied, nil
 }
