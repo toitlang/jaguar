@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/viper"
 )
@@ -90,13 +92,72 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte) error {
 	return nil
 }
 
+// A Reader shim that prints a progress bar.
+type ProgressReader struct {
+	b         []byte
+	index     int
+	spinstate int
+}
+
+func NewProgressReader(b []byte) *ProgressReader {
+	return &ProgressReader{b, 0, 0}
+}
+
+func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
+	first := p.index == 0
+	if p.index == len(p.b) {
+		return 0, io.EOF
+	}
+	copied := copy(buffer, p.b[p.index:])
+	p.index += copied
+	percent := (p.index * 100) / len(p.b)
+	if !first {
+		fmt.Printf("\r")
+	}
+	// The strings must contain characters with the same UTF-8 length so that
+	// they can be chopped up.  The emoji generally are 4-byte characters.
+	// Braille are 3-byte characters, and or course ASCII is 1-byte characters.
+	spin := "⠁⠂⠄⡀⢀⠠⠐⠈"
+	done := "🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱"
+	todo := "--------------------------------------------------"
+	if os.PathSeparator == '\\' { // Windows.
+		spin = "/-\\|"
+		done = "################### jaguar #######################"
+	}
+
+	parts := utf8.RuneCountInString(done)
+	todoParts := utf8.RuneCountInString(todo)
+	if todoParts < parts {
+		parts = todoParts
+	}
+	spinStates := utf8.RuneCountInString(spin)
+	done_bytes_per_part := len(done) / parts
+	todo_bytes_per_part := len(todo) / parts
+	spin_bytes_per_part := len(spin) / spinStates
+
+	pos := percent / (100 / parts)
+	p.spinstate += spin_bytes_per_part
+	if p.spinstate == len(spin) {
+		p.spinstate = 0
+	}
+	spinChar := spin[p.spinstate : p.spinstate+spin_bytes_per_part]
+	fmt.Printf("   %3d%%  %4dk  %s  [", percent, p.index>>10, spinChar)
+	fmt.Printf(done[len(done)-pos*done_bytes_per_part:])
+	fmt.Printf(todo[:len(todo)-pos*todo_bytes_per_part])
+	fmt.Printf("] ")
+	return copied, nil
+}
+
 func (d Device) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
-	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/firmware", bytes.NewReader(b))
+	var reader = NewProgressReader(b)
+	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/firmware", reader)
 	if err != nil {
 		return err
 	}
+	req.ContentLength = int64(len(b))
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
+	defer fmt.Printf("\n\n")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

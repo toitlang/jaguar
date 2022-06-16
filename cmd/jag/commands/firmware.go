@@ -139,7 +139,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Updating firmware on '%s' to version '%s' ...\n", device.Name, sdk.Version)
+			fmt.Printf("Updating firmware on '%s' to version '%s'.\n\n", device.Name, sdk.Version)
 			return device.UpdateFirmware(ctx, sdk, bin)
 		},
 	}
