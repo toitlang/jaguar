@@ -135,16 +135,19 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
     logger.info "installing firmware with $firmware_size bytes"
     written_size := 0
     writer := firmware.FirmwareWriter 0 firmware_size
-    last := null
-    while data := reader.read:
-      written_size += data.size
-      writer.write data
-      percent := (written_size * 100) / firmware_size
-      if percent != last:
-        logger.info "installing firmware with $firmware_size bytes ($percent%)"
-        last = percent
-    writer.commit
-    logger.info "installed firmware; rebooting"
+    try:
+      last := null
+      while data := reader.read:
+        written_size += data.size
+        writer.write data
+        percent := (written_size * 100) / firmware_size
+        if percent != last:
+          logger.info "installing firmware with $firmware_size bytes ($percent%)"
+          last = percent
+      writer.commit
+      logger.info "installed firmware; rebooting"
+    finally:
+      writer.close
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   payload ::= json.encode {
