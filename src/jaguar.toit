@@ -72,9 +72,10 @@ run id/uuid.Uuid name/string port/int:
   network/net.Interface? := null
   error := null
 
+  socket/tcp.ServerSocket? := null
   try:
     network = net.open
-    socket/tcp.ServerSocket := network.tcp_listen port
+    socket = network.tcp_listen port
     address := "http://$network.address:$socket.local_address.port"
     logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
 
@@ -88,7 +89,7 @@ run id/uuid.Uuid name/string port/int:
       finally:
         server_task = null
         if broadcast_task: broadcast_task.cancel
-        done.up
+        critical_do: done.up
 
     broadcast_task = task::
       try:
@@ -96,12 +97,13 @@ run id/uuid.Uuid name/string port/int:
       finally:
         broadcast_task = null
         if server_task: server_task.cancel
-        done.up
+        critical_do: done.up
 
     // Wait for both tasks to finish.
     2.repeat: done.down
 
   finally:
+    if socket: socket.close
     if network: network.close
     if error: throw error
 
@@ -148,26 +150,27 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
       writer.close
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
-  socket := network.udp_open
-  socket.broadcast = true
-  msg := udp.Datagram
-    json.encode {
-      "method": "jaguar.identify",
-      "payload": {
-        "name": name,
-        "id": id.stringify,
-        "sdkVersion": vm_sdk_version,
-        "address": address,
-        "wordSize": BYTES_PER_WORD,
-      }
+  payload ::= json.encode {
+    "method": "jaguar.identify",
+    "payload": {
+      "name": name,
+      "id": id.stringify,
+      "sdkVersion": vm_sdk_version,
+      "address": address,
+      "wordSize": BYTES_PER_WORD,
     }
-    net.SocketAddress
-      IDENTIFY_ADDRESS
-      IDENTIFY_PORT
-
-  while true:
-    socket.send msg
-    sleep --ms=200
+  }
+  datagram ::= udp.Datagram
+      payload
+      net.SocketAddress IDENTIFY_ADDRESS IDENTIFY_PORT
+  socket := network.udp_open
+  try:
+    socket.broadcast = true
+    while not network.is_closed:
+      socket.send datagram
+      sleep --ms=200
+  finally:
+    socket.close
 
 serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid:
   server := http.Server --logger=logger
