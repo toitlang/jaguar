@@ -104,16 +104,13 @@ func NewProgressReader(b []byte) *ProgressReader {
 }
 
 func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
-	first := p.index == 0
 	if p.index == len(p.b) {
 		return 0, io.EOF
 	}
 	copied := copy(buffer, p.b[p.index:])
 	p.index += copied
 	percent := (p.index * 100) / len(p.b)
-	if !first {
-		fmt.Printf("\r")
-	}
+	fmt.Print("\r")
 	// The strings must contain characters with the same UTF-8 length so that
 	// they can be chopped up.  The emoji generally are 4-byte characters.
 	// Braille are 3-byte characters, and or course ASCII is 1-byte characters.
@@ -142,9 +139,9 @@ func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
 	}
 	spinChar := spin[p.spinState : p.spinState+spinBytesPerPart]
 	fmt.Printf("   %3d%%  %4dk  %s  [", percent, p.index>>10, spinChar)
-	fmt.Printf(done[len(done)-pos*doneBytesPerPart:])
-	fmt.Printf(todo[:len(todo)-pos*todoBytesPerPart])
-	fmt.Printf("] ")
+	fmt.Print(done[len(done)-pos*doneBytesPerPart:])
+	fmt.Print(todo[:len(todo)-pos*todoBytesPerPart])
+	fmt.Print("] ")
 	return copied, nil
 }
 
@@ -157,7 +154,7 @@ func (d Device) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
 	req.ContentLength = int64(len(b))
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	defer fmt.Printf("\n\n")
+	defer fmt.Print("\n\n")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
