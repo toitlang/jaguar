@@ -65,7 +65,7 @@ func WatchCmd() *cobra.Command {
 			}
 			defer watcher.Close()
 
-			waitCh, fn := onWatchChanges(ctx, watcher, device, sdk, entrypoint)
+			waitCh, fn := onWatchChanges(cmd, watcher, device, sdk, entrypoint)
 			go fn()
 
 			<-waitCh
@@ -156,8 +156,9 @@ func parseDependeniesToDirs(b []byte) []string {
 	return res
 }
 
-func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *SDK, entrypoint string) (<-chan struct{}, func()) {
+func onWatchChanges(cmd *cobra.Command, watcher *watcher, device *Device, sdk *SDK, entrypoint string) (<-chan struct{}, func()) {
 	doneCh := make(chan struct{})
+	ctx := cmd.Context()
 
 	updateWatcher := func(runCtx context.Context) {
 		var paths []string
@@ -187,16 +188,10 @@ func onWatchChanges(ctx context.Context, watcher *watcher, device *Device, sdk *
 	}
 
 	runOnDevice := func(runCtx context.Context) {
-		fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
-		b, err := sdk.Build(runCtx, device, entrypoint)
-		if err != nil {
-			return
-		}
-		if err := device.Run(runCtx, sdk, b); err != nil {
+		if err := RunFile(cmd, device, sdk, entrypoint); err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
-		fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
 	}
 
 	firstCtx, previousCancel := context.WithCancel(ctx)

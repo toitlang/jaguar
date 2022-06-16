@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
@@ -128,7 +129,12 @@ func FirmwareUpdateCmd() *cobra.Command {
 				}
 				wifiPassword = string(pw)
 			}
-			binTmpFile, err := BuildFirmwareImage(ctx, device.ID, device.Name, wifiSSID, wifiPassword)
+
+			// We need to generate a new ID for the device, so entries in
+			// the device flash stored by an older version are invalidated.
+			newID := uuid.New().String()
+
+			binTmpFile, err := BuildFirmwareImage(ctx, newID, device.Name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
@@ -139,8 +145,16 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Updating firmware on '%s' to version '%s' ...\n", device.Name, sdk.Version)
-			return device.UpdateFirmware(ctx, sdk, bin)
+			fmt.Printf("Updating firmware on '%s' to Toit SDK %s\n\n", device.Name, sdk.Version)
+			if err := device.UpdateFirmware(ctx, sdk, bin); err != nil {
+				return err
+			}
+
+			// Update the device ID and store it back, so users don't have to scan and
+			// ping before they can use the device after the firmware update.
+			device.ID = newID
+			cfg.Set("device", device)
+			return cfg.WriteConfig()
 		},
 	}
 
