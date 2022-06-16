@@ -119,7 +119,7 @@ func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
 	todo := "--------------------------------------------------"
 	if os.PathSeparator == '\\' { // Windows.
 		spin = "/-\\|"
-		done = "################### jaguar #######################"
+		done = "################### Jaguar #######################"
 	}
 
 	parts := utf8.RuneCountInString(done)

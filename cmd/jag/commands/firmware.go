@@ -145,7 +145,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Updating firmware on '%s' to Toit SDK %s.\n\n", device.Name, sdk.Version)
+			fmt.Printf("Updating firmware on '%s' to Toit SDK %s\n\n", device.Name, sdk.Version)
 			if err := device.UpdateFirmware(ctx, sdk, bin); err != nil {
 				return err
 			}
