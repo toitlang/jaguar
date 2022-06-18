@@ -67,7 +67,9 @@ serve arguments:
     // If we need to validate the firmware and we've failed to do so
     // in the first round of attempts, we roll back to the previous
     // firmware right away.
-    if validate_firmware: firmware.rollback
+    if validate_firmware:
+      logger.error "firmware update was rejected after failing to connect or validate"
+      firmware.rollback
     backoff := Duration --s=5
     logger.info "backing off for $backoff"
     sleep backoff
@@ -90,9 +92,10 @@ run id/uuid.Uuid name/string port/int:
     // firmware if requested to do so.
     if validate_firmware:
       if firmware.validate:
+        logger.info "firmware update validated after connecting to network"
         validate_firmware = false
       else:
-        logger.error "failed to validate firmware"
+        logger.error "firmware update failed to validate"
 
     // We run two tasks concurrently: One broadcasts the device identity
     // via UDP and one serves incoming HTTP requests. If one of the tasks
