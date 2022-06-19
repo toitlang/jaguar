@@ -150,9 +150,12 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			// Update the device ID and store it back, so users don't have to scan and
-			// ping before they can use the device after the firmware update.
+			// Update the device ID and the SDK version and store them back, so users don't
+			// have to scan and ping before they can use the device after the firmware update.
+			// If the update failed or if the device got a new IP address after rebooting, we
+			// will have to ping again.
 			device.ID = newID
+			device.SDKVersion = sdk.Version
 			cfg.Set("device", device)
 			return cfg.WriteConfig()
 		},

@@ -16,52 +16,60 @@ import monitor
 import system.containers
 import system.firmware
 
+HTTP_PORT ::= 9000
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
+
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
 
-HTTP_PORT ::= 9000
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
+validate_firmware / bool := firmware.is_validation_pending
 
-main args:
+main arguments:
   try:
-    exception := catch --trace: serve args
+    exception := catch --trace: serve arguments
     logger.error "rebooting due to $(exception)"
   finally:
     esp32.deep_sleep (Duration --s=1)
 
-serve args:
+serve arguments:
   port := HTTP_PORT
-  if args.size >= 1:
-    port = int.parse args[0]
+  if arguments.size >= 1:
+    port = int.parse arguments[0]
 
   image_config := {:}
   if platform == PLATFORM_FREERTOS:
     image_config = esp32.image_config or {:}
 
   id/uuid.Uuid := uuid.NIL
-  if args.size >= 2:
-    id = uuid.parse args[1]
+  if arguments.size >= 2:
+    id = uuid.parse arguments[1]
   else:
     id = image_config.get "id"
       --if_absent=: id
       --if_present=: uuid.parse it
 
   name/string := "unknown"
-  if args.size >= 3:
-    name = args[2]
+  if arguments.size >= 3:
+    name = arguments[2]
   else:
     name = image_config.get "name" --if_absent=: name
 
   while true:
+    attempts ::= 3
     failures := 0
-    attempts := 3
     while failures < attempts:
       exception := catch: run id name port
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
+    // If we need to validate the firmware and we've failed to do so
+    // in the first round of attempts, we roll back to the previous
+    // firmware right away.
+    if validate_firmware:
+      logger.error "firmware update was rejected after failing to connect or validate"
+      firmware.rollback
     backoff := Duration --s=5
     logger.info "backing off for $backoff"
     sleep backoff
@@ -78,6 +86,16 @@ run id/uuid.Uuid name/string port/int:
     socket = network.tcp_listen port
     address := "http://$network.address:$socket.local_address.port"
     logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
+
+    // We've successfully connected to the network, so we consider
+    // the current firmware functional. Go ahead and validate the
+    // firmware if requested to do so.
+    if validate_firmware:
+      if firmware.validate:
+        logger.info "firmware update validated after connecting to network"
+        validate_firmware = false
+      else:
+        logger.error "firmware update failed to validate"
 
     // We run two tasks concurrently: One broadcasts the device identity
     // via UDP and one serves incoming HTTP requests. If one of the tasks
