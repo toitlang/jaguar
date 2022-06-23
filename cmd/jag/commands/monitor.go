@@ -65,6 +65,7 @@ func MonitorCmd() *cobra.Command {
 			postponed := []string{}
 
 			for scanner.Scan() {
+				// Get next line from serial port.
 				line := scanner.Text()
 				if _, contains := POSTPONED_LINES[line]; contains {
 					postponed = append(postponed, line)
