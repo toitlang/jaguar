@@ -5,9 +5,11 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -21,6 +23,12 @@ func MonitorCmd() *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			POSTPONED_LINES := map[string]bool{
+				"----": true,
+				"Received a Toit stack trace. Executing the command below will": true,
+				"make it human readable:": true,
+			}
+
 			port, err := cmd.Flags().GetString("port")
 			if err != nil {
 				return err
@@ -52,8 +60,38 @@ func MonitorCmd() *cobra.Command {
 				dev.Reboot()
 			}
 
-			_, err = io.Copy(os.Stdout, dev)
-			return err
+			scanner := bufio.NewScanner(dev)
+
+			postponed := []string{}
+
+			for scanner.Scan() {
+				// Get next line from serial port.
+				line := scanner.Text()
+				if _, contains := POSTPONED_LINES[line]; contains {
+					postponed = append(postponed, line)
+				} else {
+					if strings.HasPrefix(line, "jag decode ") {
+						if err := jagDecode(cmd, line[11:]); err != nil {
+							if len(postponed) != 0 {
+								fmt.Println(strings.Join(postponed, "\n"))
+								postponed = []string{}
+							}
+							fmt.Println(line)
+							fmt.Println("jag monitor: failed to decode line - serial line corruption?")
+						} else {
+							postponed = []string{}
+						}
+					} else {
+						if len(postponed) != 0 {
+							fmt.Println(strings.Join(postponed, "\n"))
+							postponed = []string{}
+						}
+						fmt.Println(line)
+					}
+				}
+			}
+
+			return scanner.Err()
 		},
 	}
 
