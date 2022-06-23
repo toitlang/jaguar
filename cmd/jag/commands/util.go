@@ -90,6 +90,10 @@ func (s *SDK) InjectConfigPath() string {
 	return filepath.Join(s.Path, "snapshots", "inject_config.snapshot")
 }
 
+func (s *SDK) StacktracePath() string {
+	return filepath.Join(s.Path, "snapshots", "stacktrace.snapshot")
+}
+
 func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	if !skipSDKVersionCheck {
 		if s.Version == "" {
