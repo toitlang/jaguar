@@ -68,15 +68,15 @@ func MonitorCmd() *cobra.Command {
 			for scanner.Scan() {
 				// Get next line from serial port.
 				line := scanner.Text()
-				if strings.HasPrefix(line, "[toit] <v") && strings.HasSuffix(line, ">") {
-					Version = line[8 : len(line)-1]
+				if strings.HasPrefix(line, "[toit] Starting <v") && strings.HasSuffix(line, ">") {
+					Version = line[17 : len(line)-1]
 				}
 				if _, contains := POSTPONED_LINES[line]; contains {
 					postponed = append(postponed, line)
 				} else {
 					if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
 						if Version != "" {
-							fmt.Printf("\njag decode <%s>\n", Version)
+							fmt.Printf("\nDecoded by `jag monitor` <%s>\n", Version)
 						}
 						if err := serialDecode(cmd, line); err != nil {
 							if len(postponed) != 0 {
