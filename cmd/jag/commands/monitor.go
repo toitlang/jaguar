@@ -23,6 +23,7 @@ func MonitorCmd() *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			Version := ""
 			POSTPONED_LINES := map[string]bool{
 				"----": true,
 				"Received a Toit stack trace. Executing the command below will": true,
@@ -67,10 +68,16 @@ func MonitorCmd() *cobra.Command {
 			for scanner.Scan() {
 				// Get next line from serial port.
 				line := scanner.Text()
+				if strings.HasPrefix(line, "[toit] Starting <v") && strings.HasSuffix(line, ">") {
+					Version = line[17 : len(line)-1]
+				}
 				if _, contains := POSTPONED_LINES[line]; contains {
 					postponed = append(postponed, line)
 				} else {
 					if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
+						if Version != "" {
+							fmt.Printf("\nDecoded by `jag monitor` <%s>\n", Version)
+						}
 						if err := serialDecode(cmd, line); err != nil {
 							if len(postponed) != 0 {
 								fmt.Println(strings.Join(postponed, "\n"))
