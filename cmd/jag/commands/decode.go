@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
@@ -27,10 +29,20 @@ func DecodeCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return jagDecode(cmd, args[0])
+			return serialDecode(cmd, args[0])
 		},
 	}
 	return cmd
+}
+
+func serialDecode(cmd *cobra.Command, message string) error {
+	if strings.HasPrefix(message, "jag decode ") {
+		return jagDecode(cmd, message[11:])
+	} else if strings.HasPrefix(message, "Backtrace:") {
+		return crashDecode(cmd, message)
+	} else {
+		return fmt.Errorf("Could not decode %s", message)
+	}
 }
 
 func jagDecode(cmd *cobra.Command, base64Message string) error {
@@ -94,8 +106,36 @@ func jagDecode(cmd *cobra.Command, base64Message string) error {
 		return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
 	}
 
-	decodeCmd := sdk.ToitRun(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", base64Message)
-	decodeCmd.Stderr = os.Stderr
-	decodeCmd.Stdout = os.Stdout
-	return decodeCmd.Run()
+	decodeCommand := sdk.ToitRun(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", base64Message)
+	decodeCommand.Stderr = os.Stderr
+	decodeCommand.Stdout = os.Stdout
+	return decodeCommand.Run()
+}
+
+func crashDecode(cmd *cobra.Command, backtrace string) error {
+	ctx := cmd.Context()
+	sdk, err := GetSDK(ctx)
+	if err != nil {
+		return err
+	}
+
+	elf, err := directory.GetESP32ImagePath()
+	if err != nil {
+		return err
+	}
+	elf = filepath.Join(elf, "toit.elf")
+
+	objdump, err := exec.LookPath("xtensa-esp32-elf-objdump")
+	if err != nil {
+		objdump, err = exec.LookPath("objdump")
+	}
+	if err != nil {
+		return err
+	}
+	stacktraceCommand := sdk.ToitRun(ctx, sdk.StacktracePath(), "--objdump", objdump, "--backtrace", backtrace, elf)
+	stacktraceCommand.Stderr = os.Stderr
+	stacktraceCommand.Stdout = os.Stdout
+	fmt.Println("Crash in native code:")
+	fmt.Printf("Backtrace:%s", backtrace)
+	return stacktraceCommand.Run()
 }

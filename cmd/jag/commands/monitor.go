@@ -70,14 +70,14 @@ func MonitorCmd() *cobra.Command {
 				if _, contains := POSTPONED_LINES[line]; contains {
 					postponed = append(postponed, line)
 				} else {
-					if strings.HasPrefix(line, "jag decode ") {
-						if err := jagDecode(cmd, line[11:]); err != nil {
+					if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
+						if err := serialDecode(cmd, line); err != nil {
 							if len(postponed) != 0 {
 								fmt.Println(strings.Join(postponed, "\n"))
 								postponed = []string{}
 							}
 							fmt.Println(line)
-							fmt.Println("jag monitor: failed to decode line - serial line corruption?")
+							fmt.Println("jag monitor: Failed to decode line.")
 						} else {
 							postponed = []string{}
 						}
