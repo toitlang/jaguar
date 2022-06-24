@@ -136,6 +136,6 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 	stacktraceCommand.Stderr = os.Stderr
 	stacktraceCommand.Stdout = os.Stdout
 	fmt.Println("Crash in native code:")
-	fmt.Printf("Backtrace:%s", backtrace)
+	fmt.Println(backtrace)
 	return stacktraceCommand.Run()
 }
