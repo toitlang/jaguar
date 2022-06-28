@@ -41,7 +41,7 @@ func serialDecode(cmd *cobra.Command, message string) error {
 	} else if strings.HasPrefix(message, "Backtrace:") {
 		return crashDecode(cmd, message)
 	} else {
-		return fmt.Errorf("Could not decode %s", message)
+		return jagDecode(cmd, message)
 	}
 }
 
