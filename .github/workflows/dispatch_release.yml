@@ -2,6 +2,8 @@ name: Update homebrew
 
 on:
   release:
+    # Note that edited doesn't trigger when the prerelease flag is changed.
+    # One would also need to change the description slightly.
     types: [ released, edited ]
 
 jobs:
