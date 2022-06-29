@@ -68,15 +68,19 @@ func MonitorCmd() *cobra.Command {
 			for scanner.Scan() {
 				// Get next line from serial port.
 				line := scanner.Text()
-				if strings.HasPrefix(line, "[toit] Starting <v") && strings.HasSuffix(line, ">") {
-					Version = line[17 : len(line)-1]
+				versionPrefix := "[toit] INFO: starting <v"
+				if strings.HasPrefix(line, versionPrefix) && strings.HasSuffix(line, ">") {
+					Version = line[len(versionPrefix) : len(line)-1]
 				}
 				if _, contains := POSTPONED_LINES[line]; contains {
 					postponed = append(postponed, line)
 				} else {
+					separator := strings.Repeat("*", 78)
 					if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
+						fmt.Printf("\n" + separator + "\n")
 						if Version != "" {
-							fmt.Printf("\nDecoded by `jag monitor` <%s>\n", Version)
+							fmt.Printf("Decoded by `jag monitor` <%s>\n", Version)
+							fmt.Printf(separator + "\n")
 						}
 						if err := serialDecode(cmd, line); err != nil {
 							if len(postponed) != 0 {
@@ -88,6 +92,7 @@ func MonitorCmd() *cobra.Command {
 						} else {
 							postponed = []string{}
 						}
+						fmt.Printf(separator + "\n\n")
 					} else {
 						if len(postponed) != 0 {
 							fmt.Println(strings.Join(postponed, "\n"))
