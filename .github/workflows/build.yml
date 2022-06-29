@@ -3,7 +3,7 @@ name: Build
 on:
   push:
   release:
-    types: [published]
+    types: [published, edited]
 
 jobs:
   build_jag:
@@ -57,7 +57,7 @@ jobs:
   sign_jag_windows:
     runs-on: windows-signing
     needs: [build_jag]
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
       - uses: actions/checkout@v2
 
@@ -123,7 +123,7 @@ jobs:
     name: Publish winget package
     runs-on: windows-latest
     needs: [sign_jag_windows]
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
       - name: Version number
         id: version

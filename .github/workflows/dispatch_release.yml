@@ -2,11 +2,12 @@ name: Update homebrew
 
 on:
   release:
-    types: [ released ]
+    types: [ released, edited ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
