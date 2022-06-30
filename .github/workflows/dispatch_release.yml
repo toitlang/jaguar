@@ -2,11 +2,15 @@ name: Update homebrew
 
 on:
   release:
-    types: [ released ]
+    # Note that edited doesn't trigger when the prerelease flag is changed.
+    # You also have to change the description slightly, if you want to change a
+    # prerelease to a release.
+    types: [ released, edited ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
