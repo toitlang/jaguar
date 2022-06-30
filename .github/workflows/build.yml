@@ -64,7 +64,7 @@ jobs:
   sign_jag_windows:
     runs-on: windows-signing
     needs: [build_jag]
-    if: github.event_name == 'release' && !github.event.release.prerelease
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v2
 
