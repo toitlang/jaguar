@@ -14,7 +14,6 @@ endif
 
 GO_SOURCE := $(shell find cmd -name '*.go')
 TOIT_SOURCE := $(shell find src -name '*.toit') package.lock package.yaml
-
 JAG_TOIT_REPO_PATH ?= $(CURDIR)/third_party/toit
 
 TOIT_PATH := $(JAG_TOIT_REPO_PATH)
