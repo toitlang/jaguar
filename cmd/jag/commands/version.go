@@ -10,16 +10,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func VersionCmd(info Info) *cobra.Command {
+func VersionCmd(info Info, isReleaseBuild bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "version",
 		Short:        "Prints the version of Jaguar",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Version:\t", info.Version)
-			fmt.Println("SDK version:\t", info.SDKVersion)
-			fmt.Println("Build date:\t", info.Date)
+			version := "---"
+			sdkVersion := "unknown"
+			buildDate := "---"
+
+			if isReleaseBuild {
+				version = info.Version
+				sdkVersion = info.SDKVersion
+				buildDate = info.Date
+			} else {
+				ctx := cmd.Context()
+				sdk, _ := GetSDK(ctx)
+				if sdk.Version != "" {
+					sdkVersion = sdk.Version
+				}
+			}
+
+			fmt.Println("Version:\t", version)
+			fmt.Println("SDK version:\t", sdkVersion)
+			fmt.Println("Build date:\t", buildDate)
 		},
 	}
 	return cmd

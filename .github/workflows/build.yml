@@ -17,7 +17,11 @@ jobs:
           go-version: 1.16
 
       - name: Build jag
+        shell: bash
         run: |
+          if [[ "${{ github.event_name }}" = "release" ]]; then
+            export JAG_BUILD_RELEASE=1
+          fi
           GOOS=linux make JAG_BINARY=linux/jag jag
           GOOS=darwin make JAG_BINARY=macos/jag jag
           GOOS=windows make JAG_BINARY=windows/jag.exe jag

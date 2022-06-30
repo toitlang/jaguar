@@ -52,6 +52,9 @@ update-jag-info: $(BUILD_DIR)
 
 GO_BUILD_FLAGS := CGO_ENABLED=1 GODEBUG=netdns=go
 GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
+ifdef JAG_BUILD_RELEASE
+GO_LINK_FLAGS += -X 'main.buildMode=release'
+endif
 
 $(BUILD_DIR)/$(JAG_BINARY): $(GO_SOURCE) $(BUILD_DIR)
 	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
