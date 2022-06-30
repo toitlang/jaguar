@@ -4,7 +4,8 @@ on:
   push:
   release:
     # Note that edited doesn't trigger when the prerelease flag is changed.
-    # One would also need to change the description slightly.
+    # You also have to change the description slightly, if you want to change a
+    # prerelease to a release.
     types: [published, edited]
 
 jobs:
