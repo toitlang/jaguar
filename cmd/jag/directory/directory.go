@@ -29,6 +29,9 @@ const (
 	WifiPasswordEnv = "JAG_WIFI_PASSWORD"
 )
 
+// Hackishly set by main.go.
+var IsReleaseBuild = false
+
 func GetWorkspacePath() (string, error) {
 	path, ok := os.LookupEnv(WorkspacePathEnv)
 	if ok {
@@ -86,10 +89,17 @@ func GetSnapshotsCachePath() (string, error) {
 	return ensureDirectory(filepath.Join(home, ".cache", "jaguar", "snapshots"), nil)
 }
 
+func getRepoPath() (string, bool) {
+	if IsReleaseBuild {
+		return "", false
+	}
+	return os.LookupEnv(ToitRepoPathEnv)
+}
+
 func GetSDKPath() (string, error) {
-	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
+	repoPath, ok := getRepoPath()
 	if ok {
-		return filepath.Join(toitRepoPath, "build", "host", "sdk"), nil
+		return filepath.Join(repoPath, "build", "host", "sdk"), nil
 	}
 	sdkCachePath, err := GetSDKCachePath()
 	if err != nil {
@@ -118,9 +128,9 @@ func GetESP32ImageCachePath() (string, error) {
 }
 
 func GetESP32ImagePath() (string, error) {
-	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
+	repoPath, ok := getRepoPath()
 	if ok {
-		return filepath.Join(toitRepoPath, "build", "esp32"), nil
+		return filepath.Join(repoPath, "build", "esp32"), nil
 	}
 
 	imagePath, err := GetESP32ImageCachePath()
@@ -134,7 +144,7 @@ func GetESP32ImagePath() (string, error) {
 }
 
 func getImageSnapshotPath(name string) (string, error) {
-	_, ok := os.LookupEnv(ToitRepoPathEnv)
+	_, ok := getRepoPath()
 	if ok {
 		// We assume that the jag executable is inside the build directory of
 		// the Jaguar repository.
@@ -175,9 +185,9 @@ func GetEsptoolCachePath() (string, error) {
 }
 
 func GetEsptoolPath() (string, error) {
-	toitRepoPath, ok := os.LookupEnv(ToitRepoPathEnv)
+	repoPath, ok := getRepoPath()
 	if ok {
-		return filepath.Join(toitRepoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
+		return filepath.Join(repoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
 	}
 
 	cachePath, err := GetEsptoolCachePath()

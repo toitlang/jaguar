@@ -32,7 +32,7 @@ func GetInfo(ctx context.Context) Info {
 	return ctx.Value(ctxKeyInfo).(Info)
 }
 
-func JagCmd(info Info) *cobra.Command {
+func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 	analyticsClient, err := analytics.GetClient()
 	if err != nil {
 		panic(err)
@@ -47,12 +47,18 @@ func JagCmd(info Info) *cobra.Command {
 			"the application on your device, and restart it all within seconds. No need to flash over\n" +
 			"serial, reboot your device, or wait for it to reconnect to your network.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			properties := segment.Properties{
+				"jaguar":  true,
+				"command": (*cobra.Command)(cmd).UseLine(),
+			}
+
+			if isReleaseBuild {
+				properties.Set("version", info.Version)
+			}
+
 			go analyticsClient.Enqueue(segment.Page{
-				Name: "CLI Execute",
-				Properties: segment.Properties{
-					"command": (*cobra.Command)(cmd).UseLine(),
-					"jaguar":  true,
-				},
+				Name:       "CLI Execute",
+				Properties: properties,
 			})
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
@@ -76,7 +82,7 @@ func JagCmd(info Info) *cobra.Command {
 		ToitCmd(),
 		PkgCmd(info, analyticsClient),
 		ConfigCmd(),
-		VersionCmd(info),
+		VersionCmd(info, isReleaseBuild),
 	)
 	return cmd
 }
