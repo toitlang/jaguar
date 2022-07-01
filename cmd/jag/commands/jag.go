@@ -6,6 +6,7 @@ package commands
 
 import (
 	"context"
+	"runtime"
 
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/analytics"
@@ -48,12 +49,15 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 			"serial, reboot your device, or wait for it to reconnect to your network.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			properties := segment.Properties{
-				"jaguar":  true,
-				"command": (*cobra.Command)(cmd).UseLine(),
+				"jaguar":   true,
+				"command":  (*cobra.Command)(cmd).UseLine(),
+				"platform": runtime.GOOS,
 			}
 
 			if isReleaseBuild {
 				properties.Set("version", info.Version)
+			} else {
+				properties.Set("version", "development")
 			}
 
 			go analyticsClient.Enqueue(segment.Page{
