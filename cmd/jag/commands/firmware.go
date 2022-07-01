@@ -30,9 +30,10 @@ type binaryConfig struct {
 func FirmwareCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "firmware",
-		Short: "Show firmware for a Jaguar device",
-		Long: "Show the firmware version for a Jaguar device. The device\n" +
-			"reports the version information when it responds to pings.",
+		Short: "Show or update firmware for a Jaguar device",
+		Long: "Without the 'update' command show the firmware version for a Jaguar device.\n" +
+			"The device reports the version information when it responds to pings.\n\n" +
+			"With the 'update' command update the firmware of a Jaguar device via WiFi.",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
