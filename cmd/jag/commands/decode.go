@@ -52,6 +52,39 @@ func jagDecode(cmd *cobra.Command, base64Message string) error {
 		return err
 	}
 
+    equalsIndex := strings.Index(base64Message, "=")
+    if equalsIndex != -1 && !strings.HasSuffix(base64Message, "=") {
+        // The = symbols that optionally indicate the end of the base64
+        // encoding are not at the end.  Let's trim the junk off the end.
+        if base64Message[equalsIndex + 1] == '=' {
+            // There might be two = signs at the end.
+            equalsIndex++
+        }
+        base64Message = base64Message[0:equalsIndex + 1]
+    } else {
+        // Try to trim, based on the first index of something that is not
+        // allowed in base64 encoding.
+        i := 0
+        for ; i < len(base64Message); i++ {
+            c := base64Message[i]
+            if 'a' <= c && c <= 'z' {
+                continue
+            }
+            if 'A' <= c && c <= 'Z' {
+                continue
+            }
+            if '0' <= c && c <= '9' {
+                continue
+            }
+            if c == '+' || c == '/' || c == '=' {
+                continue
+            }
+            break
+        }
+        base64Message = base64Message[0:i]
+    }
+    fmt.Printf("Trimmed: '%s'\n", base64Message)
+
 	message, err := base64.StdEncoding.DecodeString(base64Message)
 	if err != nil {
 		return err
