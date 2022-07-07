@@ -8,8 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/manifoldco/promptui"
@@ -18,22 +21,30 @@ import (
 )
 
 const (
-	scanTimeout = 600 * time.Millisecond
-	scanPort    = 1990
+	scanTimeout  = 600 * time.Millisecond
+	scanPort     = 1990
+	scanHttpPort = 9000
 )
 
 func ScanCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "scan",
+		Use:   "scan [address]",
 		Short: "Scan for Jaguar devices",
-		Long: "Scan for Jaguar devices by listening for UDP packets broadcasted by the devices.\n" +
-			"To use a Jaguar device, you need to be on the same network as the device.",
-		Args: cobra.NoArgs,
+		Long: "Scan for Jaguar devices.\n" +
+			"Unless an address is given, listen for UDP packets broadcasted by the devices.\n" +
+			"In that case the you need to be on the same network as the device.\n" +
+			"If an address is given, tries to connect to it using TCP.",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			cfg, err := directory.GetWorkspaceConfig()
 			if err != nil {
 				return err
+			}
+
+			addr := ""
+			if len(args) == 1 {
+				addr = args[0]
 			}
 
 			port, err := cmd.Flags().GetUint("port")
@@ -52,17 +63,21 @@ func ScanCmd() *cobra.Command {
 			}
 
 			cmd.SilenceUsage = true
-			if outputter != nil {
+			if outputter != nil || addr != "" {
 				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-				devices, err := scan(scanCtx, port)
+				devices, err := scan(scanCtx, addr, port)
 				cancel()
 				if err != nil {
 					return err
 				}
-				return outputter.Encode(Devices{devices})
+				if outputter != nil {
+					return outputter.Encode(Devices{devices})
+				}
+				fmt.Println("Found", devices[0].Name)
+				return nil
 			}
 
-			device, _, err := scanAndPickDevice(ctx, timeout, port, nil, false)
+			device, _, err := scanAndPickDevice(ctx, timeout, addr, port, nil, false)
 			if err != nil {
 				return err
 			}
@@ -73,7 +88,7 @@ func ScanCmd() *cobra.Command {
 
 	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
 	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
-	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on")
+	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on (works only without address)")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
 	return cmd
 }
@@ -102,10 +117,10 @@ func (s deviceNameSelect) String() string {
 	return fmt.Sprintf("device with name: '%s'", string(s))
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, addr string, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
 	fmt.Println("Scanning ...")
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-	devices, err := scan(scanCtx, port)
+	devices, err := scan(scanCtx, addr, port)
 	cancel()
 	if err != nil {
 		return nil, false, err
@@ -140,7 +155,35 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	return &res, false, nil
 }
 
-func scan(ctx context.Context, port uint) ([]Device, error) {
+func scan(ctx context.Context, addr string, port uint) ([]Device, error) {
+	if addr != "" {
+		if !strings.Contains(addr, ":") {
+			addr = addr + ":" + fmt.Sprint(scanHttpPort)
+		}
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://"+addr+"/identify", nil)
+		if err != nil {
+			return nil, err
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		buf, err := io.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		if res.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
+		}
+		dev, err := parseDevice(buf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse identify. reason %w", err)
+		} else if dev == nil {
+			return nil, fmt.Errorf("invalid identify response")
+		}
+		return []Device{*dev}, nil
+	}
+
 	pc, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err

@@ -103,7 +103,7 @@ run id/uuid.Uuid name/string port/int:
     done := monitor.Semaphore
     server_task = task::
       try:
-        error = catch: serve_incoming_requests socket id
+        error = catch: serve_incoming_requests socket id name address
       finally:
         server_task = null
         if broadcast_task: broadcast_task.cancel
@@ -167,8 +167,8 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
     finally:
       writer.close
 
-broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
-  payload ::= json.encode {
+create_identification_payload id/uuid.Uuid name/string address/string -> ByteArray:
+  return json.encode {
     "method": "jaguar.identify",
     "payload": {
       "name": name,
@@ -178,6 +178,9 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
       "wordSize": BYTES_PER_WORD,
     }
   }
+
+broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
+  payload ::= create_identification_payload id name address
   datagram ::= udp.Datagram
       payload
       net.SocketAddress IDENTIFY_ADDRESS IDENTIFY_PORT
@@ -190,14 +193,19 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
   finally:
     socket.close
 
-serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid:
+serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address/string -> none:
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     device_id_header := request.headers.single DEVICE_ID_HEADER
     sdk_version_header := request.headers.single SDK_VERSION_HEADER
 
+    // Handle identification requests before validation, as the caller doesn't know that information yet.
+    if request.path == "/identify" and request.method == "GET":
+      writer.write
+          create_identification_payload id name address
+
     // Validate device ID.
-    if device_id_header != id.stringify:
+    else if device_id_header != id.stringify:
       logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
       writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
 
