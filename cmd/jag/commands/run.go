@@ -88,7 +88,7 @@ func RunCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetWorkspaceConfig()
+			cfg, err := directory.GetUserConfig()
 			if err != nil {
 				return err
 			}
