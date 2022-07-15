@@ -17,6 +17,7 @@ import (
 const (
 	// UserConfigPathEnv if set, will load the user config from that path.
 	UserConfigPathEnv    = "JAG_USER_CONFIG_PATH"
+	DeviceConfigPathEnv  = "JAG_DEVICE_CONFIG_PATH"
 	SnapshotCachePathEnv = "JAG_SNAPSHOT_CACHE_PATH"
 	configFile           = ".jaguar"
 
@@ -41,6 +42,18 @@ func GetUserConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homedir, ".config", "jaguar", "config.yaml"), nil
+}
+
+func GetDeviceConfigPath() (string, error) {
+	if path, ok := os.LookupEnv(DeviceConfigPathEnv); ok {
+		return path, nil
+	}
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homedir, ".config", "jaguar", "device.yaml"), nil
 }
 
 func GetSnapshotsCachePath() (string, error) {
@@ -188,6 +201,23 @@ func GetUserConfig() (*viper.Viper, error) {
 	if _, err := os.Stat(path); err == nil {
 		if err := cfg.ReadInConfig(); err != nil {
 			return nil, fmt.Errorf("failed to read user config: %w", err)
+		}
+	}
+	return cfg, nil
+}
+
+func GetDeviceConfig() (*viper.Viper, error) {
+	path, err := GetDeviceConfigPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get device config path: %w", err)
+	}
+
+	cfg := viper.New()
+	cfg.SetConfigType("yaml")
+	cfg.SetConfigFile(path)
+	if _, err := os.Stat(path); err == nil {
+		if err := cfg.ReadInConfig(); err != nil {
+			return nil, fmt.Errorf("failed to read device config: %w", err)
 		}
 	}
 	return cfg, nil
