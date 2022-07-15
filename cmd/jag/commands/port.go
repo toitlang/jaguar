@@ -41,7 +41,7 @@ func PortCmd() *cobra.Command {
 				return outputter.Encode(ports)
 			}
 
-			cfg, err := directory.GetWorkspaceConfig()
+			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
 			}
@@ -73,7 +73,7 @@ func PortSetCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := directory.GetWorkspaceConfig()
+			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
 			}
@@ -106,7 +106,7 @@ func PortExists(port string) (bool, error) {
 }
 
 func ConfiguredPort() string {
-	cfg, err := directory.GetWorkspaceConfig()
+	cfg, err := directory.GetDeviceConfig()
 	if err != nil {
 		return ""
 	}
@@ -122,7 +122,7 @@ func CheckPort(port string) (string, error) {
 		return port, nil
 	}
 
-	cfg, err := directory.GetWorkspaceConfig()
+	cfg, err := directory.GetDeviceConfig()
 	if err != nil {
 		return "", err
 	}

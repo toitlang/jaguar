@@ -31,7 +31,7 @@ func ScanCmd() *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			cfg, err := directory.GetWorkspaceConfig()
+			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
 			}
