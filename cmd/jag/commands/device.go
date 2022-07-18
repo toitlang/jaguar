@@ -186,7 +186,7 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, sdk *SDK, checkPing bool, 
 		}
 	}
 
-	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, scanPort, deviceSelect, manualPick)
+	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, "", scanPort, deviceSelect, manualPick)
 	if err != nil {
 		return nil, err
 	}
