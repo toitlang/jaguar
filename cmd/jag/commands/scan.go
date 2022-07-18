@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -28,12 +30,13 @@ const (
 
 func ScanCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "scan [address]",
+		Use:   "scan [device]",
 		Short: "Scan for Jaguar devices",
 		Long: "Scan for Jaguar devices.\n" +
-			"Unless an address is given, listen for UDP packets broadcasted by the devices.\n" +
-			"In that case the you need to be on the same network as the device.\n" +
-			"If an address is given, tries to connect to it using TCP.",
+			"Unless 'device' is an address, listen for UDP packets broadcasted by the devices.\n" +
+			"In that case you need to be on the same network as the device.\n" +
+			"If a device selection is given, automatically select that device.\n" +
+			"If the device selection is an address, connect to it using TCP.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -42,9 +45,9 @@ func ScanCmd() *cobra.Command {
 				return err
 			}
 
-			addr := ""
+			var autoSelect deviceSelect = nil
 			if len(args) == 1 {
-				addr = args[0]
+				autoSelect = parseDeviceSelection(args[0])
 			}
 
 			port, err := cmd.Flags().GetUint("port")
@@ -61,11 +64,24 @@ func ScanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if outputter == nil && autoSelect != nil {
+				outputter = yaml.NewEncoder(os.Stdout)
+			}
 
 			cmd.SilenceUsage = true
-			if outputter != nil || addr != "" {
+			if outputter != nil {
 				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-				devices, err := scan(scanCtx, addr, port)
+				devices := []Device{}
+				var err error
+				if autoSelect == nil {
+					devices, err = scan(scanCtx, autoSelect, port)
+				} else {
+					device, _, errPD := scanAndPickDevice(scanCtx, scanTimeout, port, autoSelect, false)
+					err = errPD
+					if device != nil {
+						devices = []Device{*device}
+					}
+				}
 				cancel()
 				if err != nil {
 					return err
@@ -73,11 +89,10 @@ func ScanCmd() *cobra.Command {
 				if outputter != nil {
 					return outputter.Encode(Devices{devices})
 				}
-				fmt.Println("Found", devices[0].Name)
 				return nil
 			}
 
-			device, _, err := scanAndPickDevice(ctx, timeout, addr, port, nil, false)
+			device, _, err := scanAndPickDevice(ctx, timeout, port, nil, false)
 			if err != nil {
 				return err
 			}
@@ -88,19 +103,24 @@ func ScanCmd() *cobra.Command {
 
 	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
 	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
-	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on (works only without address)")
+	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on (ignored when an address is given)")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
 	return cmd
 }
 
 type deviceSelect interface {
 	Match(d Device) bool
+	Address() string
 }
 
 type deviceIDSelect string
 
 func (s deviceIDSelect) Match(d Device) bool {
 	return string(s) == d.ID
+}
+
+func (s deviceIDSelect) Address() string {
+	return ""
 }
 
 func (s deviceIDSelect) String() string {
@@ -113,14 +133,40 @@ func (s deviceNameSelect) Match(d Device) bool {
 	return string(s) == d.Name
 }
 
+func (s deviceNameSelect) Address() string {
+	return ""
+}
+
 func (s deviceNameSelect) String() string {
 	return fmt.Sprintf("device with name: '%s'", string(s))
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, addr string, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
+type deviceAddressSelect string
+
+func (s deviceAddressSelect) Match(d Device) bool {
+	// The device address contains the 'http://' prefix and a port number.
+	m := string(s)
+	if !strings.HasPrefix(m, "http://") {
+		m = "http://" + m
+	}
+	if !strings.Contains(m, ":") {
+		m += ":"
+	}
+	return strings.HasPrefix(d.Address, m)
+}
+
+func (s deviceAddressSelect) Address() string {
+	return string(s)
+}
+
+func (s deviceAddressSelect) String() string {
+	return fmt.Sprintf("device with address: '%s'", string(s))
+}
+
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
 	fmt.Println("Scanning ...")
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-	devices, err := scan(scanCtx, addr, port)
+	devices, err := scan(scanCtx, autoSelect, port)
 	cancel()
 	if err != nil {
 		return nil, false, err
@@ -155,8 +201,9 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, addr stri
 	return &res, false, nil
 }
 
-func scan(ctx context.Context, addr string, port uint) ([]Device, error) {
-	if addr != "" {
+func scan(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
+	if ds != nil && ds.Address() != "" {
+		addr := ds.Address()
 		if !strings.Contains(addr, ":") {
 			addr = addr + ":" + fmt.Sprint(scanHttpPort)
 		}
