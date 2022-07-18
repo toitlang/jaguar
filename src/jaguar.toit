@@ -167,7 +167,7 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
     finally:
       writer.close
 
-create_identification_payload id/uuid.Uuid name/string address/string -> ByteArray:
+identity_payload id/uuid.Uuid name/string address/string -> ByteArray:
   return json.encode {
     "method": "jaguar.identify",
     "payload": {
@@ -180,7 +180,7 @@ create_identification_payload id/uuid.Uuid name/string address/string -> ByteArr
   }
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
-  payload ::= create_identification_payload id name address
+  payload ::= identity_payload id name address
   datagram ::= udp.Datagram
       payload
       net.SocketAddress IDENTIFY_ADDRESS IDENTIFY_PORT
@@ -202,7 +202,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
     // Handle identification requests before validation, as the caller doesn't know that information yet.
     if request.path == "/identify" and request.method == "GET":
       writer.write
-          create_identification_payload id name address
+          identity_payload id name address
 
     // Validate device ID.
     else if device_id_header != id.stringify:
