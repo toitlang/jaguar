@@ -97,38 +97,9 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			var wifiSSID string
-			if cmd.Flags().Changed("wifi-ssid") {
-				wifiSSID, err = cmd.Flags().GetString("wifi-ssid")
-				if err != nil {
-					return err
-				}
-			} else if v, ok := os.LookupEnv(directory.WifiSSIDEnv); ok {
-				wifiSSID = v
-			} else {
-				fmt.Printf("Enter WiFi network (SSID): ")
-				wifiSSID, err = ReadLine()
-				if err != nil {
-					return err
-				}
-			}
-
-			var wifiPassword string
-			if cmd.Flags().Changed("wifi-password") {
-				wifiPassword, err = cmd.Flags().GetString("wifi-password")
-				if err != nil {
-					return err
-				}
-			} else if v, ok := os.LookupEnv(directory.WifiPasswordEnv); ok {
-				wifiPassword = v
-			} else {
-				fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
-				pw, err := ReadPassword()
-				if err != nil {
-					fmt.Printf("\n")
-					return err
-				}
-				wifiPassword = string(pw)
+			wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
+			if err != nil {
+				return err
 			}
 
 			// We need to generate a new ID for the device, so entries in
@@ -162,8 +133,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 		},
 	}
 
-	// TODO(kasper): We really should be reusing the WiFi credentials.
-	cmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd

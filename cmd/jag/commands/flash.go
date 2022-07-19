@@ -52,38 +52,9 @@ func FlashCmd() *cobra.Command {
 				name = GetRandomName(id[:])
 			}
 
-			var wifiSSID string
-			if cmd.Flags().Changed("wifi-ssid") {
-				wifiSSID, err = cmd.Flags().GetString("wifi-ssid")
-				if err != nil {
-					return err
-				}
-			} else if v, ok := os.LookupEnv(directory.WifiSSIDEnv); ok {
-				wifiSSID = v
-			} else {
-				fmt.Printf("Enter WiFi network (SSID): ")
-				wifiSSID, err = ReadLine()
-				if err != nil {
-					return err
-				}
-			}
-
-			var wifiPassword string
-			if cmd.Flags().Changed("wifi-password") {
-				wifiPassword, err = cmd.Flags().GetString("wifi-password")
-				if err != nil {
-					return err
-				}
-			} else if v, ok := os.LookupEnv(directory.WifiPasswordEnv); ok {
-				wifiPassword = v
-			} else {
-				fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
-				pw, err := ReadPassword()
-				if err != nil {
-					fmt.Printf("\n")
-					return err
-				}
-				wifiPassword = string(pw)
+			wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
+			if err != nil {
+				return err
 			}
 
 			esptoolPath, err := directory.GetEsptoolPath()
@@ -134,7 +105,7 @@ func FlashCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
-	cmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	return cmd
