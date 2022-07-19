@@ -25,8 +25,27 @@ version of the program gets to start again from `main`.
 
 ## How do I use it?
 
+### Download
 Unless you want to [build Jaguar from source](#building-it-yourself), start by
-downloading and installing the `jag` binary for your host platform:
+downloading and installing the `jag` binary for your host platform.
+
+On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.com/en-us/windows/package-manager/winget/):
+```
+winget install --id=toit.jaguar -e
+```
+
+On macOS, you can use [Homebrew](https://brew.sh/) to manage the installation of `jag`:
+``` sh
+brew install toitlang/toit/jag
+```
+
+For Archlinux you can install the AUR package [jaguar-bin](https://aur.archlinux.org/packages/jaguar-bin):
+``` sh
+yay install jaguar-bin
+```
+If you see errors when upgrading with `yay` make sure to pick "cleanBuild" for the package.
+
+As alternative to these package managers, we also offer precompiled binaries for download:
 
 - [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
@@ -35,15 +54,10 @@ downloading and installing the `jag` binary for your host platform:
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
   (only as an archive)
 
-On macOS, you can also use [Homebrew](https://brew.sh/) to mange the installation of `jag`:
-
-``` sh
-brew install toitlang/toit/jag
-```
-
 If you download an archive, you should unpack it and put the embedded `jag` or `jag.exe` binary
 somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `jag.dmg` file.
 
+### Setup
 Next step is to let `jag` download and configure the Toit SDK and the associated tools for
 flashing the Jaguar application onto your ESP32:
 
@@ -51,6 +65,7 @@ flashing the Jaguar application onto your ESP32:
 jag setup
 ```
 
+### First steps
 Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
 application onto it. This will ask you for the serial port to use and the WiFi credentials:
 
@@ -77,7 +92,8 @@ If you lack a group membership, you can add it with
 sudo usermod -aG dialout $USER
 ```
 
-You will have to log out and log back in for this to take effect.
+You will have to log out and log back in for this to take effect. You can also try
+`newgrp dialout` to avoid the need to log out and log back in.
 
 ---
 
