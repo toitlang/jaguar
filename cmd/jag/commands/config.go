@@ -14,7 +14,7 @@ import (
 const (
 	WifiCfgKey         = "wifi"
 	WifiSSIDCfgKey     = "ssid"
-	WifiPasswordCfgKey = "pass"
+	WifiPasswordCfgKey = "password"
 )
 
 func ConfigCmd() *cobra.Command {
@@ -25,8 +25,6 @@ func ConfigCmd() *cobra.Command {
 
 	cmd.AddCommand(
 		ConfigAnalyticsCmd(),
-	)
-	cmd.AddCommand(
 		ConfigWifiCmd(),
 	)
 	return cmd
@@ -66,7 +64,7 @@ func ConfigWifiCmd() *cobra.Command {
 			Use:   "clear",
 			Short: "Deletes the stored WiFi credentials",
 			Args:  cobra.NoArgs,
-			RunE: func(cmd *cobra.Command, args []string) error {
+			RunE: func(_ *cobra.Command, _ []string) error {
 				cfg, err := directory.GetUserConfig()
 				if err != nil {
 					return err
@@ -86,7 +84,7 @@ func ConfigWifiCmd() *cobra.Command {
 		Use:   "set",
 		Short: "Sets the WiFi SSID and password",
 		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := directory.GetUserConfig()
 			if err != nil {
 				return err
@@ -116,7 +114,7 @@ func ConfigWifiCmd() *cobra.Command {
 }
 
 func configAnalytics(disable bool) func(*cobra.Command, []string) error {
-	return func(cmd *cobra.Command, args []string) error {
+	return func(_ *cobra.Command, _ []string) error {
 		cfg, err := directory.GetUserConfig()
 		if err != nil {
 			return err
