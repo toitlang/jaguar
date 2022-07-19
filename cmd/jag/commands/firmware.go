@@ -63,7 +63,7 @@ func FirmwareCmd() *cobra.Command {
 		},
 	}
 	cmd.AddCommand(FirmwareUpdateCmd())
-	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd
 }
 
@@ -165,7 +165,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 	// TODO(kasper): We really should be reusing the WiFi credentials.
 	cmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "default WiFi SSID")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
-	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd
 }
 

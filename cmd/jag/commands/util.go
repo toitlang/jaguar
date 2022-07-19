@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -341,10 +342,17 @@ func parseDeviceFlag(cmd *cobra.Command) (deviceSelect, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseDeviceSelection(d), nil
+}
+
+func parseDeviceSelection(d string) deviceSelect {
 	if _, err := uuid.Parse(d); err == nil {
-		return deviceIDSelect(d), nil
+		return deviceIDSelect(d)
 	}
-	return deviceNameSelect(d), nil
+	if ip := net.ParseIP(d); ip != nil {
+		return deviceAddressSelect(d)
+	}
+	return deviceNameSelect(d)
 }
 
 type shortEncoder struct {

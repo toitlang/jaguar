@@ -72,7 +72,7 @@ func WatchCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 
 	return cmd
 }
