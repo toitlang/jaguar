@@ -58,7 +58,7 @@ func ConfigAnalyticsCmd() *cobra.Command {
 func ConfigWifiCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "wifi",
-		Short: "Configure the WiFi settings of the Jaguar",
+		Short: "Configure the WiFi settings for Jaguar devices",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(
