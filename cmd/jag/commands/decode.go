@@ -83,7 +83,6 @@ func jagDecode(cmd *cobra.Command, base64Message string) error {
         }
         base64Message = base64Message[0:i]
     }
-    fmt.Printf("Trimmed: '%s'\n", base64Message)
 
 	message, err := base64.StdEncoding.DecodeString(base64Message)
 	if err != nil {
