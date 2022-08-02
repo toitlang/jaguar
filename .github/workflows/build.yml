@@ -290,9 +290,9 @@ jobs:
       - name: Version number
         id: version
         run: |
-          $versionV = "${{ github.event.release.tag_name }}"
-          $version = $versionV.Substring(1)
-          echo "::set-output name=version::$version"
+          VERSION_WITH_V = "${{ github.event.release.tag_name }}"
+          VERSION = ${VERSION_WITH_V#v}
+          echo "::set-output name=version::$VERSION"
 
       - name: Ssh
         env:
