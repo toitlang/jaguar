@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -341,10 +342,17 @@ func parseDeviceFlag(cmd *cobra.Command) (deviceSelect, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseDeviceSelection(d), nil
+}
+
+func parseDeviceSelection(d string) deviceSelect {
 	if _, err := uuid.Parse(d); err == nil {
-		return deviceIDSelect(d), nil
+		return deviceIDSelect(d)
 	}
-	return deviceNameSelect(d), nil
+	if ip := net.ParseIP(d); ip != nil {
+		return deviceAddressSelect(d)
+	}
+	return deviceNameSelect(d)
 }
 
 type shortEncoder struct {
@@ -374,4 +382,52 @@ func (s *shortEncoder) Encode(v interface{}) error {
 		fmt.Fprintln(s.w, e.Short())
 	}
 	return nil
+}
+
+func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
+	var wifiSSID string
+	var err error
+
+	cfg, err := directory.GetUserConfig()
+	if err != nil {
+		return "", "", err
+	}
+
+	if cmd.Flags().Changed("wifi-ssid") {
+		wifiSSID, err = cmd.Flags().GetString("wifi-ssid")
+		if err != nil {
+			return "", "", err
+		}
+	} else if v, ok := os.LookupEnv(directory.WifiSSIDEnv); ok {
+		wifiSSID = v
+	} else if cfg.IsSet(WifiCfgKey + "." + WifiSSIDCfgKey) {
+		wifiSSID = cfg.GetString(WifiCfgKey + "." + WifiSSIDCfgKey)
+	} else {
+		fmt.Printf("Enter WiFi network (SSID): ")
+		wifiSSID, err = ReadLine()
+		if err != nil {
+			return "", "", err
+		}
+	}
+
+	var wifiPassword string
+	if cmd.Flags().Changed("wifi-password") {
+		wifiPassword, err = cmd.Flags().GetString("wifi-password")
+		if err != nil {
+			return "", "", err
+		}
+	} else if v, ok := os.LookupEnv(directory.WifiPasswordEnv); ok {
+		wifiPassword = v
+	} else if cfg.IsSet(WifiCfgKey + "." + WifiPasswordCfgKey) {
+		wifiPassword = cfg.GetString(WifiCfgKey + "." + WifiPasswordCfgKey)
+	} else {
+		fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
+		pw, err := ReadPassword()
+		if err != nil {
+			fmt.Printf("\n")
+			return "", "", err
+		}
+		wifiPassword = string(pw)
+	}
+	return wifiSSID, wifiPassword, nil
 }

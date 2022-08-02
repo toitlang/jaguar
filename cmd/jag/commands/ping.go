@@ -17,7 +17,7 @@ func PingCmd() *cobra.Command {
 		Short:        "Ping a Jaguar device to see if it is active",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetWorkspaceConfig()
+			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
 			}
@@ -47,7 +47,7 @@ func PingCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().DurationP("timeout", "t", pingTimeout, "how long to wait for a reply")
 	return cmd
 }

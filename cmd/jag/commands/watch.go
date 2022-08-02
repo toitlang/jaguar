@@ -28,7 +28,7 @@ func WatchCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetWorkspaceConfig()
+			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func WatchCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringP("device", "d", "", "use device with a given name or id")
+	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 
 	return cmd
 }
