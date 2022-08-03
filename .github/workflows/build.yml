@@ -289,9 +289,10 @@ jobs:
 
       - name: Version number
         id: version
+        shell: bash
         run: |
-          VERSION_WITH_V = "${{ github.event.release.tag_name }}"
-          VERSION = ${VERSION_WITH_V#v}
+          VERSION_WITH_V="${{ github.event.release.tag_name }}"
+          VERSION=${VERSION_WITH_V#v}
           echo "::set-output name=version::$VERSION"
 
       - name: Ssh
