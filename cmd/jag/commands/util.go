@@ -51,7 +51,14 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 		Version: version,
 	}
 	info := GetInfo(ctx)
-	_, skipVersionCheck := os.LookupEnv(directory.ToitRepoPathEnv)
+	// If we're running a development build, we skip the SDK version checks
+	// if the SDK is pulled in through the JAG_TOIT_REPO_PATH environment
+	// variable. This make it much easier to work with. For release builds,
+	// we always check and deliberately ignore the environment variable.
+	skipVersionCheck := false
+	if !directory.IsReleaseBuild {
+		_, skipVersionCheck = os.LookupEnv(directory.ToitRepoPathEnv)
+	}
 	return res, res.validate(info, skipVersionCheck)
 }
 
