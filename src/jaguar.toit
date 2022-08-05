@@ -22,6 +22,7 @@ IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
+RUN_OPTIONS_HEADER ::= "X-Jaguar-Run-Options"
 
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
@@ -127,7 +128,7 @@ run id/uuid.Uuid name/string port/int:
 
 install_mutex ::= monitor.Mutex
 
-install_program program_size/int reader/reader.Reader -> none:
+install_program program_size/int reader/reader.Reader options/Map -> none:
   with_timeout --ms=60_000: install_mutex.do:
     // Uninstall everything but Jaguar.
     images := containers.images
@@ -145,12 +146,14 @@ install_program program_size/int reader/reader.Reader -> none:
     program := writer.commit
     logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
 
+    suffix := options.is_empty ? "" : " with $options"
+    logger.info "program $program started$suffix"
+    container ::= containers.start program
+
     task::
       // We run this code in a separate task to allow the HTTP server to
       // continue operating. This also means that the program running
       // isn't covered by the installation mutex or associated timeout.
-      logger.info "program $program started"
-      container := containers.start program
       code/int := container.wait
       if code == 0:
         logger.info "program $program stopped"
@@ -205,8 +208,9 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
 serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address/string -> none:
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
-    device_id_header := request.headers.single DEVICE_ID_HEADER
-    sdk_version_header := request.headers.single SDK_VERSION_HEADER
+    headers ::= request.headers
+    device_id_header := headers.single DEVICE_ID_HEADER
+    sdk_version_header := headers.single SDK_VERSION_HEADER
 
     // Handle identification requests before validation, as the caller doesn't know that information yet.
     if request.path == "/identify" and request.method == "GET":
@@ -239,6 +243,8 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Handle code running.
     else if request.path == "/code" and request.method == "PUT":
-      install_program request.content_length request.body
+      options_string ::= headers.single RUN_OPTIONS_HEADER
+      options/Map := options_string ? (json.parse options_string) : {:}
+      install_program request.content_length request.body options
       writer.write
           json.encode {"status": "OK"}

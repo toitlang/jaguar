@@ -119,15 +119,20 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			return RunFile(cmd, device, sdk, entrypoint)
+			runOptions, err := parseRunOptionFlags(cmd, "option")
+			if err != nil {
+				return err
+			}
+			return RunFile(cmd, device, sdk, entrypoint, runOptions)
 		},
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
+	cmd.Flags().StringArrayP("option", "D", nil, "pass run options to device")
 	return cmd
 }
 
-func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string) error {
+func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string, options string) error {
 	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
 	ctx := cmd.Context()
 
@@ -215,7 +220,7 @@ func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string) error {
 		return err
 	}
 
-	if err := device.Run(ctx, sdk, b); err != nil {
+	if err := device.Run(ctx, sdk, b, options); err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.
