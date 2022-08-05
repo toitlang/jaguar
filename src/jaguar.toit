@@ -143,10 +143,19 @@ install_program program_size/int reader/reader.Reader -> none:
       written_size += data.size
       writer.write data
     program := writer.commit
-
     logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
-    logger.info "starting program $program"
-    containers.start program
+
+    task::
+      // We run this code in a separate task to allow the HTTP server
+      // continue operating. This also means that the program running
+      // isn't covered by the installation mutex or associated timeout.
+      logger.info "program $program started"
+      container := containers.start program
+      code/int := container.wait
+      if code == 0:
+        logger.info "program $program stopped"
+      else:
+        logger.error "program $program stopped - exit code $code"
 
 install_firmware firmware_size/int reader/reader.Reader -> none:
   with_timeout --ms=120_000: install_mutex.do:
