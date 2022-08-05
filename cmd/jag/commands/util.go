@@ -70,10 +70,6 @@ func (s *SDK) ToitRunPath() string {
 	return filepath.Join(s.Path, "bin", directory.Executable("toit.run"))
 }
 
-func (s *SDK) ToitRunSnapshotPath() string {
-	return filepath.Join(s.Path, "bin", "toit.run.snapshot")
-}
-
 func (s *SDK) ToitLspPath() string {
 	return filepath.Join(s.Path, "bin", directory.Executable("toit.lsp"))
 }
@@ -129,7 +125,6 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 	paths := []string{
 		s.ToitCompilePath(),
 		s.ToitRunPath(),
-		s.ToitRunSnapshotPath(),
 		s.ToitLspPath(),
 		s.VersionPath(),
 		s.SystemMessageSnapshotPath(),
