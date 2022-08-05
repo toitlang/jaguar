@@ -16,7 +16,7 @@ require (
 	github.com/setanta314/ar v0.0.0-20190524173558-797cd0c6714c
 	github.com/spf13/viper v1.9.0
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90
-	github.com/toitlang/tpkg v0.0.0-20220208100452-339a2ab582da
+	github.com/toitlang/tpkg v0.0.0-20220727131228-5d149728b2ba
 	github.com/toitware/ubjson v0.0.0-20211207075236-aa4add2fcd1a
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.3.3
