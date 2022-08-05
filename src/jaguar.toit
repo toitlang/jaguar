@@ -146,7 +146,7 @@ install_program program_size/int reader/reader.Reader -> none:
     logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
 
     task::
-      // We run this code in a separate task to allow the HTTP server
+      // We run this code in a separate task to allow the HTTP server to
       // continue operating. This also means that the program running
       // isn't covered by the installation mutex or associated timeout.
       logger.info "program $program started"
