@@ -82,20 +82,20 @@ func (s *SDK) DownloaderInfoPath() string {
 	return filepath.Join(s.Path, "JAGUAR")
 }
 
-func (s *SDK) SystemMessageSnapshotPath() string {
-	return filepath.Join(s.Path, "snapshots", "system_message.snapshot")
+func (s *SDK) SystemMessagePath() string {
+	return filepath.Join(s.Path, "tools", directory.Executable("system_message"))
 }
 
 func (s *SDK) SnapshotToImagePath() string {
-	return filepath.Join(s.Path, "snapshots", "snapshot_to_image.snapshot")
+	return filepath.Join(s.Path, "tools", directory.Executable("snapshot_to_image"))
 }
 
 func (s *SDK) InjectConfigPath() string {
-	return filepath.Join(s.Path, "snapshots", "inject_config.snapshot")
+	return filepath.Join(s.Path, "tools", directory.Executable("inject_config"))
 }
 
 func (s *SDK) StacktracePath() string {
-	return filepath.Join(s.Path, "snapshots", "stacktrace.snapshot")
+	return filepath.Join(s.Path, "tools", directory.Executable("stacktrace"))
 }
 
 func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
@@ -127,9 +127,10 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 		s.ToitRunPath(),
 		s.ToitLspPath(),
 		s.VersionPath(),
-		s.SystemMessageSnapshotPath(),
+		s.SystemMessagePath(),
 		s.SnapshotToImagePath(),
 		s.InjectConfigPath(),
+		s.StacktracePath(),
 	}
 	for _, p := range paths {
 		if err := checkFilepath(p, "invalid Toit SDK"); err != nil {
@@ -164,6 +165,22 @@ func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
 }
 
+func (s *SDK) SnapshotToImage(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.SnapshotToImagePath(), args...)
+}
+
+func (s *SDK) SystemMessage(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.SystemMessagePath(), args...)
+}
+
+func (s *SDK) Stacktrace(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.StacktracePath(), args...)
+}
+
+func (s *SDK) InjectConfig(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.InjectConfigPath(), args...)
+}
+
 func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string) error {
 	buildSnap := s.ToitCompile(ctx, "-w", snapshot, entrypoint)
 	buildSnap.Stderr = os.Stderr
@@ -187,7 +204,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byt
 		bits = "-m64"
 	}
 
-	buildImage := s.ToitRun(ctx, s.SnapshotToImagePath(), "--binary", bits, "--output", image.Name(), snapshot)
+	buildImage := s.SnapshotToImage(ctx, "--binary", bits, "--output", image.Name(), snapshot)
 	buildImage.Stderr = os.Stderr
 	buildImage.Stdout = os.Stdout
 	if err := buildImage.Run(); err != nil {
