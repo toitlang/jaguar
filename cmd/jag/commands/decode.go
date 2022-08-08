@@ -138,7 +138,7 @@ func jagDecode(cmd *cobra.Command, base64Message string) error {
 		return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
 	}
 
-	decodeCommand := sdk.ToitRun(ctx, sdk.SystemMessageSnapshotPath(), snapshot, "-b", base64Message)
+	decodeCommand := sdk.SystemMessage(ctx, snapshot, "-b", base64Message)
 	decodeCommand.Stderr = os.Stderr
 	decodeCommand.Stdout = os.Stdout
 	return decodeCommand.Run()
@@ -164,7 +164,7 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 	if err != nil {
 		return err
 	}
-	stacktraceCommand := sdk.ToitRun(ctx, sdk.StacktracePath(), "--objdump", objdump, "--backtrace", backtrace, elf)
+	stacktraceCommand := sdk.Stacktrace(ctx, "--objdump", objdump, "--backtrace", backtrace, elf)
 	stacktraceCommand.Stderr = os.Stderr
 	stacktraceCommand.Stdout = os.Stdout
 	fmt.Println("Crash in native code:")

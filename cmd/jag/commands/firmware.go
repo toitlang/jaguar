@@ -187,7 +187,7 @@ func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID st
 		return nil, err
 	}
 
-	injectCmd := sdk.ToitRun(ctx, sdk.InjectConfigPath(), configFile.Name(), "--unique_id", id, binTmpFile.Name())
+	injectCmd := sdk.InjectConfig(ctx, configFile.Name(), "--unique_id", id, binTmpFile.Name())
 	injectCmd.Stderr = os.Stderr
 	injectCmd.Stdout = os.Stdout
 	if err := injectCmd.Run(); err != nil {
