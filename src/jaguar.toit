@@ -27,8 +27,20 @@ RUN_DEFINES_HEADER ::= "X-Jaguar-Run-Defines"
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
 
+/**
+Jaguar can run programs while Jaguar itself is disabled. You can
+  enable this behavior by using `jag run -D jag.disabled ...` when
+  starting the program. Use this mode to test how your apps behave
+  when they run with no pre-established network.
+
+We keep track of the state through the global $disabled variable and
+  we set this to true when starting a program that needs to run with
+  Jaguar disabled. In return, this makes the outer $serve loop wait
+  for the program to be done, before it re-establishes the network
+  connection and restarts the HTTP server.
+*/
 disabled / bool := false
-network_down / monitor.Semaphore ::= monitor.Semaphore
+network_free / monitor.Semaphore ::= monitor.Semaphore
 program_done / monitor.Semaphore ::= monitor.Semaphore
 
 main arguments:
@@ -67,7 +79,7 @@ serve arguments:
     while failures < attempts:
       exception := catch: run id name port
       if disabled:
-        network_down.up    // Signal to start running the program.
+        network_free.up    // Signal to start running the program.
         program_done.down  // Wait until done running the program.
         disabled = false
       if not exception: continue
@@ -183,8 +195,8 @@ install_program program_size/int reader/reader.Reader defines/Map -> none:
       // First, we wait until we're ready to run the program. Usually,
       // we are ready right away, but if we've been asked to disable
       // Jaguar while running the program, we wait until the HTTP server
-      // has been shut down.
-      if disabled: network_down.down
+      // has been shut down and the network to be free.
+      if disabled: network_free.down
 
       suffix := defines.is_empty ? "" : " with $defines"
       logger.info "program $program started$suffix"
@@ -201,8 +213,7 @@ install_program program_size/int reader/reader.Reader defines/Map -> none:
         with_timeout timeout: code = container.wait
       if not code:
         elapsed ::= Duration --us=Time.monotonic_us - start
-        container.stop
-        code = 0  // Same as the exit code we get when a program is stopped.
+        code = container.stop
         logger.info "program $program timed out after $elapsed"
 
       if code == 0:

@@ -80,7 +80,7 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte, defines string) err
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	if len(defines) > 0 {
+	if defines != "" {
 		req.Header.Set(JaguarRunDefinesHeader, defines)
 	}
 	res, err := http.DefaultClient.Do(req)
