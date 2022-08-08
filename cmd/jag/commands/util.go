@@ -315,22 +315,22 @@ type encoder interface {
 	Encode(interface{}) error
 }
 
-func parseRunOptionFlags(cmd *cobra.Command, flagName string) (string, error) {
+func parseRunDefinesFlags(cmd *cobra.Command, flagName string) (string, error) {
 	if !cmd.Flags().Changed(flagName) {
 		return "", nil
 	}
 
-	optionFlags, err := cmd.Flags().GetStringArray(flagName)
+	definesFlags, err := cmd.Flags().GetStringArray(flagName)
 	if err != nil {
 		return "", err
 	}
 
-	optionsMap := make(map[string]interface{})
-	for _, element := range optionFlags {
+	definesMap := make(map[string]interface{})
+	for _, element := range definesFlags {
 		indexOfAssign := strings.Index(element, "=")
 		if indexOfAssign < 0 {
 			key := strings.TrimSpace(element)
-			optionsMap[key] = true
+			definesMap[key] = true
 		} else {
 			key := strings.TrimSpace(element[0:indexOfAssign])
 			value := strings.TrimSpace(element[indexOfAssign+1:])
@@ -340,17 +340,17 @@ func parseRunOptionFlags(cmd *cobra.Command, flagName string) (string, error) {
 			var unmarshalled interface{}
 			err := json.Unmarshal([]byte(value), &unmarshalled)
 			if err == nil {
-				optionsMap[key] = unmarshalled
+				definesMap[key] = unmarshalled
 			} else {
-				optionsMap[key] = value
+				definesMap[key] = value
 			}
 		}
 	}
-	if len(optionsMap) == 0 {
+	if len(definesMap) == 0 {
 		return "", nil
 	}
 
-	marshalled, err := json.Marshal(optionsMap)
+	marshalled, err := json.Marshal(definesMap)
 	if err != nil {
 		return "", err
 	}
