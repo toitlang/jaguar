@@ -26,7 +26,10 @@ RUN_DEFINES_HEADER ::= "X-Jaguar-Run-Defines"
 
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
-disabled / monitor.Signal? := null
+
+disabled / bool := false
+network_down / monitor.Semaphore ::= monitor.Semaphore
+program_done / monitor.Semaphore ::= monitor.Semaphore
 
 main arguments:
   try:
@@ -63,6 +66,10 @@ serve arguments:
     failures := 0
     while failures < attempts:
       exception := catch: run id name port
+      if disabled:
+        network_down.up    // Signal to start running the program.
+        program_done.down  // Wait until done running the program.
+        disabled = false
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
@@ -126,14 +133,10 @@ run id/uuid.Uuid name/string port/int:
     if socket: socket.close
     if network: network.close
     if error: throw error
-    if disabled:
-      disabled.raise  // Signal to start running the program.
-      disabled.wait   // Wait until done running the program.
-      disabled = null
 
 install_mutex ::= monitor.Mutex
 
-install_program program_size/int reader/reader.Reader defines/Map -> monitor.Signal?:
+install_program program_size/int reader/reader.Reader defines/Map -> none:
   timeout/Duration? := null
   jag_timeout := defines.get "jag.timeout"
   if jag_timeout is string:
@@ -151,11 +154,10 @@ install_program program_size/int reader/reader.Reader defines/Map -> monitor.Sig
   else if jag_timeout:
     logger.error "invalid jag.timeout setting ($jag_timeout)"
 
-  signal/monitor.Signal? := null
   jag_disabled := defines.get "jag.disabled"
   if jag_disabled:
     if not timeout: timeout = Duration --s=10
-    signal = monitor.Signal
+    disabled = true
 
   with_timeout --ms=60_000: install_mutex.do:
     // Uninstall everything but Jaguar.
@@ -182,7 +184,7 @@ install_program program_size/int reader/reader.Reader defines/Map -> monitor.Sig
       // we are ready right away, but if we've been asked to disable
       // Jaguar while running the program, we wait until the HTTP server
       // has been shut down.
-      if signal: signal.wait
+      if disabled: network_down.down
 
       suffix := defines.is_empty ? "" : " with $defines"
       logger.info "program $program started$suffix"
@@ -210,9 +212,7 @@ install_program program_size/int reader/reader.Reader defines/Map -> monitor.Sig
 
       // If Jaguar was disabled while running the program, now is the
       // time to restart the HTTP server.
-      if signal: signal.raise
-
-  return signal
+      if disabled: program_done.up
 
 install_firmware firmware_size/int reader/reader.Reader -> none:
   with_timeout --ms=120_000: install_mutex.do:
@@ -304,15 +304,14 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
     else if request.path == "/code" and request.method == "PUT":
       defines_string ::= headers.single RUN_DEFINES_HEADER
       defines/Map := defines_string ? (json.parse defines_string) : {:}
-      signal ::= install_program request.content_length request.body defines
+      install_program request.content_length request.body defines
       writer.write
           json.encode {"status": "OK"}
-      if signal:
+      if disabled:
         // TODO(kasper): There is no great way of closing down the HTTP server loop
         // and make sure we get a response delivered to all clients. For now, we
         // hope that sleeping for 0.5s is enough and then we simply cancel the task
         // responsible for running the loop.
         task::
           sleep --ms=500
-          disabled = signal
           self.cancel
