@@ -22,10 +22,26 @@ IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 
 DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
-RUN_OPTIONS_HEADER ::= "X-Jaguar-Run-Options"
+RUN_DEFINES_HEADER ::= "X-Jaguar-Run-Defines"
 
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
+
+/**
+Jaguar can run programs while Jaguar itself is disabled. You can
+  enable this behavior by using `jag run -D jag.disabled ...` when
+  starting the program. Use this mode to test how your apps behave
+  when they run with no pre-established network.
+
+We keep track of the state through the global $disabled variable and
+  we set this to true when starting a program that needs to run with
+  Jaguar disabled. In return, this makes the outer $serve loop wait
+  for the program to be done, before it re-establishes the network
+  connection and restarts the HTTP server.
+*/
+disabled / bool := false
+network_free / monitor.Semaphore ::= monitor.Semaphore
+program_done / monitor.Semaphore ::= monitor.Semaphore
 
 main arguments:
   try:
@@ -62,6 +78,10 @@ serve arguments:
     failures := 0
     while failures < attempts:
       exception := catch: run id name port
+      if disabled:
+        network_free.up    // Signal to start running the program.
+        program_done.down  // Wait until done running the program.
+        disabled = false
       if not exception: continue
       failures++
       logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
@@ -128,7 +148,29 @@ run id/uuid.Uuid name/string port/int:
 
 install_mutex ::= monitor.Mutex
 
-install_program program_size/int reader/reader.Reader options/Map -> none:
+install_program program_size/int reader/reader.Reader defines/Map -> none:
+  timeout/Duration? := null
+  jag_timeout := defines.get "jag.timeout"
+  if jag_timeout is string:
+    value := int.parse jag_timeout[0..jag_timeout.size - 1] --on_error=(: 0)
+    if value > 0 and jag_timeout.ends_with "s":
+      timeout = Duration --s=value
+    else if value > 0 and jag_timeout.ends_with "m":
+      timeout = Duration --m=value
+    else if value > 0 and jag_timeout.ends_with "h":
+      timeout = Duration --h=value
+    else:
+      logger.error "invalid jag.timeout setting (\"$jag_timeout\")"
+  else if jag_timeout is int and jag_timeout > 0:
+    timeout = Duration --s=jag_timeout
+  else if jag_timeout:
+    logger.error "invalid jag.timeout setting ($jag_timeout)"
+
+  jag_disabled := defines.get "jag.disabled"
+  if jag_disabled:
+    if not timeout: timeout = Duration --s=10
+    disabled = true
+
   with_timeout --ms=60_000: install_mutex.do:
     // Uninstall everything but Jaguar.
     images := containers.images
@@ -146,19 +188,42 @@ install_program program_size/int reader/reader.Reader options/Map -> none:
     program := writer.commit
     logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
 
-    suffix := options.is_empty ? "" : " with $options"
-    logger.info "program $program started$suffix"
-    container ::= containers.start program
-
+    // We start the program from a separate task to allow the HTTP server
+    // to continue operating. This also means that the program running
+    // isn't covered by the installation mutex or associated timeout.
     task::
-      // We run this code in a separate task to allow the HTTP server to
-      // continue operating. This also means that the program running
-      // isn't covered by the installation mutex or associated timeout.
-      code/int := container.wait
+      // First, we wait until we're ready to run the program. Usually,
+      // we are ready right away, but if we've been asked to disable
+      // Jaguar while running the program, we wait until the HTTP server
+      // has been shut down and the network to be free.
+      if disabled: network_free.down
+
+      suffix := defines.is_empty ? "" : " with $defines"
+      logger.info "program $program started$suffix"
+      start ::= Time.monotonic_us
+      container ::= containers.start program
+
+      // We're only interested in handling the timeout errors, so we
+      // unwind and produce a stack trace in all other cases.
+      filter ::= : it != DEADLINE_EXCEEDED_ERROR
+
+      // Wait until the program is done or until we time out.
+      code/int? := null
+      catch --unwind=filter --trace=filter:
+        with_timeout timeout: code = container.wait
+      if not code:
+        elapsed ::= Duration --us=Time.monotonic_us - start
+        code = container.stop
+        logger.info "program $program timed out after $elapsed"
+
       if code == 0:
         logger.info "program $program stopped"
       else:
         logger.error "program $program stopped - exit code $code"
+
+      // If Jaguar was disabled while running the program, now is the
+      // time to restart the HTTP server.
+      if disabled: program_done.up
 
 install_firmware firmware_size/int reader/reader.Reader -> none:
   with_timeout --ms=120_000: install_mutex.do:
@@ -206,6 +271,8 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
     socket.close
 
 serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address/string -> none:
+  self := Task.current
+
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     headers ::= request.headers
@@ -232,6 +299,9 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       install_firmware request.content_length request.body
       writer.write
           json.encode {"status": "OK"}
+      // TODO(kasper): Maybe we can share the way we try to close down
+      // the HTTP server nicely with the corresponding code where we
+      // handle /code requests?
       writer.detach.close  // Close connection nicely before rebooting.
       sleep --ms=500
       esp32.deep_sleep (Duration --ms=10)
@@ -243,8 +313,16 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Handle code running.
     else if request.path == "/code" and request.method == "PUT":
-      options_string ::= headers.single RUN_OPTIONS_HEADER
-      options/Map := options_string ? (json.parse options_string) : {:}
-      install_program request.content_length request.body options
+      defines_string ::= headers.single RUN_DEFINES_HEADER
+      defines/Map := defines_string ? (json.parse defines_string) : {:}
+      install_program request.content_length request.body defines
       writer.write
           json.encode {"status": "OK"}
+      if disabled:
+        // TODO(kasper): There is no great way of closing down the HTTP server loop
+        // and make sure we get a response delivered to all clients. For now, we
+        // hope that sleeping for 0.5s is enough and then we simply cancel the task
+        // responsible for running the loop.
+        task::
+          sleep --ms=500
+          self.cancel
