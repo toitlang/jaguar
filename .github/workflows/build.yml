@@ -313,6 +313,12 @@ jobs:
         run: |
           git clone ssh://aur@aur.archlinux.org/jaguar-bin.git
 
+      - name: Git
+        run: |
+          cd jaguar-bin
+          git config user.email "leon@toit.io"
+          git config user.name "Leon Gungadin Mogensen"
+
       - name: Update AUR package
         uses: hapakaien/archlinux-package-action@v2
         with:
