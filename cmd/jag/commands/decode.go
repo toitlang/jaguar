@@ -5,6 +5,7 @@
 package commands
 
 import (
+	"bufio"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -170,4 +171,59 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 	fmt.Println("Crash in native code:")
 	fmt.Println(backtrace)
 	return stacktraceCommand.Run()
+}
+
+type Decoder struct {
+	scanner *bufio.Scanner
+	cmd     *cobra.Command
+}
+
+func (d *Decoder) decode() {
+	POSTPONED_LINES := map[string]bool{
+		"----": true,
+		"Received a Toit stack trace. Executing the command below will": true,
+		"make it human readable:": true,
+	}
+
+	Version := ""
+
+	postponed := []string{}
+
+	for d.scanner.Scan() {
+		// Get next line from serial port.
+		line := d.scanner.Text()
+		versionPrefix := "[toit] INFO: starting <v"
+		if strings.HasPrefix(line, versionPrefix) && strings.HasSuffix(line, ">") {
+			Version = line[len(versionPrefix) : len(line)-1]
+		}
+		if _, contains := POSTPONED_LINES[line]; contains {
+			postponed = append(postponed, line)
+		} else {
+			separator := strings.Repeat("*", 78)
+			if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
+				fmt.Printf("\n" + separator + "\n")
+				if Version != "" {
+					fmt.Printf("Decoded by `jag` <%s>\n", Version)
+					fmt.Printf(separator + "\n")
+				}
+				if err := serialDecode(d.cmd, line); err != nil {
+					if len(postponed) != 0 {
+						fmt.Println(strings.Join(postponed, "\n"))
+						postponed = []string{}
+					}
+					fmt.Println(line)
+					fmt.Println("jag: Failed to decode line.")
+				} else {
+					postponed = []string{}
+				}
+				fmt.Printf(separator + "\n\n")
+			} else {
+				if len(postponed) != 0 {
+					fmt.Println(strings.Join(postponed, "\n"))
+					postponed = []string{}
+				}
+				fmt.Println(line)
+			}
+		}
+	}
 }

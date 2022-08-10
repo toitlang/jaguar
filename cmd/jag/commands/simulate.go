@@ -5,6 +5,8 @@
 package commands
 
 import (
+	"bufio"
+	"io"
 	"os"
 	"strconv"
 
@@ -49,9 +51,21 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
+			outR, outW := io.Pipe()
+
+			// Goroutine that gets data from the pipe and converts it into
+			// lines.
+			go func() {
+				scanner := bufio.NewScanner(outR)
+
+				decoder := Decoder{scanner, cmd}
+
+				decoder.decode()
+			}()
+
 			simCmd := sdk.ToitRun(ctx, snapshot, strconv.Itoa(int(port)), id.String(), name)
 			simCmd.Stderr = os.Stderr
-			simCmd.Stdout = os.Stdout
+			simCmd.Stdout = outW
 			return simCmd.Run()
 		},
 	}
