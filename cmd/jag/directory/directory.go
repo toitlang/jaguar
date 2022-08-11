@@ -108,6 +108,22 @@ func GetESP32ImageCachePath() (string, error) {
 	return filepath.Join(home, ".cache", "jaguar", "image"), nil
 }
 
+func GetToitToolchainPath() (string, error) {
+	repoPath, ok := getRepoPath()
+	if ok {
+		return filepath.Join(repoPath, "toolchains", "esp32"), nil
+	}
+
+	imagePath, err := GetESP32ImageCachePath()
+	if err != nil {
+		return "", err
+	}
+	if stat, err := os.Stat(imagePath); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' did not hold the esp32 image.\nYou must setup the esp32 image using 'jag setup'", imagePath)
+	}
+	return imagePath, nil
+}
+
 func GetESP32ImagePath() (string, error) {
 	repoPath, ok := getRepoPath()
 	if ok {
