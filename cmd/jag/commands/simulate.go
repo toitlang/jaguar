@@ -51,12 +51,12 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			outR, outW := io.Pipe()
+			outReader, outWriter := io.Pipe()
 
 			// Goroutine that gets data from the pipe and converts it into
 			// lines.
 			go func() {
-				scanner := bufio.NewScanner(outR)
+				scanner := bufio.NewScanner(outReader)
 
 				decoder := Decoder{scanner, cmd}
 
@@ -65,7 +65,7 @@ func SimulateCmd() *cobra.Command {
 
 			simCmd := sdk.ToitRun(ctx, snapshot, strconv.Itoa(int(port)), id.String(), name)
 			simCmd.Stderr = os.Stderr
-			simCmd.Stdout = outW
+			simCmd.Stdout = outWriter
 			return simCmd.Run()
 		},
 	}

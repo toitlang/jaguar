@@ -190,7 +190,7 @@ func (d *Decoder) decode() {
 	postponed := []string{}
 
 	for d.scanner.Scan() {
-		// Get next line from serial port.
+		// Get next line from device (or simulator) console.
 		line := d.scanner.Text()
 		versionPrefix := "[toit] INFO: starting <v"
 		if strings.HasPrefix(line, versionPrefix) && strings.HasSuffix(line, ">") {
