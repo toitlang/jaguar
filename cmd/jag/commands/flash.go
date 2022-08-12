@@ -19,7 +19,7 @@ import (
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
-// Returns position, size of the partitions in partitions.csv
+// Returns position, size of the partitions in partitions.csv.
 func getPartitions(toitToolchainPath string, positions map[string]int, sizes map[string]int) {
 	// Load default partitions positions, that can be overridden by the
 	// partitions.csv file.  Some of these (bootloader, partitions) are
@@ -38,8 +38,7 @@ func getPartitions(toitToolchainPath string, positions map[string]int, sizes map
 
 	file, err := os.Open(filepath.Join(toitToolchainPath, "partitions.csv"))
 	if err != nil {
-		fmt.Println("**Warning: Could not find partitions.csv, using default partition sizes.")
-		return
+		panic("Could not find partitions.csv")
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
@@ -60,13 +59,12 @@ func getPartitions(toitToolchainPath string, positions map[string]int, sizes map
 				if index == COLUMN_NAME {
 					partitionType = field
 				} else if index == COLUMN_SUBTYPE {
-					if field != "" {
-						partitionType = field
+					if field != "" { partitionType = field
 					}
 				} else if index == COLUMN_POSITION || index == COLUMN_SIZE {
 					num, err := strconv.ParseInt(field, 0, 32)
 					if err != nil || partitionType == "" {
-						fmt.Println("**Warning: Could not parse number in partitions.csv")
+						panic("Could not parse number in partitions.csv")
 					} else {
 						if index == COLUMN_POSITION {
 							positions[partitionType] = int(num)
@@ -77,7 +75,7 @@ func getPartitions(toitToolchainPath string, positions map[string]int, sizes map
 				}
 			}
 			if maxIndex < COLUMN_SIZE {
-				fmt.Println("**Warning: Could not parse line in partitions.csv (missing fields)")
+				panic("Could not parse line in partitions.csv (missing fields)")
 			}
 		}
 	}
@@ -88,7 +86,7 @@ func hex(num int) string {
 }
 
 func createZapBytesFile(sizes map[string]int, name string) (*os.File, error) {
-	// Create a file with zap bytes (0xff) for clearing the OTA data partition.
+	// Create a file with zap bytes (0xff) for clearing select partitions.
 	zappedDataFile, err := os.CreateTemp("", fmt.Sprint("*.%sdata", name))
 	if err != nil {
 		return nil, err
