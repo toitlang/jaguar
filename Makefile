@@ -99,6 +99,9 @@ $(BUILD_DIR)/image/bootloader/bootloader.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_
 $(BUILD_DIR)/image/partitions.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
 	cp $(TOIT_PATH)/build/esp32/partitions.bin $@
 
+$(BUILD_DIR)/image/partitions.csv: $(TOIT_PATH)/toolchains/esp32/partitions.csv $(BUILD_DIR)/image/
+	cp $(TOIT_PATH)/toolchains/esp32/partitions.csv $@
+
 $(BUILD_DIR)/image/system.snapshot: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
 	cp $(TOIT_PATH)/build/esp32/system.snapshot $@
 
@@ -110,6 +113,7 @@ image: $(BUILD_DIR)/image/toit.elf
 image: $(BUILD_DIR)/image/toit.bin
 image: $(BUILD_DIR)/image/bootloader/bootloader.bin
 image: $(BUILD_DIR)/image/partitions.bin
+image: $(BUILD_DIR)/image/partitions.csv
 image: $(BUILD_DIR)/image/system.snapshot
 image: $(BUILD_DIR)/image/jaguar.snapshot
 

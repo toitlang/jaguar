@@ -5,17 +5,105 @@
 package commands
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
+
+// Returns position, size of the partitions in partitions.csv.
+func getPartitions(toitToolchainPath string, positions map[string]int, sizes map[string]int) {
+	// Load default partitions positions, that can be overridden by the
+	// partitions.csv file.  Some of these (bootloader, partitions) are
+	// commented out in the partitions.csv because they can't be changed.
+	positions["bootloader"] = 0x1000
+	positions["partitions"] = 0x8000
+	positions["ota"] = 0xd000
+	positions["ota_0"] = 0x10000
+	sizes["bootloader"] = 0x7000
+	sizes["partitions"] = 0x0c00
+	COLUMN_NAME := 0
+	// COLUMN_TYPE := 1
+	COLUMN_SUBTYPE := 2
+	COLUMN_POSITION := 3
+	COLUMN_SIZE := 4
+
+	file, err := os.Open(filepath.Join(toitToolchainPath, "partitions.csv"))
+	if err != nil {
+		panic("Could not find partitions.csv")
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		partitionType := ""
+		line := scanner.Text()
+		comment := strings.Index(line, "#")
+		if comment != -1 {
+			line = line[:comment]
+		}
+		line = strings.TrimSpace(line)
+		if line != "" {
+			fields := strings.Split(line, ",")
+			maxIndex := -1
+			for index, field := range fields {
+				maxIndex = index
+				field = strings.TrimSpace(field)
+				if index == COLUMN_NAME {
+					partitionType = field
+				} else if index == COLUMN_SUBTYPE {
+					if field != "" { partitionType = field
+					}
+				} else if index == COLUMN_POSITION || index == COLUMN_SIZE {
+					num, err := strconv.ParseInt(field, 0, 32)
+					if err != nil || partitionType == "" {
+						panic("Could not parse number in partitions.csv")
+					} else {
+						if index == COLUMN_POSITION {
+							positions[partitionType] = int(num)
+						} else {
+							sizes[partitionType] = int(num)
+						}
+					}
+				}
+			}
+			if maxIndex < COLUMN_SIZE {
+				panic("Could not parse line in partitions.csv (missing fields)")
+			}
+		}
+	}
+}
+
+func hex(num int) string {
+	return fmt.Sprintf("0x%x", num)
+}
+
+func createZapBytesFile(sizes map[string]int, name string) (*os.File, error) {
+	// Create a file with zap bytes (0xff) for clearing select partitions.
+	zappedDataFile, err := os.CreateTemp("", fmt.Sprint("*.%sdata", name))
+	if err != nil {
+		return nil, err
+	}
+
+	if size, ok := sizes[name]; ok {
+		_, err = zappedDataFile.Write(bytes.Repeat([]byte{0xff}, size))
+		if err != nil {
+			os.Remove(zappedDataFile.Name())
+			return nil, err
+		}
+	} else {
+		fmt.Printf("No size for %s partition, skipping\n", name)
+	}
+	zappedDataFile.Close()
+	return zappedDataFile, nil
+}
 
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -67,32 +155,49 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
+			toitToolchainPath, err := directory.GetToitToolchainPath()
+			if err != nil {
+				return err
+			}
+
 			binTmpFile, err := BuildFirmwareImage(ctx, id.String(), name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
 			defer os.Remove(binTmpFile.Name())
 
+			positions := make(map[string]int)
+			sizes := make(map[string]int)
+
+			getPartitions(toitToolchainPath, positions, sizes)
+
 			// Create a file with zap bytes (0xff) for clearing the OTA data partition.
-			zappedOtaDataFile, err := os.CreateTemp("", "*.otadata")
+			zappedOtaDataFile, err := createZapBytesFile(sizes, "ota")
 			if err != nil {
 				return err
 			}
 			defer os.Remove(zappedOtaDataFile.Name())
 
-			_, err = zappedOtaDataFile.Write(bytes.Repeat([]byte{0xff}, 0x2000))
+			// Create a file with zap bytes (0xff) for clearing the NVS data partition.
+			zappedNvsDataFile, err := createZapBytesFile(sizes, "nvs")
 			if err != nil {
 				return err
 			}
-			zappedOtaDataFile.Close()
+			defer os.Remove(zappedNvsDataFile.Name())
 
 			flashArgs := []string{
 				"--chip", "esp32", "--port", port, "--baud", strconv.Itoa(int(baud)), "--before", "default_reset", "--after", "hard_reset", "write_flash", "-z", "--flash_mode", "dio",
 				"--flash_freq", "40m", "--flash_size", "detect",
-				"0x001000", filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
-				"0x008000", filepath.Join(esp32BinPath, "partitions.bin"),
-				"0x00d000", zappedOtaDataFile.Name(), // Force bootloader to boot from OTA 0.
-				"0x010000", binTmpFile.Name(),
+				hex(positions["bootloader"]), filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
+				hex(positions["partitions"]), filepath.Join(esp32BinPath, "partitions.bin"),
+				hex(positions["ota_0"]), binTmpFile.Name(),
+			}
+			if pos, ok := positions["ota"]; ok {
+				// Force bootloader to boot from OTA 0.
+				flashArgs = append(flashArgs, hex(pos), zappedOtaDataFile.Name())
+			}
+			if pos, ok := positions["nvs"]; ok {
+				flashArgs = append(flashArgs, hex(pos), zappedNvsDataFile.Name())
 			}
 
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
