@@ -47,8 +47,8 @@ If you see errors when upgrading with `yay` make sure to pick "cleanBuild" for t
 
 As alternative to these package managers, we also offer precompiled binaries for download:
 
-- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/download/v1.4.2/jag_installer.exe)
-  (or as an [archive](https://github.com/toitlang/jaguar/releases/download/v1.4.2/jag_windows.zip))
+- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
+  (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag.dmg)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
