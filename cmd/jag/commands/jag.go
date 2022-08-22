@@ -221,7 +221,7 @@ func CheckUpToDate(info Info) {
 	}
 
 	tagName := string(tagNameBytes)
-	matched, err := regexp.MatchString("^[\t ]*(\")?[\t ]*v[0-9]+\\.[0-9]+\\.[0-9+][\t ]*(\")?[\t ]*$", tagName)
+	matched, err := regexp.MatchString("^\s*(\")?[\t ]*v\d+\\.\d+\\.\d+\s*(\")?\s*$", tagName)
 	if err != nil || !matched {
 		return
 	}
