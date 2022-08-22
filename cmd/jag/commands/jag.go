@@ -232,9 +232,10 @@ func CheckUpToDate(info Info) {
 	currentVersion := semver.New(info.Version[1:])
 	latestVersion := semver.New(strings.TrimSpace(tagName)[1:])
 
-	if true || currentVersion.LessThan(*latestVersion) {
+	if currentVersion.LessThan(*latestVersion) {
+		banner := strings.Repeat("-", 60)
 		fmt.Println()
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(banner)
 		fmt.Println("There is a newer version of Jaguar available (v" + latestVersion.String() + "). You may")
 		fmt.Println("want to update using your package manager or download the new")
 		fmt.Println("version directly from:")
@@ -246,7 +247,7 @@ func CheckUpToDate(info Info) {
 		fmt.Println("  $ jag config up-to-date disable")
 		fmt.Println()
 		fmt.Println("Have a great day.")
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(banner)
 		fmt.Println()
 	}
 
