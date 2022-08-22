@@ -8,6 +8,7 @@ require (
 	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb
 	github.com/bradfitz/gomemcache v0.0.0-20220106215444-fb4bf637b56d
 	github.com/cheggaaa/pb/v3 v3.0.8
+	github.com/coreos/go-semver v0.3.0
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/google/uuid v1.3.0
 	github.com/manifoldco/promptui v0.9.0
