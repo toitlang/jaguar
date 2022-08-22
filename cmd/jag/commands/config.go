@@ -5,6 +5,7 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -17,14 +18,16 @@ const (
 	WifiPasswordCfgKey = "password"
 )
 
-func ConfigCmd() *cobra.Command {
+func ConfigCmd(info Info) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Configure Jaguar",
+		Long:  "Configure the Jaguar command line tool.",
 	}
 
 	cmd.AddCommand(
 		ConfigAnalyticsCmd(),
+		ConfigUpToDateCmd(info),
 		ConfigWifiCmd(),
 	)
 	return cmd
@@ -33,7 +36,7 @@ func ConfigCmd() *cobra.Command {
 func ConfigAnalyticsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "analytics",
-		Short: "Configure reporting of anonymous tool usage statistics and crash reports.",
+		Short: "Configure reporting of anonymous tool usage statistics and crash reports",
 		Args:  cobra.NoArgs,
 	}
 	cmd.AddCommand(
@@ -48,6 +51,29 @@ func ConfigAnalyticsCmd() *cobra.Command {
 			Short: "Disable reporting of anonymous tool usage statistics and crash reports",
 			Args:  cobra.NoArgs,
 			RunE:  configAnalytics(true),
+		},
+	)
+	return cmd
+}
+
+func ConfigUpToDateCmd(info Info) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "up-to-date",
+		Short: "Configure periodic up-to-date checks for the Jaguar command line tool",
+		Args:  cobra.NoArgs,
+	}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "enable",
+			Short: "Enable periodic up-to-date checks",
+			Args:  cobra.NoArgs,
+			RunE:  configUpToDate(info, false),
+		},
+		&cobra.Command{
+			Use:   "disable",
+			Short: "Disable periodic up-to-date checks",
+			Args:  cobra.NoArgs,
+			RunE:  configUpToDate(info, true),
 		},
 	)
 	return cmd
@@ -120,7 +146,45 @@ func configAnalytics(disable bool) func(*cobra.Command, []string) error {
 			return err
 		}
 
+		if disable {
+			var res UpdateToDate
+			disabled := false
+			if cfg.IsSet(UpToDateKey) {
+				if err := cfg.UnmarshalKey(UpToDateKey, &res); err == nil {
+					disabled = res.Disabled
+				}
+			}
+
+			if !disabled {
+				cfg.Set(UpToDateKey+".disabled", true)
+				fmt.Println("Also turning off periodic up-to-date checks. You can renable")
+				fmt.Println("these through:")
+				fmt.Println()
+				fmt.Println("  $ jag config up-to-date enable")
+				fmt.Println()
+			}
+		}
+
 		cfg.Set("analytics.disabled", disable)
 		return directory.WriteConfig(cfg)
+	}
+}
+
+func configUpToDate(info Info, disable bool) func(*cobra.Command, []string) error {
+	return func(_ *cobra.Command, _ []string) error {
+		cfg, err := directory.GetUserConfig()
+		if err != nil {
+			return err
+		}
+
+		cfg.Set(UpToDateKey+".disabled", disable)
+		if err := directory.WriteConfig(cfg); err != nil {
+			return err
+		}
+
+		if !disable {
+			CheckUpToDate(info)
+		}
+		return nil
 	}
 }
