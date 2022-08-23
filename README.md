@@ -146,6 +146,15 @@ The crash reporting component is [work in progress](https://github.com/toitlang/
 It is possible to provide options for `jag run` that control how your applications behave on your device. This section
 lists the options and provides an explanation for when they might come in handy.
 
+## Re-run when rebooting
+If you want your installed application to automatically run on reboots, you can ask Jaguar to install it with the
+`run.boot` option. Among other things, this is useful if you're testing deep sleep behavior.
+
+``` sh
+jag run -D run.boot hello.toit
+```
+
+
 ## Limiting application run time
 You can control how much time Jaguar gives your application to run through the `-D jag.timeout` setting. It takes a value 
 like `10s`, `5m`, or `1h` to indicate how many seconds, minutes, or hours the app can run before being shut down by Jaguar.
