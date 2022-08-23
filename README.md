@@ -1,11 +1,9 @@
 # Jaguar: Live reloading for your ESP32
-
 Jaguar enables live reloading when developing for the ESP32. Develop, update, and restart
 your code in less than two seconds via WiFi. Use the really fast development cycle to iterate
 quickly and learn fast!
 
 ## What is it?
-
 Jaguar is a small Toit application that runs on your ESP32. It uses the capabilities of the
 [Toit virtual machine](https://github.com/toitlang/toit) to let you update and restart your ESP32
 code written in Toit over WiFi. Change your code in your editor, update it on
@@ -17,7 +15,6 @@ Watch a short video that shows how you can experience Jaguar on your ESP32 in tw
 <a href="https://youtu.be/cU7zr6_YBbQ"><img width="543" alt="Jaguar demonstration" src="https://user-images.githubusercontent.com/133277/146210503-24811800-bb26-4244-817d-6422b20e6786.png"></a>
 
 ## How does it work?
-
 Jaguar runs a small HTTP server that listens for incoming requests. The requests contain compiled
 Toit programs that are relocated and installed in flash on the device. Before installing a
 program, we stop any old version of the program and free the resources it has consumed. The new
@@ -57,7 +54,7 @@ As alternative to these package managers, we also offer precompiled binaries for
 If you download an archive, you should unpack it and put the embedded `jag` or `jag.exe` binary
 somewhere on your `PATH`. The same applies when you extract the `jag` binary from the macOS `jag.dmg` file.
 
-### Setup
+### Setup associated tools
 Next step is to let `jag` download and configure the Toit SDK and the associated tools for
 flashing the Jaguar application onto your ESP32:
 
@@ -65,37 +62,15 @@ flashing the Jaguar application onto your ESP32:
 jag setup
 ```
 
-### First steps
+### Flashing via serial
 Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
-application onto it. This will ask you for the serial port to use and the WiFi credentials:
+application onto it. Running `jag flash` will ask you for the serial port to use and the WiFi 
+credentials, but be aware that the tooling requires 
+[permission to access your serial port](#permission-to-access-serial-port).
 
 ``` sh
 jag flash
 ```
-
----
-*NOTE*
-
-To flash you will need to access the device `/dev/ttyUSB0`.  On Linux that
-means you probably need to be a member of some group, normally either `uucp` or
-`dialout`.  To see which groups you are a member of and which group owns the
-device, plug in an ESP32 to the USB port and try:
-
-``` sh
-groups
-ls -g /dev/ttyUSB0
-```
-
-If you lack a group membership, you can add it with
-
-``` sh
-sudo usermod -aG dialout $USER
-```
-
-You will have to log out and log back in for this to take effect. You can also try
-`newgrp dialout` to avoid the need to log out and log back in.
-
----
 
 Now it is possible to monitor the serial output from the device:
 
@@ -111,6 +86,7 @@ you to be on the same local network as your ESP32:
 jag scan
 ```
 
+### Running code via WiFi
 With the scanning complete, you're ready to run your first Toit program on your Jaguar-enabled
 ESP32 device. Download [`hello.toit`](https://github.com/toitlang/toit/blob/master/examples/hello.toit)
 and store it in your file system and then run:
@@ -119,8 +95,9 @@ and store it in your file system and then run:
 jag run hello.toit
 ```
 
-It is even possible to ask Jaguar to keep watching your Toit code on disk and to *live reload* it when
-it changes. Simply write:
+Be aware that you can configure the way your applications run by [providing options](#options-for-jag-run) 
+to `jag run`. Also, Jaguar is fast enough that it is possible to ask Jaguar to keep watching your Toit code
+on disk and to *live reload* it when it changes. Simply write:
 
 ``` sh
 jag watch hello.toit
@@ -128,8 +105,15 @@ jag watch hello.toit
 
 and edit `hello.toit` or any of the files it depends on in your favorite editor.
 
-# Visual Studio Code
+### Updating Jaguar via WiFi
+If you upgrade Jaguar, you will need to update the system software and the Jaguar application on your
+device. You can do this via WiFi simply by invoking:
 
+``` sh
+jag firmware update
+```
+
+# Visual Studio Code
 The Toit SDK used by Jaguar comes with support for [Visual Studio Code](https://code.visualstudio.com/download).
 Once installed, you can add the [Toit language extension](https://marketplace.visualstudio.com/items?itemName=toit.toit)
 and get full language support for Toit, including syntax highlighting, integrated static analysis, and code completions.
@@ -137,7 +121,6 @@ Jaguar already comes with everything you need, so if you can run `jag` from your
 find the Toit SDK downloaded by Jaguar and use that.
 
 # Crash reporting
-
 If you have not opted-out of Jaguar's crash reporting and usage analytics, the `jag` binary will gather
 crash reports and usage statistics and forward them to [Segment](https://segment.com/). We use the statistics
 to improve Jaguar and the gathered data may include:
@@ -159,8 +142,59 @@ The crash reporting component is [work in progress](https://github.com/toitlang/
 
 ---
 
-# Installing via Go
+# Options for `jag run`
+It is possible to provide options for `jag run` that control how your applications behave on your device. This section
+lists the options and provides an explanation for when they might come in handy.
 
+## Limiting application run time
+You can control how much time Jaguar gives your application to run through the `-D jag.timeout` setting. It takes a value 
+like `10s`, `5m`, or `1h` to indicate how many seconds, minutes, or hours the app can run before being shut down by Jaguar.
+
+``` sh
+jag run -D jag.timeout=10s service.toit
+```
+
+## Temporarily disabling Jaguar
+You can disable Jaguar while your application runs using the `-D jag.disabled`. This is useful if Jaguar otherwise 
+interferes with your application. As an example, consider an application that uses the WiFi to setup a 
+software-enabled access point ("Soft AP"). This would normally conflict with Jaguar's use of the WiFi, so your 
+application and Jaguar cannot run at the same time. By temporarily disabling Jaguar, it is possible to test and tinker with 
+the Soft AP based service.
+
+``` sh
+jag run -D jag.disabled softap.toit
+```
+
+By default this runs with a 10 seconds timeout to avoid completely shutting down Jaguar. However, this can be configured 
+by passing a separate `-D jag.timeout` option:
+
+``` sh
+jag run -D jag.disabled -D jag.timeout=5m softap.toit
+```
+
+---
+
+# Permission to access serial port
+To flash you will need to access the device `/dev/ttyUSB0`.  On Linux that
+means you probably need to be a member of some group, normally either `uucp` or
+`dialout`.  To see which groups you are a member of and which group owns the
+device, plug in an ESP32 to the USB port and try:
+
+``` sh
+groups
+ls -g /dev/ttyUSB0
+```
+
+If you lack a group membership, you can add it with
+
+``` sh
+sudo usermod -aG dialout $USER
+```
+
+You will have to log out and log back in for this to take effect. You can also try
+`newgrp dialout` to avoid the need to log out and log back in.
+
+# Installing via Go
 You can also install using `go install`. First you'll need to have a [Go development environment](https://go.dev)
 properly set up (1.16+) and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
 you can install the `jag` command line tool through:
@@ -170,7 +204,6 @@ go install github.com/toitlang/jaguar/cmd/jag@latest
 ```
 
 # Building it yourself
-
 You've read this far and you want to know how to build Jaguar and the underlying Toit language
 implementation yourself? Great! You will need to follow the instructions for
 [building Toit](https://github.com/toitlang/toit) and make sure you can flash a
@@ -213,5 +246,4 @@ build/jag monitor
 ```
 
 ## Contributing
-
 We welcome and value your [open source contributions](CONTRIBUTING.md) to Jaguar.
