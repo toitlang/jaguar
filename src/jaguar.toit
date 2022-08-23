@@ -171,8 +171,7 @@ install_program program_size/int reader/reader.Reader defines/Map -> none:
     if not timeout: timeout = Duration --s=10
     disabled = true
 
-  run_boot := false
-  defines.get "run.boot" --if_present=: if it: run_boot = true
+  run_boot := defines.get "run.boot" --if_absent=: false
 
   with_timeout --ms=60_000: install_mutex.do:
     // Uninstall everything but Jaguar.
