@@ -171,6 +171,9 @@ install_program program_size/int reader/reader.Reader defines/Map -> none:
     if not timeout: timeout = Duration --s=10
     disabled = true
 
+  run_boot := false
+  defines.get "run.boot" --if_present=: if it: run_boot = true
+
   with_timeout --ms=60_000: install_mutex.do:
     // Uninstall everything but Jaguar.
     images := containers.images
@@ -185,7 +188,7 @@ install_program program_size/int reader/reader.Reader defines/Map -> none:
     while data := reader.read:
       written_size += data.size
       writer.write data
-    program := writer.commit
+    program := writer.commit --run_boot=run_boot
     logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
 
     // We start the program from a separate task to allow the HTTP server
