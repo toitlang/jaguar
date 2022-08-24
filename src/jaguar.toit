@@ -277,6 +277,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
   path := request.path
   if path == "/": path = "index.html"
   if path.starts_with "/": path = path[1..]
+  CHIP_IMAGE ::= "https://toit.io/static/chip-e4ce030bdea3996fa7ad44ff63d88e52.svg"
 
   if path == "index.html":
     writer.headers.set "Content-Type" "text/html"
@@ -293,7 +294,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
             <h2 class=help>Run code on this device using <a href="https://github.com/toitlang/jaguar">jag run</a></h2>
             <h2 class=help>Monitor the serial port console using <a href="https://github.com/toitlang/jaguar">jag monitor</a></h2>
             <p>
-              <img src="https://toit.io/static/chip-e4ce030bdea3996fa7ad44ff63d88e52.svg" width=200 />
+              <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200 />
             </p>
           </body>
         </html>
@@ -314,6 +315,9 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           font-style: oblique;
         }
         """
+  else if path == "favicon.ico":
+    writer.headers.set "Location" CHIP_IMAGE
+    writer.write_headers 302
   else:
     writer.headers.set "Content-Type" "text/plain"
     writer.write_headers 404
