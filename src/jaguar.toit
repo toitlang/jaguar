@@ -288,11 +288,11 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
             <title>$device.name (Jaguar device)</title>
           </head>
           <body>
-            <h1>$device.name (Jaguar device)</h1>
-            <h2>Uptime: $(Duration --s=Time.monotonic_us / 1_000_000)</h2>
+            <h1>Jaguar: $device.name</h1>
+            <h2>Uptime: $(Duration --s=Time.monotonic_us / Duration.MICROSECONDS_PER_SECOND)</h2>
             <h2>Toit SDK version: $vm_sdk_version</h2>
-            <h2 class=help>Run code on this device using <a href="https://github.com/toitlang/jaguar">jag run</a></h2>
-            <h2 class=help>Monitor the serial port console using <a href="https://github.com/toitlang/jaguar">jag monitor</a></h2>
+            <h2 class=help>Run code on this device using <a href="https://github.com/toitlang/jaguar"><code>jag run</code></a></h2>
+            <h2 class=help>Monitor the serial port console using <a href="https://github.com/toitlang/jaguar"><code>jag monitor</code></a></h2>
             <p>
               <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200 />
             </p>
@@ -304,7 +304,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
     writer.write """
         body {
           background-color: #ffffff;
-          font-family: Verdata, sans-serif;
+          font-family: Verdana, sans-serif;
           color: #505050;
         }
         a {
