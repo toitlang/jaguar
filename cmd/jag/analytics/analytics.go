@@ -13,8 +13,8 @@ import (
 )
 
 type Config struct {
-	Disabled bool   `mapstructure:"disabled" yaml:"disabled"`
-	ClientID string `mapstructure:"cid" yaml:"cid"`
+	Disabled bool   `mapstructure:"disabled" yaml:"disabled" json:"disabled"`
+	ClientID string `mapstructure:"cid" yaml:"cid" json:"cid"`
 }
 
 const (
