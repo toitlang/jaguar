@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import encoding.json
+import device
 import http
 import log
 import net
@@ -270,6 +271,52 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
   finally:
     socket.close
 
+handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
+  path := request.path
+  if path == "/": path = "index.html"
+  if path.starts_with "/": path = path[1..]
+
+  if path == "index.html":
+    writer.headers.set "Content-Type" "text/html"
+    writer.write """
+        <html>
+          <head>
+            <link rel="stylesheet" href="style.css">
+            <title>$device.name (Jaguar device)</title>
+          </head>
+          <body>
+            <h1>$device.name (Jaguar device)</h1>
+            <h2>Uptime: $(Duration --s=Time.monotonic_us / 1_000_000)</h2>
+            <h2>Toit SDK version: $vm_sdk_version</h2>
+            <h2 class=help>Run code on this device using <a href="https://github.com/toitlang/jaguar">jag run</a></h2>
+            <h2 class=help>Monitor the serial port console using <a href="https://github.com/toitlang/jaguar">jag monitor</a></h2>
+            <p>
+              <img src="https://toit.io/static/chip-e4ce030bdea3996fa7ad44ff63d88e52.svg" width=200 />
+            </p>
+          </body>
+        </html>
+        """
+  else if path == "style.css":
+    writer.headers.set "Content-Type" "text/css"
+    writer.write """
+        body {
+          background-color: #ffffff;
+          font-family: Verdata, sans-serif;
+          color: #505050;
+        }
+        a {
+          text-decoration: none;
+          color: #000000;
+        }
+        .help {
+          font-style: oblique;
+        }
+        """
+  else:
+    writer.headers.set "Content-Type" "text/plain"
+    writer.write_headers 404
+    writer.write "Not found: $path"
+
 serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address/string -> none:
   self := Task.current
 
@@ -278,11 +325,15 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
     headers ::= request.headers
     device_id_header := headers.single DEVICE_ID_HEADER
     sdk_version_header := headers.single SDK_VERSION_HEADER
+    path := request.path
 
     // Handle identification requests before validation, as the caller doesn't know that information yet.
-    if request.path == "/identify" and request.method == "GET":
+    if path == "/identify" and request.method == "GET":
       writer.write
           identity_payload id name address
+
+    else if path == "/" or path.ends_with ".html" or path.ends_with ".css" or path.ends_with ".ico":
+      handle_browser_request request writer
 
     // Validate device ID.
     else if device_id_header != id.stringify:
@@ -290,12 +341,12 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
 
     // Handle pings.
-    else if request.path == "/ping" and request.method == "GET":
+    else if path == "/ping" and request.method == "GET":
       writer.write
           json.encode {"status": "OK"}
 
     // Handle firmware updates.
-    else if request.path == "/firmware" and request.method == "PUT":
+    else if path == "/firmware" and request.method == "PUT":
       install_firmware request.content_length request.body
       writer.write
           json.encode {"status": "OK"}
@@ -312,7 +363,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
 
     // Handle code running.
-    else if request.path == "/code" and request.method == "PUT":
+    else if path == "/code" and request.method == "PUT":
       defines_string ::= headers.single RUN_DEFINES_HEADER
       defines/Map := defines_string ? (json.parse defines_string) : {:}
       install_program request.content_length request.body defines
