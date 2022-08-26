@@ -59,7 +59,8 @@ func getPartitions(toitToolchainPath string, positions map[string]int, sizes map
 				if index == COLUMN_NAME {
 					partitionType = field
 				} else if index == COLUMN_SUBTYPE {
-					if field != "" { partitionType = field
+					if field != "" {
+						partitionType = field
 					}
 				} else if index == COLUMN_POSITION || index == COLUMN_SIZE {
 					num, err := strconv.ParseInt(field, 0, 32)
