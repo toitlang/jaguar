@@ -282,22 +282,89 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
   if path == "index.html":
     writer.headers.set "Content-Type" "text/html"
     writer.write """
-        <html>
-          <head>
-            <link rel="stylesheet" href="style.css">
-            <title>$device.name (Jaguar device)</title>
-          </head>
-          <body>
-            <h1>Jaguar: $device.name</h1>
-            <h2>Uptime: $(Duration --s=Time.monotonic_us / Duration.MICROSECONDS_PER_SECOND)</h2>
-            <h2>Toit SDK version: $vm_sdk_version</h2>
-            <h2 class=help>Run code on this device using <a href="https://github.com/toitlang/jaguar"><code>jag run</code></a></h2>
-            <h2 class=help>Monitor the serial port console using <a href="https://github.com/toitlang/jaguar"><code>jag monitor</code></a></h2>
-            <p>
-              <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200 />
-            </p>
-          </body>
-        </html>
+<html>
+  <head>
+    <title>$device.name (Jaguar device)</title>
+    <style>
+        body {
+            background-color: #F5F5F5;
+        }
+        h1 {
+          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+          text-align: center;
+          font-size: 28px;
+          margin-top: 0px;
+          margin-bottom: 5px;
+        }
+        a {
+          text-decoration: none;
+          color: #333;
+        }
+        p {
+          margin:0
+        }
+        .box {
+          font-family: monospace;
+          border:none;
+          background: #fff;
+          border-radius: 15px;
+          box-shadow: rgb(255, 255, 255) 0px 0px 0px 0px, rgba(51, 65, 85, 0.1) 0px 0px 0px 1px, rgba(0, 0, 0, 0.05) 0px 20px 25px -5px, rgba(0, 0, 0, 0.05) 0px 8px 10px -6px;
+          box-sizing: border-box;
+          color: #444;
+          display: block;
+          line-height: 24px;
+          padding: 12px;
+          width: 390px;
+          margin:auto;
+          margin-top: 80px;
+          padding-left:20px;
+        }
+        .icon {
+          rotate: 45deg;
+          padding-top: 20px;
+          color: #62BBF3;
+          position: relative;
+          top:5px;
+          left:5px;
+          text-align:center
+        }
+        pre {
+          margin: 0
+        }
+        .center {
+          text-align: center;
+        }
+    </style>
+  </head>
+  <body>   
+    <div class="box"> 
+        <div class="center">
+            <svg width="90" style="" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+          </svg>
+        </div>
+        <br>        
+        <h1>$device.name</h1>
+        <div class="center">Jaguar device</div>
+        <br>
+<pre>
+=============================================
+= UPTIME: <b>$(Duration --s=Time.monotonic_us / Duration.MICROSECONDS_PER_SECOND)</b>                            
+= SDK:    <b>$vm_sdk_version</b>                   
+=============================================
+
+Run code on this device using
+<a href="https://github.com/toitlang/jaguar"><b>&gt; jag run</b></a>
+
+Monitor the serial port console using   
+<a href="https://github.com/toitlang/jaguar"><b>&gt; jag monitor</b></a>
+
+
+Timestamp: $(Time.now.local)
+</pre>
+    </div>
+  </body>
+</html>
         """
   else if path == "style.css":
     writer.headers.set "Content-Type" "text/css"
