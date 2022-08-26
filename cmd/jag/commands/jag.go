@@ -66,7 +66,10 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 				current = current.Parent()
 			}
 
-			analyticsClient, err := analytics.GetClient()
+			// Be careful and assign to the outer analyticsClient, so
+			// we can close it correctly in the post-run action.
+			var err error
+			analyticsClient, err = analytics.GetClient()
 			if err != nil {
 				return
 			}
@@ -90,7 +93,7 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 
 			CheckUpToDate(info)
 		},
-		PostRun: func(cmd *cobra.Command, args []string) {
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			if analyticsClient != nil {
 				analyticsClient.Close()
 			}
