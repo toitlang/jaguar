@@ -6,10 +6,12 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/google/uuid"
@@ -84,13 +86,37 @@ func RunCmd() *cobra.Command {
 		Short: "Run Toit code on a Jaguar device",
 		Long: "Run the specified .toit file on a Jaguar device as a new program. If the\n" +
 			"device is already executing another program, that program is stopped before\n" +
-			"the new program is started.",
-		Args:         cobra.ExactArgs(1),
+			"the new program is started.\n" +
+			"If you specify the device to be 'host' with the option '-d host', then the\n" +
+			"program runs on the current computer instead.",
+		Args:         cobra.MinimumNArgs(0),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			deviceSelect, err := parseDeviceFlag(cmd)
+			if err != nil {
+				return err
+			}
+
+			if name, ok := deviceSelect.(deviceNameSelect); ok && string(name) == "host" {
+				if cmd.Flags().Changed("define") {
+					return fmt.Errorf("--define/-D is not yet supported when running on host")
+				}
+				return runOnHost(ctx, cmd, args)
+			}
+
+			if cmd.Flags().Changed("expression") {
+				return fmt.Errorf("--expression/-s is not yet supported when running on devices")
+			}
+
 			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
+			}
+
+			if len(args) != 1 {
+				return fmt.Errorf("Only one argument can be passed to jag run")
 			}
 
 			entrypoint := args[0]
@@ -101,12 +127,6 @@ func RunCmd() *cobra.Command {
 				return fmt.Errorf("can't stat file '%s', reason: %w", entrypoint, err)
 			} else if stat.IsDir() {
 				return fmt.Errorf("can't run directory: '%s'", entrypoint)
-			}
-
-			ctx := cmd.Context()
-			deviceSelect, err := parseDeviceFlag(cmd)
-			if err != nil {
-				return err
 			}
 
 			sdk, err := GetSDK(ctx)
@@ -127,9 +147,33 @@ func RunCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringP("expression", "s", "", "evaluate immediate Toit expression")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control run on device")
 	return cmd
+}
+
+func runOnHost(ctx context.Context, cmd *cobra.Command, args []string) error {
+	sdk, err := GetSDK(ctx)
+	if err != nil {
+		return err
+	}
+
+	expression, err := cmd.Flags().GetString("expression")
+
+	var runCmd *exec.Cmd
+
+	if expression != "" {
+		expressionArgs := append([]string{"-s", expression}, args...)
+		runCmd = sdk.ToitRun(ctx, expressionArgs...)
+	} else {
+		runCmd = sdk.ToitRun(ctx, args...)
+	}
+
+	runCmd.Stderr = os.Stderr
+	runCmd.Stdout = os.Stdout
+	runCmd.Stdin = os.Stdin
+	return runCmd.Run()
 }
 
 func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string, defines string) error {
