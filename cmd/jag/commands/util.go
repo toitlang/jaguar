@@ -390,7 +390,7 @@ func parseOutputFlag(cmd *cobra.Command) (encoder, error) {
 	case "short":
 		return newShortEncoder(os.Stdout), nil
 	default:
-		return nil, fmt.Errorf("--ouput flag '%s' was not recognized. Must be either json, yaml or short.", output)
+		return nil, fmt.Errorf("--output flag '%s' was not recognized. Must be either json, yaml or short.", output)
 	}
 }
 

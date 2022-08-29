@@ -104,7 +104,6 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 		ScanCmd(),
 		PingCmd(),
 		RunCmd(),
-		RunHostCmd(),
 		CompileCmd(),
 		SimulateCmd(),
 		DecodeCmd(),
