@@ -27,11 +27,11 @@ func RunHostCmd() *cobra.Command {
 				return err
 			}
 
-            runCmd := sdk.ToitRun(ctx, args...)
-            runCmd.Stderr = os.Stderr
-            runCmd.Stdout = os.Stdout
-            runCmd.Stdin = os.Stdin
-            return runCmd.Run()
+			runCmd := sdk.ToitRun(ctx, args...)
+			runCmd.Stderr = os.Stderr
+			runCmd.Stdout = os.Stdout
+			runCmd.Stdin = os.Stdin
+			return runCmd.Run()
 		},
 	}
 
