@@ -143,6 +143,7 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 			return RunFile(cmd, device, sdk, entrypoint, runOptions)
 		},
 	}
@@ -177,7 +178,6 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string) error {
 }
 
 func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string, defines string) error {
-	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
 	ctx := cmd.Context()
 
 	snapshotsCache, err := directory.GetSnapshotsCachePath()
