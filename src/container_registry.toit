@@ -67,6 +67,9 @@ class ContainerRegistry:
     images/List ::= containers.images
     images.do: | id/uuid.Uuid |
       name/string? := null
+      // We are not sure that the entries loaded from flash is a map
+      // with the correct structure, so we guard the access to the
+      // individual entries and treat malformed ones as non-existing.
       catch: name = entries.get "$id"
       if not name:
         name = (id == jaguar_) ? "jaguar" : "container-$(index++)"
