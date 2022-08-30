@@ -46,7 +46,8 @@ disabled / bool := false
 network_free   / monitor.Semaphore ::= monitor.Semaphore
 container_done / monitor.Semaphore ::= monitor.Semaphore
 
-// ...
+// The installed and named containers are kept in a registry backed
+// by the flash (on the device).
 registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
