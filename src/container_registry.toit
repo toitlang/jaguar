@@ -5,6 +5,7 @@
 import device
 import uuid
 import system.containers
+import system.api.containers show ContainerService
 
 flash_  ::= device.FlashStore
 jaguar_ / uuid.Uuid ::= containers.current
@@ -27,9 +28,9 @@ class ContainerRegistry:
     // Uninstall all unnamed images. This is used to prepare
     // for running another unnamed image.
     images/List ::= containers.images
-    images.do: | id/uuid.Uuid |
-      if not name_by_id_.contains id:
-        containers.uninstall id
+    images.do: | image/containers.ContainerImage |
+      if not name_by_id_.contains image.id:
+        containers.uninstall image.id
     if name: uninstall name
     // Now actually create the image by invoking the block.
     image := block.call
@@ -65,17 +66,19 @@ class ContainerRegistry:
     // we cannot find anymore.
     index := 0
     images/List ::= containers.images
-    images.do: | id/uuid.Uuid |
-      name/string? := null
+    images.do: | image/containers.ContainerImage |
+      // Skip transient images that aren't named and installed.
+      if image.flags & ContainerService.FLAG_RUN_BOOT == 0: continue.do
       // We are not sure that the entries loaded from flash is a map
       // with the correct structure, so we guard the access to the
       // individual entries and treat malformed ones as non-existing.
-      catch: name = entries.get "$id"
+      name/string? := null
+      catch: name = entries.get "$image.id"
       if not name:
-        name = (id == jaguar_) ? "jaguar" : "container-$(index++)"
+        name = (image.id == jaguar_) ? "jaguar" : "container-$(index++)"
         dirty = true
-      id_by_name_[name] = id
-      name_by_id_[id] = name
+      id_by_name_[name] = image.id
+      name_by_id_[image.id] = name
     // We're done loading. If we've changed the name mapping in any way,
     // we write the updated entries back into flash.
     loaded_ = true
