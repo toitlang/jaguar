@@ -35,7 +35,7 @@ class ContainerRegistry:
     image := block.call
     if not name: return image
     // Update the name mapping and make sure we do not have
-    // and old name for the same image floating around.
+    // an old name for the same image floating around.
     old := name_by_id_.get image
     if old: id_by_name_.remove old
     name_by_id_[image] = name
@@ -45,8 +45,7 @@ class ContainerRegistry:
 
   uninstall name/string -> uuid.Uuid?:
     ensure_loaded_
-    id := id_by_name_.get name
-    if not id: return null
+    id := id_by_name_.get name --if_absent=: return null
     containers.uninstall id
     id_by_name_.remove name
     name_by_id_.remove id
