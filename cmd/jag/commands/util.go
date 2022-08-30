@@ -340,11 +340,12 @@ func parseRunDefinesFlags(cmd *cobra.Command, flagName string) (string, error) {
 	definesMap := make(map[string]interface{})
 	for _, element := range definesFlags {
 		indexOfAssign := strings.Index(element, "=")
+		var key string
 		if indexOfAssign < 0 {
-			key := strings.TrimSpace(element)
+			key = strings.TrimSpace(element)
 			definesMap[key] = true
 		} else {
-			key := strings.TrimSpace(element[0:indexOfAssign])
+			key = strings.TrimSpace(element[0:indexOfAssign])
 			value := strings.TrimSpace(element[indexOfAssign+1:])
 
 			// Try to parse the value as a JSON value and avoid turning
@@ -356,6 +357,14 @@ func parseRunDefinesFlags(cmd *cobra.Command, flagName string) (string, error) {
 			} else {
 				definesMap[key] = value
 			}
+		}
+		if key == "run.boot" {
+			fmt.Println()
+			fmt.Println("*********************************************")
+			fmt.Println("* Using 'jag run -D run.boot' is deprecated *")
+			fmt.Println("* .. use 'jag container install' instead .. *")
+			fmt.Println("*********************************************")
+			fmt.Println()
 		}
 	}
 	if len(definesMap) == 0 {

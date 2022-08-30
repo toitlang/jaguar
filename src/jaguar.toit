@@ -17,6 +17,8 @@ import monitor
 import system.containers
 import system.firmware
 
+import .container_registry
+
 HTTP_PORT ::= 9000
 IDENTIFY_PORT ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
@@ -29,20 +31,24 @@ logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
 
 /**
-Jaguar can run programs while Jaguar itself is disabled. You can
+Jaguar can run containers while Jaguar itself is disabled. You can
   enable this behavior by using `jag run -D jag.disabled ...` when
-  starting the program. Use this mode to test how your apps behave
+  starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 
 We keep track of the state through the global $disabled variable and
-  we set this to true when starting a program that needs to run with
+  we set this to true when starting a container that needs to run with
   Jaguar disabled. In return, this makes the outer $serve loop wait
-  for the program to be done, before it re-establishes the network
+  for the container to be done, before it re-establishes the network
   connection and restarts the HTTP server.
 */
 disabled / bool := false
-network_free / monitor.Semaphore ::= monitor.Semaphore
-program_done / monitor.Semaphore ::= monitor.Semaphore
+network_free   / monitor.Semaphore ::= monitor.Semaphore
+container_done / monitor.Semaphore ::= monitor.Semaphore
+
+// The installed and named containers are kept in a registry backed
+// by the flash (on the device).
+registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
   try:
@@ -80,8 +86,8 @@ serve arguments:
     while failures < attempts:
       exception := catch: run id name port
       if disabled:
-        network_free.up    // Signal to start running the program.
-        program_done.down  // Wait until done running the program.
+        network_free.up      // Signal to start running the container.
+        container_done.down  // Wait until done running the container.
         disabled = false
       if not exception: continue
       failures++
@@ -149,7 +155,7 @@ run id/uuid.Uuid name/string port/int:
 
 install_mutex ::= monitor.Mutex
 
-install_program program_size/int reader/reader.Reader defines/Map -> none:
+install_image image_size/int reader/reader.Reader defines/Map -> none:
   timeout/Duration? := null
   jag_timeout := defines.get "jag.timeout"
   if jag_timeout is string:
@@ -172,61 +178,63 @@ install_program program_size/int reader/reader.Reader defines/Map -> none:
     if not timeout: timeout = Duration --s=10
     disabled = true
 
-  run_boot := defines.get "run.boot" --if_absent=: false
+  name/string? := defines.get "container.name" --if_absent=: null
 
   with_timeout --ms=60_000: install_mutex.do:
-    // Uninstall everything but Jaguar.
-    images := containers.images
-    jaguar := containers.current
-    images.do: | id/uuid.Uuid |
-      if id != jaguar:
-        containers.uninstall id
+    image := registry_.install name:
+      logger.debug "installing container image with $image_size bytes"
+      written_size := 0
+      writer := containers.ContainerImageWriter image_size
+      while data := reader.read:
+        written_size += data.size
+        writer.write data
+      logger.debug "installing container image with $image_size bytes -> wrote $written_size bytes"
+      writer.commit --run_boot=(name != null)
 
-    logger.debug "installing program with $program_size bytes"
-    written_size := 0
-    writer := containers.ContainerImageWriter program_size
-    while data := reader.read:
-      written_size += data.size
-      writer.write data
-    program := writer.commit --run_boot=run_boot
-    logger.debug "installing program with $program_size bytes -> wrote $written_size bytes"
-
-    // We start the program from a separate task to allow the HTTP server
-    // to continue operating. This also means that the program running
+    // We start the container from a separate task to allow the HTTP server
+    // to continue operating. This also means that the container running
     // isn't covered by the installation mutex or associated timeout.
     task::
-      // First, we wait until we're ready to run the program. Usually,
+      // First, we wait until we're ready to run the container. Usually,
       // we are ready right away, but if we've been asked to disable
-      // Jaguar while running the program, we wait until the HTTP server
+      // Jaguar while running the container, we wait until the HTTP server
       // has been shut down and the network to be free.
       if disabled: network_free.down
 
       suffix := defines.is_empty ? "" : " with $defines"
-      logger.info "program $program started$suffix"
+      logger.info "container $image started$suffix"
       start ::= Time.monotonic_us
-      container ::= containers.start program
+      container ::= containers.start image
 
       // We're only interested in handling the timeout errors, so we
       // unwind and produce a stack trace in all other cases.
       filter ::= : it != DEADLINE_EXCEEDED_ERROR
 
-      // Wait until the program is done or until we time out.
+      // Wait until the container is done or until we time out.
       code/int? := null
       catch --unwind=filter --trace=filter:
         with_timeout timeout: code = container.wait
       if not code:
         elapsed ::= Duration --us=Time.monotonic_us - start
         code = container.stop
-        logger.info "program $program timed out after $elapsed"
+        logger.info "container $image timed out after $elapsed"
 
       if code == 0:
-        logger.info "program $program stopped"
+        logger.info "container $image stopped"
       else:
-        logger.error "program $program stopped - exit code $code"
+        logger.error "container $image stopped - exit code $code"
 
-      // If Jaguar was disabled while running the program, now is the
+      // If Jaguar was disabled while running the container, now is the
       // time to restart the HTTP server.
-      if disabled: program_done.up
+      if disabled: container_done.up
+
+uninstall_image defines/Map -> none:
+  name/string := defines["container.name"]
+  with_timeout --ms=60_000: install_mutex.do:
+    if id := registry_.uninstall name:
+      logger.info "container $id uninstalled ('$name')"
+    else:
+      logger.error "container '$name' not found"
 
 install_firmware firmware_size/int reader/reader.Reader -> none:
   with_timeout --ms=120_000: install_mutex.do:
@@ -351,6 +359,19 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       writer.write
           json.encode {"status": "OK"}
 
+    // Handle listing containers.
+    else if path == "/list" and request.method == "GET":
+      writer.write
+          json.encode registry_.entries
+
+    // Handle uninstalling containers.
+    else if path == "/uninstall" and request.method == "PUT":
+      defines_string ::= headers.single RUN_DEFINES_HEADER
+      defines/Map := defines_string ? (json.parse defines_string) : {:}
+      uninstall_image defines
+      writer.write
+          json.encode {"status": "OK"}
+
     // Handle firmware updates.
     else if path == "/firmware" and request.method == "PUT":
       install_firmware request.content_length request.body
@@ -372,7 +393,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
     else if path == "/code" and request.method == "PUT":
       defines_string ::= headers.single RUN_DEFINES_HEADER
       defines/Map := defines_string ? (json.parse defines_string) : {:}
-      install_program request.content_length request.body defines
+      install_image request.content_length request.body defines
       writer.write
           json.encode {"status": "OK"}
       if disabled:

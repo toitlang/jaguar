@@ -7,6 +7,7 @@ package commands
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -93,6 +94,57 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte, defines string) err
 		return fmt.Errorf("got non-OK from device: %s", res.Status)
 	}
 
+	return nil
+}
+
+func (d Device) ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", d.Address+"/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID)
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
+	}
+
+	var unmarshalled map[string]string
+	if err = json.Unmarshal(body, &unmarshalled); err != nil {
+		return nil, err
+	}
+
+	return unmarshalled, nil
+}
+
+func (d Device) ContainerUninstall(ctx context.Context, sdk *SDK, defines string) error {
+	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/uninstall", nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID)
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
+	req.Header.Set(JaguarRunDefinesHeader, defines)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	io.ReadAll(res.Body) // Avoid closing connection prematurely.
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("got non-OK from device: %s", res.Status)
+	}
 	return nil
 }
 
