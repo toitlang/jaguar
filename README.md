@@ -105,6 +105,37 @@ jag watch hello.toit
 
 and edit `hello.toit` or any of the files it depends on in your favorite editor.
 
+### Installing services and drivers
+Jaguar supports installing named containers that are automatically run when the system boots. They can be used
+to provide services and implement drivers for peripherals. The services and drivers can be used by 
+applications and as such they form an instrumental part of the extensibility of a Jaguar based system.
+
+You can list the currently installed containers on a device through:
+
+``` sh
+jag container list
+```
+
+This results in a list that shows the container image ids and the associated names.
+
+```
+$ jag container list
+85c64060-ffbd-5e04-a0dd-252d5bbf4a32: print-service
+4e9a12bc-7f07-5118-9f04-8ad2bbe476d1: jaguar
+```
+
+You install a new, or update an existing, container through:
+
+``` sh
+jag container install print-service service.toit
+```
+
+and you can uninstall said container again using:
+
+``` sh
+jag container uninstall print-service
+```
+
 ### Updating Jaguar via WiFi
 If you upgrade Jaguar, you will need to update the system software and the Jaguar application on your
 device. You can do this via WiFi simply by invoking:
@@ -112,6 +143,9 @@ device. You can do this via WiFi simply by invoking:
 ``` sh
 jag firmware update
 ```
+
+Updating the firmware will uninstall all containers and stop running applications, so those have to
+be transfered to the device again after the update.
 
 # Visual Studio Code
 The Toit SDK used by Jaguar comes with support for [Visual Studio Code](https://code.visualstudio.com/download).
@@ -145,17 +179,6 @@ The crash reporting component is [work in progress](https://github.com/toitlang/
 # Options for `jag run`
 It is possible to provide options for `jag run` that control how your applications behave on your device. This section
 lists the options and provides an explanation for when they might come in handy.
-
-## Re-running when rebooting
-If you want your installed application to automatically run on reboots, you can ask Jaguar to install it with the
-`run.boot` option. Among other things, this is useful if you're testing deep sleep behavior.
-
-``` sh
-jag run -D run.boot hello.toit
-```
-
-This is a new feature in v1.4.6.
-
 
 ## Limiting application run time
 You can control how much time Jaguar gives your application to run through the `-D jag.timeout` setting. It takes a value 
