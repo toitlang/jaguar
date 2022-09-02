@@ -61,12 +61,12 @@ func ContainerListCmd() *cobra.Command {
 
 			// Compute the column lengths for all columns except for the last.
 			deviceNameLength := max(len("DEVICE"), len(device.Name))
-			idLength := len("ID")
+			idLength := len("IMAGE")
 			for id := range containers {
 				idLength = max(idLength, len(id))
 			}
 
-			fmt.Println(padded("DEVICE", deviceNameLength) + padded("ID", idLength) + "NAME")
+			fmt.Println(padded("DEVICE", deviceNameLength) + padded("IMAGE", idLength) + "NAME")
 			for id, name := range containers {
 				fmt.Println(padded(device.Name, deviceNameLength) + padded(id, idLength) + name)
 			}
