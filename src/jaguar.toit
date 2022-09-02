@@ -367,7 +367,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           -webkit-font-smoothing: antialiased;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
           font-size: 14px;
-          color: #63748B;
+          color: #64748B;
         }
         .text-center {
           text-align: center;
