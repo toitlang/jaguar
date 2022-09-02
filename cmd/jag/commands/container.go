@@ -28,18 +28,6 @@ func ContainerCmd() *cobra.Command {
 	return cmd
 }
 
-func padded(prefix string, total int) string {
-	return prefix + strings.Repeat(" ", 3+total-len(prefix))
-}
-
-func max(x int, y int) int {
-	if x > y {
-		return x
-	} else {
-		return y
-	}
-}
-
 func ContainerListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "list",
@@ -178,4 +166,16 @@ func containerRunOptions(name string) string {
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	runOptions := "{ \"container.name\": \"" + escapedName + "\" }"
 	return runOptions
+}
+
+func padded(prefix string, total int) string {
+	return prefix + strings.Repeat(" ", 3+total-len(prefix))
+}
+
+func max(x int, y int) int {
+	if x > y {
+		return x
+	} else {
+		return y
+	}
 }
