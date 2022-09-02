@@ -28,6 +28,18 @@ func ContainerCmd() *cobra.Command {
 	return cmd
 }
 
+func padded(prefix string, total int) string {
+	return prefix + strings.Repeat(" ", 3+total-len(prefix))
+}
+
+func max(x int, y int) int {
+	if x > y {
+		return x
+	} else {
+		return y
+	}
+}
+
 func ContainerListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:  "list",
@@ -59,10 +71,17 @@ func ContainerListCmd() *cobra.Command {
 				return err
 			}
 
-			for id, name := range containers {
-				fmt.Println(id + ": " + name)
+			// Compute the column lengths for all columns except for the last.
+			deviceNameLength := max(len("DEVICE"), len(device.Name))
+			idLength := len("ID")
+			for id := range containers {
+				idLength = max(idLength, len(id))
 			}
 
+			fmt.Println(padded("DEVICE", deviceNameLength) + padded("ID", idLength) + "NAME")
+			for id, name := range containers {
+				fmt.Println(padded(device.Name, deviceNameLength) + padded(id, idLength) + name)
+			}
 			return nil
 		},
 	}
