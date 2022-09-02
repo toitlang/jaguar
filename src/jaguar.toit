@@ -338,7 +338,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           color: #444;
         }
         p {
-          margin: 0
+          margin: 0;
         }
         .box {
           position: relative;
@@ -360,14 +360,14 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           padding-top: 20px;
           color: #6366E9;
           position: relative;
-          width: 140px
+          width: 140px;
         }
         p, div {
-          margin: 0;
           -webkit-font-smoothing: antialiased;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
           font-size: 14px;
           color: #64748B;
+          margin: 0;
         }
         .text-center {
           text-align: center;
