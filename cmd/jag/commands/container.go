@@ -59,10 +59,17 @@ func ContainerListCmd() *cobra.Command {
 				return err
 			}
 
-			for id, name := range containers {
-				fmt.Println(id + ": " + name)
+			// Compute the column lengths for all columns except for the last.
+			deviceNameLength := max(len("DEVICE"), len(device.Name))
+			idLength := len("IMAGE")
+			for id := range containers {
+				idLength = max(idLength, len(id))
 			}
 
+			fmt.Println(padded("DEVICE", deviceNameLength) + padded("IMAGE", idLength) + "NAME")
+			for id, name := range containers {
+				fmt.Println(padded(device.Name, deviceNameLength) + padded(id, idLength) + name)
+			}
 			return nil
 		},
 	}
@@ -159,4 +166,16 @@ func containerRunOptions(name string) string {
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	runOptions := "{ \"container.name\": \"" + escapedName + "\" }"
 	return runOptions
+}
+
+func padded(prefix string, total int) string {
+	return prefix + strings.Repeat(" ", 3+total-len(prefix))
+}
+
+func max(x int, y int) int {
+	if x > y {
+		return x
+	} else {
+		return y
+	}
 }
