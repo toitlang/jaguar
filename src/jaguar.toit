@@ -356,7 +356,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
         }
         .icon {
           padding-top: 20px;
-          color: #6366E9;
+          color: #55A398;
           position: relative;
           width: 140px;
         }
@@ -377,11 +377,11 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           width: 100%;
         }
         a {
-          color: #6366E9;
+          color: #55A398;
         }
         a:link {
           text-decoration: none;
-          color: #6366E9;
+          color: #55A398;
         }
         a:hover {
           text-decoration: underline;
