@@ -289,7 +289,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
 
   if path == "index.html":
     uptime ::= Duration --s=Time.monotonic_us / Duration.MICROSECONDS_PER_SECOND
-  
+
     writer.headers.set "Content-Type" "text/html"
     writer.write """
         <html>
@@ -297,16 +297,16 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
             <link rel="stylesheet" href="style.css">
             <title>$device.name (Jaguar device)</title>
           </head>
-          <body>   
-            <div class="box"> 
+          <body>
+            <div class="box">
               <section class="text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-                  </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+                </svg>
               </section>
               <h1 class="mt-40">$device.name</h1>
               <p class="text-center">Jaguar device<p>
-              <p class="hr mt-40" ></p>
+              <p class="hr mt-40"></p>
               <section class="grid grid-cols-2 mt-20">
                 <p>Uptime</p>
                 <p><b class="text-black">$uptime</b></p>
@@ -317,8 +317,8 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
               <p class="mt-40">Run code on this device using</p>
               <b><a href="https://github.com/toitlang/jaguar">&gt; jag run</a></b>
               <p class="mt-20">Monitor the serial port console using</p>
-              <p class="mb-20"><b><a href="https://github.com/toitlang/jaguar">&gt; jag monitor</a></b></p>   
-          </div>
+              <p class="mb-20"><b><a href="https://github.com/toitlang/jaguar">&gt; jag monitor</a></b></p>
+            </div>
           </body>
         </html>
         """
@@ -333,30 +333,28 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           font-family: -apple-system, "Helvetica Neue", Arial;
           text-align: center;
           font-size: 40px;
-          margin-top: 0px;
+          margin-top: 0;
           margin-bottom: 15px;
           color: #444;
         }
         p {
-          margin:0
+          margin: 0
         }
         .box {
           position: relative;
-          border:none;
+          border: none;
           background: #fff;
           border-radius: 16px;
-          box-shadow:  rgb(255, 255, 255) 0px 0px 0px 0px inset, rgba(0, 0, 0, 0.1) 0px 0px 0px 1px inset,
-          rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(226, 232, 240) 0px 20px 25px -5px, rgb(226, 232, 240) 0px 8px 10px -6px;
+          box-shadow: #FFF 0 0 0 0 inset, #00000019 0 0 0 1px inset,
+          #0000 0 0 0 0, #0000 0 0 0 0, #E2E8F0 0 20px 25px -5px, #E2E8F0 0 8px 10px -6px;
           box-sizing: border-box;
           display: block;
           line-height: 24px;
           padding: 12px;
           width: 360px;
           margin: auto;
-          /* margin-left: 40px; */
           margin-top: 60px;
-          padding-left:20px;
-          
+          padding-left: 20px;
         }
         .icon {
           padding-top: 20px;
@@ -369,16 +367,16 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           -webkit-font-smoothing: antialiased;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
           font-size: 14px;
-          color: rgb(100, 116, 139);
+          color: #63748B;
         }
         .text-center {
           text-align: center;
         }
         .hr {
-            -webkit-font-smoothing: antialiased;
-            background-image: linear-gradient(to right, rgba(226, 232, 240, 0), rgb(226, 232, 240), rgba(226, 232, 240, 0));
-            height: 1px;
-            width: 100%;
+          -webkit-font-smoothing: antialiased;
+          background-image: linear-gradient(to right, #E2E8F000, #E2E8F0, #E3E8F000);
+          height: 1px;
+          width: 100%;
         }
         a {
           color: #6366E9;
@@ -391,22 +389,22 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           text-decoration: underline;
         }
         .text-black {
-            color: black;
+          color: #000;
         }
         .mt-40 {
-            margin-top: 40px;
+          margin-top: 40px;
         }
         .mt-20 {
-            margin-top: 20px;
+          margin-top: 20px;
         }
         .mb-20 {
-            margin-bottom: 20px;
+          margin-bottom: 20px;
         }
         .grid {
           display: grid;
         }
         .grid-cols-2	 {
-          grid-template-columns: 1fr 3fr; 
+          grid-template-columns: 1fr 3fr;
         }
         """
   else if path == "favicon.ico":
