@@ -300,10 +300,10 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           <body>
             <div class="box">
               <section class="text-center">
-                <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200 />
+                <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200>
               </section>
               <h1 class="mt-40">$device.name</h1>
-              <p class="text-center">Jaguar device<p>
+              <p class="text-center">Jaguar device</p>
               <p class="hr mt-40"></p>
               <section class="grid grid-cols-2 mt-20">
                 <p>Uptime</p>
