@@ -300,12 +300,10 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           <body>
             <div class="box">
               <section class="text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="icon">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-                </svg>
+                <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200>
               </section>
               <h1 class="mt-40">$device.name</h1>
-              <p class="text-center">Jaguar device<p>
+              <p class="text-center">Jaguar device</p>
               <p class="hr mt-40"></p>
               <section class="grid grid-cols-2 mt-20">
                 <p>Uptime</p>
@@ -358,7 +356,7 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
         }
         .icon {
           padding-top: 20px;
-          color: #6366E9;
+          color: #55A398;
           position: relative;
           width: 140px;
         }
@@ -379,11 +377,11 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           width: 100%;
         }
         a {
-          color: #6366E9;
+          color: #55A398;
         }
         a:link {
           text-decoration: none;
-          color: #6366E9;
+          color: #55A398;
         }
         a:hover {
           text-decoration: underline;
