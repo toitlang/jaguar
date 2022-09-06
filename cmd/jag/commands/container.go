@@ -116,13 +116,13 @@ func ContainerInstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
-			runOptions, err := parseRunDefinesFlags(cmd, "define", containerNameOverrides(name))
+			defines, err := parseDefineFlags(cmd, "define", containerNameOverrides(name))
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, entrypoint, device.Name)
-			return RunFile(cmd, device, sdk, entrypoint, runOptions)
+			return RunFile(cmd, device, sdk, entrypoint, defines)
 		},
 	}
 
@@ -160,13 +160,13 @@ func ContainerUninstallCmd() *cobra.Command {
 
 			name := args[0]
 
-			runOptions, err := parseRunDefinesFlags(cmd, "", containerNameOverrides(name))
+			defines, err := parseDefineFlags(cmd, "", containerNameOverrides(name))
 			if err != nil {
 				return err
 			}
 
 			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name)
-			return device.ContainerUninstall(ctx, sdk, runOptions)
+			return device.ContainerUninstall(ctx, sdk, defines)
 		},
 	}
 

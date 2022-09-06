@@ -139,12 +139,12 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			runOptions, err := parseRunDefinesFlags(cmd, "define", nil)
+			defines, err := parseDefineFlags(cmd, "define", nil)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
-			return RunFile(cmd, device, sdk, entrypoint, runOptions)
+			return RunFile(cmd, device, sdk, entrypoint, defines)
 		},
 	}
 

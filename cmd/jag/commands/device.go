@@ -21,7 +21,7 @@ import (
 const (
 	JaguarDeviceIDHeader   = "X-Jaguar-Device-ID"
 	JaguarSDKVersionHeader = "X-Jaguar-SDK-Version"
-	JaguarRunDefinesHeader = "X-Jaguar-Run-Defines"
+	JaguarDefinesHeader    = "X-Jaguar-Defines"
 )
 
 type Devices struct {
@@ -82,7 +82,7 @@ func (d Device) Run(ctx context.Context, sdk *SDK, b []byte, defines string) err
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	if defines != "" {
-		req.Header.Set(JaguarRunDefinesHeader, defines)
+		req.Header.Set(JaguarDefinesHeader, defines)
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -132,7 +132,7 @@ func (d Device) ContainerUninstall(ctx context.Context, sdk *SDK, defines string
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	req.Header.Set(JaguarRunDefinesHeader, defines)
+	req.Header.Set(JaguarDefinesHeader, defines)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

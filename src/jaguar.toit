@@ -25,7 +25,7 @@ IDENTIFY_ADDRESS   ::= net.IpAddress.parse "255.255.255.255"
 
 DEVICE_ID_HEADER   ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
-RUN_DEFINES_HEADER ::= "X-Jaguar-Run-Defines"
+DEFINES_HEADER     ::= "X-Jaguar-Defines"
 
 // Run options recognized by Jaguar.
 JAG_CONTAINER_NAME ::= "jag.container.name"
@@ -455,8 +455,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Handle uninstalling containers.
     else if path == "/uninstall" and request.method == "PUT":
-      defines_string ::= headers.single RUN_DEFINES_HEADER
-      defines/Map := defines_string ? (json.parse defines_string) : {:}
+      defines ::= extract_defines headers
       uninstall_image defines
       writer.write
           json.encode {"status": "OK"}
@@ -480,8 +479,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Handle code running.
     else if path == "/code" and request.method == "PUT":
-      defines_string ::= headers.single RUN_DEFINES_HEADER
-      defines/Map := defines_string ? (json.parse defines_string) : {:}
+      defines ::= extract_defines headers
       install_image request.content_length request.body defines
       writer.write
           json.encode {"status": "OK"}
@@ -493,3 +491,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
         task::
           sleep --ms=500
           self.cancel
+
+extract_defines headers/http.Headers -> Map:
+  defines_string ::= headers.single DEFINES_HEADER
+  return defines_string ? (json.parse defines_string) : {:}
