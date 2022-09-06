@@ -205,7 +205,7 @@ install_image image_size/int reader/reader.Reader defines/Map -> none:
       suffix := defines.is_empty ? "" : " with $defines"
       logger.info "container $image started$suffix"
       start ::= Time.monotonic_us
-      container ::= containers.start image
+      container ::= containers.start image defines
 
       // We're only interested in handling the timeout errors, so we
       // unwind and produce a stack trace in all other cases.
