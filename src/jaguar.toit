@@ -52,6 +52,7 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
   try:
+    catch --trace: registry_.start_installed
     exception := catch --trace: serve arguments
     logger.error "rebooting due to $(exception)"
   finally:
@@ -189,7 +190,7 @@ install_image image_size/int reader/reader.Reader defines/Map -> none:
         written_size += data.size
         writer.write data
       logger.debug "installing container image with $image_size bytes -> wrote $written_size bytes"
-      writer.commit --run_boot=(name != null)
+      writer.commit --data=(name != null ? JAGUAR_INSTALLED_MAGIC : 0)
 
     // We start the container from a separate task to allow the HTTP server
     // to continue operating. This also means that the container running

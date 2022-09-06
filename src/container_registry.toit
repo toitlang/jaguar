@@ -7,6 +7,8 @@ import uuid
 import system.containers
 import system.api.containers show ContainerService
 
+JAGUAR_INSTALLED_MAGIC ::= 0xb16_ca7  // Magic is "big cat".
+
 flash_  ::= device.FlashStore
 jaguar_ / uuid.Uuid ::= containers.current
 
@@ -22,6 +24,12 @@ class ContainerRegistry:
     result := {:}
     name_by_id_.do: | id/uuid.Uuid name/string | result["$id"] = name
     return result
+
+  start_installed -> none:
+    ensure_loaded_
+    name_by_id_.do: | id/uuid.Uuid |
+      if id == jaguar_: continue.do
+      containers.start id
 
   install name/string? [block] -> uuid.Uuid:
     ensure_loaded_
@@ -67,8 +75,9 @@ class ContainerRegistry:
     index := 0
     images/List ::= containers.images
     images.do: | image/containers.ContainerImage |
-      // Skip transient images that aren't named and installed.
-      if image.flags & ContainerService.FLAG_RUN_BOOT == 0: continue.do
+      // Skip transient images that aren't named and installed by Jaguar.
+      if image.id != jaguar_ and image.data != JAGUAR_INSTALLED_MAGIC:
+        continue.do
       // We are not sure that the entries loaded from flash is a map
       // with the correct structure, so we guard the access to the
       // individual entries and treat malformed ones as non-existing.
