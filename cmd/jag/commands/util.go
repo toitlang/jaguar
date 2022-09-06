@@ -327,18 +327,14 @@ type encoder interface {
 	Encode(interface{}) error
 }
 
-func parseRunDefinesFlags(cmd *cobra.Command, extra string, flagName string) (string, error) {
-	if !cmd.Flags().Changed(flagName) {
-		return "", nil
-	}
-
-	definesFlags, err := cmd.Flags().GetStringArray(flagName)
-	if err != nil {
-		return "", err
-	}
-
-	if extra != "" {
-		definesFlags = append(definesFlags, extra)
+func parseRunDefinesFlags(cmd *cobra.Command, flagName string, overrides map[string]interface{}) (string, error) {
+	var definesFlags []string = make([]string, 0)
+	if flagName != "" && cmd.Flags().Changed(flagName) {
+		flags, err := cmd.Flags().GetStringArray(flagName)
+		if err != nil {
+			return "", err
+		}
+		definesFlags = flags
 	}
 
 	definesMap := make(map[string]interface{})
@@ -371,6 +367,11 @@ func parseRunDefinesFlags(cmd *cobra.Command, extra string, flagName string) (st
 			fmt.Println()
 		}
 	}
+
+	for key, value := range overrides {
+		definesMap[key] = value
+	}
+
 	if len(definesMap) == 0 {
 		return "", nil
 	}

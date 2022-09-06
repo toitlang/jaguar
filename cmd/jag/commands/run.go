@@ -139,7 +139,7 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			runOptions, err := parseRunDefinesFlags(cmd, "", "define")
+			runOptions, err := parseRunDefinesFlags(cmd, "define", nil)
 			if err != nil {
 				return err
 			}

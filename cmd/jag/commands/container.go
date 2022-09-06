@@ -116,8 +116,7 @@ func ContainerInstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
-			escapedName := strings.ReplaceAll(name, "\"", "\\\"")
-			runOptions, err := parseRunDefinesFlags(cmd, "container.name="+escapedName, "define")
+			runOptions, err := parseRunDefinesFlags(cmd, "define", containerNameOverrides(name))
 			if err != nil {
 				return err
 			}
@@ -160,8 +159,14 @@ func ContainerUninstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
+
+			runOptions, err := parseRunDefinesFlags(cmd, "", containerNameOverrides(name))
+			if err != nil {
+				return err
+			}
+
 			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name)
-			return device.ContainerUninstall(ctx, sdk, containerRunOptions(name))
+			return device.ContainerUninstall(ctx, sdk, runOptions)
 		},
 	}
 
@@ -169,10 +174,11 @@ func ContainerUninstallCmd() *cobra.Command {
 	return cmd
 }
 
-func containerRunOptions(name string) string {
+func containerNameOverrides(name string) map[string]interface{} {
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
-	runOptions := "{ \"container.name\": \"" + escapedName + "\" }"
-	return runOptions
+	return map[string]interface{}{
+		"container.name": escapedName,
+	}
 }
 
 func padded(prefix string, total int) string {

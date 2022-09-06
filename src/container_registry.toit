@@ -20,11 +20,11 @@ class ContainerRegistry:
   name_by_id_ / Map    ::= {:}  // Map<uuid.Uuid, string>
   defines_by_id_ / Map ::= {:}  // Map<uuid.Uuid, Map>>
 
-  entries -> Map:
+  entries --defines/bool=false -> Map:
     ensure_loaded_
     result := {:}
     name_by_id_.do: | id/uuid.Uuid name/string |
-      result["$id"] = [name, defines_by_id_.get id]
+      result["$id"] = defines ? [name, defines_by_id_.get id] : name
     return result
 
   start_installed -> none:
@@ -102,4 +102,4 @@ class ContainerRegistry:
     if dirty or entries.size > images.size: store_
 
   store_ -> none:
-    flash_.set KEY_ entries
+    flash_.set KEY_ (entries --defines)
