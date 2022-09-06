@@ -15,9 +15,9 @@ jaguar_ / uuid.Uuid ::= containers.current
 class ContainerRegistry:
   static KEY_ /string ::= "jag.containers"
 
-  loaded_     / bool    := false
-  id_by_name_ / Map    ::= {:}  // Map<string, uuid.Uuid>
-  name_by_id_ / Map    ::= {:}  // Map<uuid.Uuid, string>
+  loaded_        / bool := false
+  id_by_name_    / Map ::= {:}  // Map<string, uuid.Uuid>
+  name_by_id_    / Map ::= {:}  // Map<uuid.Uuid, string>
   defines_by_id_ / Map ::= {:}  // Map<uuid.Uuid, Map>>
 
   entries --defines/bool=false -> Map:

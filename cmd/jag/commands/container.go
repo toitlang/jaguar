@@ -177,7 +177,7 @@ func ContainerUninstallCmd() *cobra.Command {
 func containerNameOverrides(name string) map[string]interface{} {
 	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
 	return map[string]interface{}{
-		"container.name": escapedName,
+		"jag.container.name": escapedName,
 	}
 }
 

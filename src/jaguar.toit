@@ -19,13 +19,18 @@ import system.firmware
 
 import .container_registry
 
-HTTP_PORT ::= 9000
-IDENTIFY_PORT ::= 1990
-IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
+HTTP_PORT          ::= 9000
+IDENTIFY_PORT      ::= 1990
+IDENTIFY_ADDRESS   ::= net.IpAddress.parse "255.255.255.255"
 
-DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
+DEVICE_ID_HEADER   ::= "X-Jaguar-Device-ID"
 SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
 RUN_DEFINES_HEADER ::= "X-Jaguar-Run-Defines"
+
+// Run options recognized by Jaguar.
+JAG_CONTAINER_NAME ::= "jag.container.name"
+JAG_DISABLED       ::= "jag.disabled"
+JAG_TIMEOUT        ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
@@ -158,7 +163,7 @@ install_mutex ::= monitor.Mutex
 
 install_image image_size/int reader/reader.Reader defines/Map -> none:
   timeout/Duration? := null
-  jag_timeout := defines.get "jag.timeout"
+  jag_timeout := defines.get JAG_TIMEOUT
   if jag_timeout is string:
     value := int.parse jag_timeout[0..jag_timeout.size - 1] --on_error=(: 0)
     if value > 0 and jag_timeout.ends_with "s":
@@ -168,18 +173,19 @@ install_image image_size/int reader/reader.Reader defines/Map -> none:
     else if value > 0 and jag_timeout.ends_with "h":
       timeout = Duration --h=value
     else:
-      logger.error "invalid jag.timeout setting (\"$jag_timeout\")"
+      logger.error "invalid $JAG_TIMEOUT setting (\"$jag_timeout\")"
   else if jag_timeout is int and jag_timeout > 0:
     timeout = Duration --s=jag_timeout
   else if jag_timeout:
-    logger.error "invalid jag.timeout setting ($jag_timeout)"
+    logger.error "invalid $JAG_TIMEOUT setting ($jag_timeout)"
 
-  jag_disabled := defines.get "jag.disabled"
+  jag_disabled := defines.get JAG_DISABLED
   if jag_disabled:
     if not timeout: timeout = Duration --s=10
     disabled = true
 
-  name/string? := defines.get "container.name" --if_absent=: null
+  name/string? := defines.get JAG_CONTAINER_NAME --if_absent=: null
+  defines = defines.filter --in_place: not it.starts_with "jag."
 
   with_timeout --ms=60_000: install_mutex.do:
     image := registry_.install name defines:
@@ -230,7 +236,7 @@ install_image image_size/int reader/reader.Reader defines/Map -> none:
       if disabled: container_done.up
 
 uninstall_image defines/Map -> none:
-  name/string := defines["container.name"]
+  name/string := defines[JAG_CONTAINER_NAME]
   with_timeout --ms=60_000: install_mutex.do:
     if id := registry_.uninstall name:
       logger.info "container $id uninstalled ('$name')"
