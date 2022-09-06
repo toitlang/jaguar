@@ -182,7 +182,7 @@ install_image image_size/int reader/reader.Reader defines/Map -> none:
   name/string? := defines.get "container.name" --if_absent=: null
 
   with_timeout --ms=60_000: install_mutex.do:
-    image := registry_.install name:
+    image := registry_.install name defines:
       logger.debug "installing container image with $image_size bytes"
       written_size := 0
       writer := containers.ContainerImageWriter image_size

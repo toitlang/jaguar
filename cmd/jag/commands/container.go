@@ -116,12 +116,19 @@ func ContainerInstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
+			escapedName := strings.ReplaceAll(name, "\"", "\\\"")
+			runOptions, err := parseRunDefinesFlags(cmd, "container.name="+escapedName, "define")
+			if err != nil {
+				return err
+			}
+
 			fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, entrypoint, device.Name)
-			return RunFile(cmd, device, sdk, entrypoint, containerRunOptions(name))
+			return RunFile(cmd, device, sdk, entrypoint, runOptions)
 		},
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
+	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control container on device")
 	return cmd
 }
 
