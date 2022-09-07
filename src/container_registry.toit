@@ -70,8 +70,9 @@ class ContainerRegistry:
     dirty := true
     entries := {:}
     catch --trace:
-      entries = flash_.get KEY_
-      dirty = false
+      if loaded := flash_.get KEY_:
+        entries = loaded
+        dirty = false
     // Run through the images actually installed in flash and update the
     // registry accordingly. This involves inventing names for unexpected
     // containers found in flash and pruning names for containers that
