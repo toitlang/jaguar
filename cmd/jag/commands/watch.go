@@ -188,7 +188,6 @@ func onWatchChanges(cmd *cobra.Command, watcher *watcher, device *Device, sdk *S
 	}
 
 	runOnDevice := func(runCtx context.Context) {
-		fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 		if err := RunFile(cmd, device, sdk, entrypoint, ""); err != nil {
 			fmt.Println("Error:", err)
 			return

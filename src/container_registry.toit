@@ -15,23 +15,25 @@ jaguar_ / uuid.Uuid ::= containers.current
 class ContainerRegistry:
   static KEY_ /string ::= "jag.containers"
 
-  loaded_     / bool := false
-  id_by_name_ / Map ::= {:}  // Map<string, uuid.Uuid>
-  name_by_id_ / Map ::= {:}  // Map<uuid.Uuid, string>
+  loaded_        / bool := false
+  id_by_name_    / Map ::= {:}  // Map<string, uuid.Uuid>
+  name_by_id_    / Map ::= {:}  // Map<uuid.Uuid, string>
+  defines_by_id_ / Map ::= {:}  // Map<uuid.Uuid, Map>
 
-  entries -> Map:
+  entries --defines/bool=false -> Map:
     ensure_loaded_
     result := {:}
-    name_by_id_.do: | id/uuid.Uuid name/string | result["$id"] = name
+    name_by_id_.do: | id/uuid.Uuid name/string |
+      result["$id"] = defines ? [name, defines_by_id_.get id] : name
     return result
 
-  start_installed -> none:
+  do [block] -> none:
     ensure_loaded_
-    name_by_id_.do: | id/uuid.Uuid |
+    name_by_id_.do: | id/uuid.Uuid name/string |
       if id == jaguar_: continue.do
-      containers.start id
+      block.call name id (defines_by_id_.get id)
 
-  install name/string? [block] -> uuid.Uuid:
+  install name/string? defines/Map [block] -> uuid.Uuid:
     ensure_loaded_
     // Uninstall all unnamed images. This is used to prepare
     // for running another unnamed image.
@@ -48,6 +50,7 @@ class ContainerRegistry:
     old := name_by_id_.get image
     if old: id_by_name_.remove old
     name_by_id_[image] = name
+    defines_by_id_[image] = defines
     id_by_name_[name] = image
     store_
     return image
@@ -58,6 +61,7 @@ class ContainerRegistry:
     containers.uninstall id
     id_by_name_.remove name
     name_by_id_.remove id
+    defines_by_id_.remove id
     store_
     return id
 
@@ -82,16 +86,20 @@ class ContainerRegistry:
       // with the correct structure, so we guard the access to the
       // individual entries and treat malformed ones as non-existing.
       name/string? := null
-      catch: name = entries.get "$image.id"
+      defines/Map? := null
+      entry := entries.get "$image.id"
+      catch: name = entry[0]
+      catch: defines = entry[1]
       if not name:
         name = (image.id == jaguar_) ? "jaguar" : "container-$(index++)"
         dirty = true
       id_by_name_[name] = image.id
       name_by_id_[image.id] = name
+      defines_by_id_[image.id] = defines
     // We're done loading. If we've changed the name mapping in any way,
     // we write the updated entries back into flash.
     loaded_ = true
     if dirty or entries.size > images.size: store_
 
   store_ -> none:
-    flash_.set KEY_ entries
+    flash_.set KEY_ (entries --defines)

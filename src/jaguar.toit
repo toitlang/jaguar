@@ -19,16 +19,22 @@ import system.firmware
 
 import .container_registry
 
-HTTP_PORT ::= 9000
-IDENTIFY_PORT ::= 1990
+HTTP_PORT        ::= 9000
+IDENTIFY_PORT    ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 
-DEVICE_ID_HEADER ::= "X-Jaguar-Device-ID"
-SDK_VERSION_HEADER ::= "X-Jaguar-SDK-Version"
-RUN_DEFINES_HEADER ::= "X-Jaguar-Run-Defines"
+HEADER_DEVICE_ID      ::= "X-Jaguar-Device-ID"
+HEADER_SDK_VERSION    ::= "X-Jaguar-SDK-Version"
+HEADER_DEFINES        ::= "X-Jaguar-Defines"
+HEADER_CONTAINER_NAME ::= "X-Jaguar-Container-Name"
+
+// Defines recognized by Jaguar for /run requests.
+JAG_DISABLED       ::= "jag.disabled"
+JAG_TIMEOUT        ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 validate_firmware / bool := firmware.is_validation_pending
+flash_mutex ::= monitor.Mutex
 
 /**
 Jaguar can run containers while Jaguar itself is disabled. You can
@@ -52,7 +58,12 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
   try:
-    catch --trace: registry_.start_installed
+    // We try to start all installed containers, but we catch any
+    // exceptions that might occur from that to avoid blocking
+    // the Jaguar functionality in case something is off.
+    catch --trace:
+      registry_.do: | name/string image/uuid.Uuid defines/Map? |
+        run_image image "started" name defines
     serve arguments
   finally: | is_exception exception |
     // We shouldn't be able to get here without an exception having
@@ -159,11 +170,41 @@ run id/uuid.Uuid name/string port/int:
     if network: network.close
     if error: throw error
 
-install_mutex ::= monitor.Mutex
+flash_image image_size/int reader/reader.Reader name/string? defines/Map -> uuid.Uuid:
+  with_timeout --ms=60_000: flash_mutex.do:
+    image := registry_.install name defines:
+      logger.debug "installing container image with $image_size bytes"
+      written_size := 0
+      writer := containers.ContainerImageWriter image_size
+      while data := reader.read:
+        written_size += data.size
+        writer.write data
+      logger.debug "installing container image with $image_size bytes -> wrote $written_size bytes"
+      writer.commit --data=(name != null ? JAGUAR_INSTALLED_MAGIC : 0)
+    return image
+  unreachable
 
-install_image image_size/int reader/reader.Reader defines/Map -> none:
+run_image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Container:
+  nick := name ? "container '$name'" : "program $image"
+  suffix := defines.is_empty ? "" : " with $defines"
+  logger.info "$nick $cause$suffix"
+  defines = defines.filter: not it.starts_with "jag."
+  return containers.start image defines
+
+install_image image_size/int reader/reader.Reader name/string defines/Map -> none:
+  image := flash_image image_size reader name defines
+  run_image image "installed and started" name defines
+
+uninstall_image name/string -> none:
+  with_timeout --ms=60_000: flash_mutex.do:
+    if image := registry_.uninstall name:
+      logger.info "container '$name' uninstalled"
+    else:
+      logger.error "container '$name' not found"
+
+run_code image_size/int reader/reader.Reader defines/Map -> none:
   timeout/Duration? := null
-  jag_timeout := defines.get "jag.timeout"
+  jag_timeout := defines.get JAG_TIMEOUT
   if jag_timeout is string:
     value := int.parse jag_timeout[0..jag_timeout.size - 1] --on_error=(: 0)
     if value > 0 and jag_timeout.ends_with "s":
@@ -173,77 +214,58 @@ install_image image_size/int reader/reader.Reader defines/Map -> none:
     else if value > 0 and jag_timeout.ends_with "h":
       timeout = Duration --h=value
     else:
-      logger.error "invalid jag.timeout setting (\"$jag_timeout\")"
+      logger.error "invalid $JAG_TIMEOUT setting (\"$jag_timeout\")"
   else if jag_timeout is int and jag_timeout > 0:
     timeout = Duration --s=jag_timeout
   else if jag_timeout:
-    logger.error "invalid jag.timeout setting ($jag_timeout)"
+    logger.error "invalid $JAG_TIMEOUT setting ($jag_timeout)"
 
-  jag_disabled := defines.get "jag.disabled"
+  jag_disabled := defines.get JAG_DISABLED
   if jag_disabled:
     if not timeout: timeout = Duration --s=10
     disabled = true
 
-  name/string? := defines.get "container.name" --if_absent=: null
+  // Write the image into flash.
+  image := flash_image image_size reader null defines
 
-  with_timeout --ms=60_000: install_mutex.do:
-    image := registry_.install name:
-      logger.debug "installing container image with $image_size bytes"
-      written_size := 0
-      writer := containers.ContainerImageWriter image_size
-      while data := reader.read:
-        written_size += data.size
-        writer.write data
-      logger.debug "installing container image with $image_size bytes -> wrote $written_size bytes"
-      writer.commit --data=(name != null ? JAGUAR_INSTALLED_MAGIC : 0)
+  // We start the container from a separate task to allow the HTTP server
+  // to continue operating. This also means that the container running
+  // isn't covered by the flashing mutex or associated timeout.
+  task::
+    // First, we wait until we're ready to run the container. Usually,
+    // we are ready right away, but if we've been asked to disable
+    // Jaguar while running the container, we wait until the HTTP server
+    // has been shut down and the network to be free.
+    if disabled: network_free.down
 
-    // We start the container from a separate task to allow the HTTP server
-    // to continue operating. This also means that the container running
-    // isn't covered by the installation mutex or associated timeout.
-    task::
-      // First, we wait until we're ready to run the container. Usually,
-      // we are ready right away, but if we've been asked to disable
-      // Jaguar while running the container, we wait until the HTTP server
-      // has been shut down and the network to be free.
-      if disabled: network_free.down
+    // Start the image.
+    start ::= Time.monotonic_us
+    container ::= run_image image "started" null defines
 
-      suffix := defines.is_empty ? "" : " with $defines"
-      logger.info "container $image started$suffix"
-      start ::= Time.monotonic_us
-      container ::= containers.start image defines
+    // We're only interested in handling the timeout errors, so we
+    // unwind and produce a stack trace in all other cases.
+    filter ::= : it != DEADLINE_EXCEEDED_ERROR
 
-      // We're only interested in handling the timeout errors, so we
-      // unwind and produce a stack trace in all other cases.
-      filter ::= : it != DEADLINE_EXCEEDED_ERROR
+    // Wait until the container is done or until we time out.
+    code/int? := null
+    catch --unwind=filter --trace=filter:
+      with_timeout timeout: code = container.wait
+    if not code:
+      elapsed ::= Duration --us=Time.monotonic_us - start
+      code = container.stop
+      logger.info "program $image timed out after $elapsed"
 
-      // Wait until the container is done or until we time out.
-      code/int? := null
-      catch --unwind=filter --trace=filter:
-        with_timeout timeout: code = container.wait
-      if not code:
-        elapsed ::= Duration --us=Time.monotonic_us - start
-        code = container.stop
-        logger.info "container $image timed out after $elapsed"
-
-      if code == 0:
-        logger.info "container $image stopped"
-      else:
-        logger.error "container $image stopped - exit code $code"
-
-      // If Jaguar was disabled while running the container, now is the
-      // time to restart the HTTP server.
-      if disabled: container_done.up
-
-uninstall_image defines/Map -> none:
-  name/string := defines["container.name"]
-  with_timeout --ms=60_000: install_mutex.do:
-    if id := registry_.uninstall name:
-      logger.info "container $id uninstalled ('$name')"
+    if code == 0:
+      logger.info "program $image stopped"
     else:
-      logger.error "container '$name' not found"
+      logger.error "program $image stopped - exit code $code"
+
+    // If Jaguar was disabled while running the container, now is the
+    // time to restart the HTTP server.
+    if disabled: container_done.up
 
 install_firmware firmware_size/int reader/reader.Reader -> none:
-  with_timeout --ms=120_000: install_mutex.do:
+  with_timeout --ms=120_000: flash_mutex.do:
     logger.info "installing firmware with $firmware_size bytes"
     written_size := 0
     writer := firmware.FirmwareWriter 0 firmware_size
@@ -425,8 +447,8 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     headers ::= request.headers
-    device_id_header := headers.single DEVICE_ID_HEADER
-    sdk_version_header := headers.single SDK_VERSION_HEADER
+    device_id_header := headers.single HEADER_DEVICE_ID
+    sdk_version_header := headers.single HEADER_SDK_VERSION
     path := request.path
 
     // Handle identification requests before validation, as the caller doesn't know that information yet.
@@ -439,7 +461,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Validate device ID.
     else if device_id_header != id.stringify:
-      logger.info "denied request, header: '$DEVICE_ID_HEADER' was '$device_id_header' not '$id'"
+      logger.info "denied request, header: '$HEADER_DEVICE_ID' was '$device_id_header' not '$id'"
       writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
 
     // Handle pings.
@@ -452,11 +474,18 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       writer.write
           json.encode registry_.entries
 
+    // Handle installing containers.
+    else if path == "/install" and request.method == "PUT":
+      container_name ::= headers.single HEADER_CONTAINER_NAME
+      defines ::= extract_defines headers
+      install_image request.content_length request.body container_name defines
+      writer.write
+          json.encode {"status": "OK"}
+
     // Handle uninstalling containers.
     else if path == "/uninstall" and request.method == "PUT":
-      defines_string ::= headers.single RUN_DEFINES_HEADER
-      defines/Map := defines_string ? (json.parse defines_string) : {:}
-      uninstall_image defines
+      container_name ::= headers.single HEADER_CONTAINER_NAME
+      uninstall_image container_name
       writer.write
           json.encode {"status": "OK"}
 
@@ -474,14 +503,13 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Validate SDK version before attempting to run code.
     else if sdk_version_header != vm_sdk_version:
-      logger.info "denied request, header: '$SDK_VERSION_HEADER' was '$sdk_version_header' not '$vm_sdk_version'"
+      logger.info "denied request, header: '$HEADER_SDK_VERSION' was '$sdk_version_header' not '$vm_sdk_version'"
       writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
 
     // Handle code running.
-    else if path == "/code" and request.method == "PUT":
-      defines_string ::= headers.single RUN_DEFINES_HEADER
-      defines/Map := defines_string ? (json.parse defines_string) : {:}
-      install_image request.content_length request.body defines
+    else if path == "/run" and request.method == "PUT":
+      defines ::= extract_defines headers
+      run_code request.content_length request.body defines
       writer.write
           json.encode {"status": "OK"}
       if disabled:
@@ -492,3 +520,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
         task::
           sleep --ms=500
           self.cancel
+
+extract_defines headers/http.Headers -> Map:
+  defines_string ::= headers.single HEADER_DEFINES
+  return defines_string ? (json.parse defines_string) : {:}
