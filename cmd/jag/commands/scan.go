@@ -64,8 +64,9 @@ func ScanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if outputter == nil && autoSelect != nil {
-				outputter = yaml.NewEncoder(os.Stdout)
+
+			if outputter != nil && autoSelect != nil {
+				return fmt.Errorf("listing and device-selection are exclusive")
 			}
 
 			cmd.SilenceUsage = true
@@ -73,29 +74,28 @@ func ScanCmd() *cobra.Command {
 				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 				devices := []Device{}
 				var err error
-				if autoSelect == nil {
-					devices, err = scan(scanCtx, autoSelect, port)
-				} else {
-					device, _, errPD := scanAndPickDevice(scanCtx, scanTimeout, port, autoSelect, false)
-					err = errPD
-					if device != nil {
-						devices = []Device{*device}
-					}
-				}
+				devices, err = scan(scanCtx, autoSelect, port)
 				cancel()
 				if err != nil {
 					return err
 				}
-				if outputter != nil {
-					return outputter.Encode(Devices{devices})
-				}
-				return nil
+
+				return outputter.Encode(Devices{devices})
 			}
 
-			device, _, err := scanAndPickDevice(ctx, timeout, port, nil, false)
+			device, _, err := scanAndPickDevice(ctx, timeout, port, autoSelect, false)
 			if err != nil {
 				return err
 			}
+
+			if autoSelect != nil {
+				outputter = yaml.NewEncoder(os.Stdout)
+				err = outputter.Encode(device)
+				if err != nil {
+					return err
+				}
+			}
+
 			cfg.Set("device", device)
 			return cfg.WriteConfig()
 		},
