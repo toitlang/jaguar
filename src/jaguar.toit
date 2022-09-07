@@ -58,13 +58,21 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
   try:
+    // We try to start all installed containers, but we catch any
+    // exceptions that might occur from that to avoid blocking
+    // the Jaguar functionality in case something is off.
     catch --trace:
       registry_.do: | name/string image/uuid.Uuid defines/Map? |
         run_image image "started" name defines
-    exception := catch --trace: serve arguments
-    logger.error "rebooting due to $(exception)"
-  finally:
-    esp32.deep_sleep (Duration --s=1)
+    serve arguments
+  finally: | is_exception exception |
+    // We shouldn't be able to get here without an exception having
+    // been thrown, but we play it defensively and force an exception
+    // if that should ever happen.
+    if not is_exception: unreachable
+    // Jaguar runs as a critical container, so an uncaught exception
+    // will cause the system to reboot.
+    logger.error "rebooting due to $exception.value"
 
 serve arguments:
   port := HTTP_PORT
@@ -489,9 +497,9 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       // TODO(kasper): Maybe we can share the way we try to close down
       // the HTTP server nicely with the corresponding code where we
       // handle /code requests?
-      writer.detach.close  // Close connection nicely before rebooting.
+      writer.detach.close  // Close connection nicely before upgrading.
       sleep --ms=500
-      esp32.deep_sleep (Duration --ms=10)
+      firmware.upgrade
 
     // Validate SDK version before attempting to run code.
     else if sdk_version_header != vm_sdk_version:
