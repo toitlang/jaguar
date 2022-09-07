@@ -27,11 +27,11 @@ class ContainerRegistry:
       result["$id"] = defines ? [name, defines_by_id_.get id] : name
     return result
 
-  start_installed -> none:
+  start [block] -> none:
     ensure_loaded_
-    name_by_id_.do: | id/uuid.Uuid |
+    name_by_id_.do: | id/uuid.Uuid name/string |
       if id == jaguar_: continue.do
-      containers.start id (defines_by_id_.get id)
+      block.call name id (defines_by_id_.get id)
 
   install name/string? defines/Map [block] -> uuid.Uuid:
     ensure_loaded_

@@ -139,11 +139,10 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			defines, err := parseDefineFlags(cmd, "define", nil)
+			defines, err := parseDefineFlags(cmd, "define")
 			if err != nil {
 				return err
 			}
-			fmt.Printf("Running '%s' on '%s' ...\n", entrypoint, device.Name)
 			return RunFile(cmd, device, sdk, entrypoint, defines)
 		},
 	}
@@ -178,8 +177,25 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string) error {
 }
 
 func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string, defines string) error {
-	ctx := cmd.Context()
+	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
+	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines)
+}
 
+func InstallFile(cmd *cobra.Command, device *Device, sdk *SDK, name string, path string, defines string) error {
+	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name)
+	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines)
+}
+
+func sendCodeFromFile(
+	cmd *cobra.Command,
+	device *Device,
+	sdk *SDK,
+	request string,
+	path string,
+	name string,
+	defines string) error {
+
+	ctx := cmd.Context()
 	snapshotsCache, err := directory.GetSnapshotsCachePath()
 	if err != nil {
 		return err
@@ -264,7 +280,7 @@ func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string, defines 
 		return err
 	}
 
-	if err := device.Run(ctx, sdk, b, defines); err != nil {
+	if err := device.SendCode(ctx, sdk, request, b, name, defines); err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.

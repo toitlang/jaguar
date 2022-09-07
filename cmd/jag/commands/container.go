@@ -116,13 +116,12 @@ func ContainerInstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
-			defines, err := parseDefineFlags(cmd, "define", containerNameOverrides(name))
+			defines, err := parseDefineFlags(cmd, "define")
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, entrypoint, device.Name)
-			return RunFile(cmd, device, sdk, entrypoint, defines)
+			return InstallFile(cmd, device, sdk, name, entrypoint, defines)
 		},
 	}
 
@@ -159,26 +158,13 @@ func ContainerUninstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
-
-			defines, err := parseDefineFlags(cmd, "", containerNameOverrides(name))
-			if err != nil {
-				return err
-			}
-
 			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name)
-			return device.ContainerUninstall(ctx, sdk, defines)
+			return device.ContainerUninstall(ctx, sdk, name)
 		},
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd
-}
-
-func containerNameOverrides(name string) map[string]interface{} {
-	escapedName := strings.ReplaceAll(name, "\"", "\\\"")
-	return map[string]interface{}{
-		"jag.container.name": escapedName,
-	}
 }
 
 func padded(prefix string, total int) string {
