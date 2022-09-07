@@ -59,7 +59,7 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 main arguments:
   try:
     catch --trace:
-      registry_.start: | name/string image/uuid.Uuid defines/Map? |
+      registry_.do: | name/string image/uuid.Uuid defines/Map? |
         run_image image "started" name defines
     exception := catch --trace: serve arguments
     logger.error "rebooting due to $(exception)"

@@ -367,7 +367,6 @@ func parseDefineFlags(cmd *cobra.Command, flagName string) (string, error) {
 			fmt.Println()
 		}
 	}
-
 	if len(definesMap) == 0 {
 		return "", nil
 	}

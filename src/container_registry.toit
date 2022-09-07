@@ -27,7 +27,7 @@ class ContainerRegistry:
       result["$id"] = defines ? [name, defines_by_id_.get id] : name
     return result
 
-  start [block] -> none:
+  do [block] -> none:
     ensure_loaded_
     name_by_id_.do: | id/uuid.Uuid name/string |
       if id == jaguar_: continue.do
