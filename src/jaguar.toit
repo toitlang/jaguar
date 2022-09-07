@@ -53,10 +53,11 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 main arguments:
   try:
     catch --trace: registry_.start_installed
-    exception := catch --trace: serve arguments
-    logger.error "rebooting due to $(exception)"
-  finally:
-    esp32.deep_sleep (Duration --s=1)
+    serve arguments
+    unreachable
+  finally: | is_exception exception |
+    cause := is_exception ? exception.value : null
+    logger.error "rebooting due to $cause"
 
 serve arguments:
   port := HTTP_PORT
@@ -463,9 +464,9 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       // TODO(kasper): Maybe we can share the way we try to close down
       // the HTTP server nicely with the corresponding code where we
       // handle /code requests?
-      writer.detach.close  // Close connection nicely before rebooting.
+      writer.detach.close  // Close connection nicely before upgrading.
       sleep --ms=500
-      esp32.deep_sleep (Duration --ms=10)
+      firmware.upgrade
 
     // Validate SDK version before attempting to run code.
     else if sdk_version_header != vm_sdk_version:
