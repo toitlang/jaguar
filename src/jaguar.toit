@@ -54,10 +54,14 @@ main arguments:
   try:
     catch --trace: registry_.start_installed
     serve arguments
-    unreachable
   finally: | is_exception exception |
-    cause := is_exception ? exception.value : null
-    logger.error "rebooting due to $cause"
+    // We shouldn't be able to get here without an exception having
+    // been thrown, but we play it defensively and force an exception
+    // if that should ever happen.
+    if not is_exception: unreachable
+    // Jaguar runs as a critical container, so an uncaught exception
+    // will cause the system to reboot.
+    logger.error "rebooting due to $exception.value"
 
 serve arguments:
   port := HTTP_PORT
