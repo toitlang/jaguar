@@ -18,7 +18,7 @@ class ContainerRegistry:
   loaded_        / bool := false
   id_by_name_    / Map ::= {:}  // Map<string, uuid.Uuid>
   name_by_id_    / Map ::= {:}  // Map<uuid.Uuid, string>
-  defines_by_id_ / Map ::= {:}  // Map<uuid.Uuid, Map>>
+  defines_by_id_ / Map ::= {:}  // Map<uuid.Uuid, Map>
 
   entries --defines/bool=false -> Map:
     ensure_loaded_
