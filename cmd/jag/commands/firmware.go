@@ -22,8 +22,8 @@ type binaryConfig struct {
 	Name string `json:"name"`
 	ID   string `json:"id"`
 	Wifi struct {
-		Password string `json:"password"`
-		SSID     string `json:"ssid"`
+		Password string `json:"wifi.password"`
+		SSID     string `json:"wifi.ssid"`
 	} `json:"wifi"`
 }
 

@@ -89,9 +89,10 @@ class ContainerRegistry:
       // individual entries and treat malformed ones as non-existing.
       name/string? := null
       defines/Map? := null
-      entry := entries.get "$image.id"
-      catch: name = entry[0]
-      catch: defines = entry[1]
+      catch:
+        entry := entries.get "$image.id"
+        name = entry[0]
+        defines = entry[1]
       if not name:
         name = (image.id == jaguar_) ? "jaguar" : "container-$(index++)"
         dirty = true
