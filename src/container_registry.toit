@@ -40,7 +40,7 @@ class ContainerRegistry:
       entry ::= entries.get id_as_string
       name/string? := null
       catch: name = entry[0]
-      name = name or (id == jaguar_) ? "jaguar" : "container-$(index++)"
+      name = name or ((id == jaguar_) ? "jaguar" : "container-$(index++)")
       defines/Map := {:}
       catch: defines = entry[1]
       // Update the in-memory registry mappings.
