@@ -377,10 +377,11 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
           display: block;
           line-height: 24px;
           padding: 12px;
-          width: 360px;
+          width: max-content;
           margin: auto;
           margin-top: 60px;
           padding-left: 20px;
+          min-width: 360px;
         }
         .icon {
           padding-top: 20px;
