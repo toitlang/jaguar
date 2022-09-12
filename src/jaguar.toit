@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import encoding.json
-import device
 import http
 import log
 import net
@@ -309,7 +308,7 @@ broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string
   finally:
     socket.close
 
-handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
+handle_browser_request name/string request/http.Request writer/http.ResponseWriter -> none:
   path := request.path
   if path == "/": path = "index.html"
   if path.starts_with "/": path = path[1..]
@@ -323,14 +322,14 @@ handle_browser_request request/http.Request writer/http.ResponseWriter -> none:
         <html>
           <head>
             <link rel="stylesheet" href="style.css">
-            <title>$device.name (Jaguar device)</title>
+            <title>$name (Jaguar device)</title>
           </head>
           <body>
             <div class="box">
               <section class="text-center">
                 <img src="$CHIP_IMAGE" alt="Picture of an embedded device" width=200>
               </section>
-              <h1 class="mt-40">$device.name</h1>
+              <h1 class="mt-40">$name</h1>
               <p class="text-center">Jaguar device</p>
               <p class="hr mt-40"></p>
               <section class="grid grid-cols-2 mt-20">
@@ -458,7 +457,7 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
           identity_payload id name address
 
     else if path == "/" or path.ends_with ".html" or path.ends_with ".css" or path.ends_with ".ico":
-      handle_browser_request request writer
+      handle_browser_request name request writer
 
     // Validate device ID.
     else if device_id_header != id.stringify:
