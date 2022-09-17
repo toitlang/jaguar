@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	date       = "2022-09-10T12:28:39Z"
-	version    = "v1.5.3"
-	sdkVersion = "v2.0.0-alpha.23"
+	date       = "2022-09-17T05:42:38Z"
+	version    = "v1.6.0"
+	sdkVersion = "v2.0.0-alpha.25"
 )
 
 var buildMode = "development"
