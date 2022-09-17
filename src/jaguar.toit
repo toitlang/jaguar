@@ -474,14 +474,6 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       writer.write
           json.encode registry_.entries
 
-    // Handle installing containers.
-    else if path == "/install" and request.method == "PUT":
-      container_name ::= headers.single HEADER_CONTAINER_NAME
-      defines ::= extract_defines headers
-      install_image request.content_length request.body container_name defines
-      writer.write
-          json.encode {"status": "OK"}
-
     // Handle uninstalling containers.
     else if path == "/uninstall" and request.method == "PUT":
       container_name ::= headers.single HEADER_CONTAINER_NAME
@@ -501,10 +493,18 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       sleep --ms=500
       firmware.upgrade
 
-    // Validate SDK version before attempting to run code.
+    // Validate SDK version before attempting to install containers or run code.
     else if sdk_version_header != vm_sdk_version:
       logger.info "denied request, header: '$HEADER_SDK_VERSION' was '$sdk_version_header' not '$vm_sdk_version'"
       writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
+
+    // Handle installing containers.
+    else if path == "/install" and request.method == "PUT":
+      container_name ::= headers.single HEADER_CONTAINER_NAME
+      defines ::= extract_defines headers
+      install_image request.content_length request.body container_name defines
+      writer.write
+          json.encode {"status": "OK"}
 
     // Handle code running.
     else if path == "/run" and request.method == "PUT":
