@@ -76,6 +76,7 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 
 			properties := segment.Properties{
 				"jaguar":   true,
+				"first":    analyticsClient.First(),
 				"command":  (*cobra.Command)(cmd).UseLine(),
 				"platform": runtime.GOOS,
 			}
