@@ -108,7 +108,7 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 }
 
 func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, command string) {
-	timestamp := time.Now()
+	now := time.Now()
 	first := client.First()
 	messages := make([]segment.Message, 0)
 	for {
@@ -125,6 +125,13 @@ func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, c
 			properties.Set("version", "development")
 		}
 
+		// Cleanly separate the events in time, so the order is guaranteed to be correct. We
+		// do this be pretending the first pseudo event happened a second ago, so the real
+		// event has the right timestamp.
+		timestamp := now
+		if first {
+			timestamp = timestamp.Add(-1 * time.Second)
+		}
 		messages = append(messages, segment.Page{
 			Name:       "CLI Execute",
 			Properties: properties,
@@ -139,8 +146,6 @@ func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, c
 			break
 		}
 		first = false
-		// Cleanly separate the events in time, so the order is guaranteed to be correct.
-		timestamp = timestamp.Add(1 * time.Second)
 	}
 
 	go func() {
