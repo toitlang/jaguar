@@ -84,6 +84,10 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 			enqueueAnalytics(analyticsClient, isReleaseBuild, info, command)
 			CheckUpToDate(info)
 		},
+		// The "post run" function on the 'jag' command needs to run also
+		// when the program exits with an error from main(). The cobra
+		// framework does not handle this automatically, so we special-case
+		// this to make sure we get a chance to close the analytics client.
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			if analyticsClient != nil {
 				analyticsClient.Close()
