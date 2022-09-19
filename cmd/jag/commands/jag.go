@@ -74,24 +74,8 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 				return
 			}
 
-			properties := segment.Properties{
-				"jaguar":   true,
-				"first":    analyticsClient.First(),
-				"command":  (*cobra.Command)(cmd).UseLine(),
-				"platform": runtime.GOOS,
-			}
-
-			if isReleaseBuild {
-				properties.Set("version", info.Version)
-			} else {
-				properties.Set("version", "development")
-			}
-
-			go analyticsClient.Enqueue(segment.Page{
-				Name:       "CLI Execute",
-				Properties: properties,
-			})
-
+			command := (*cobra.Command)(cmd).UseLine()
+			enqueueAnalytics(analyticsClient, isReleaseBuild, info, command)
 			CheckUpToDate(info)
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -121,6 +105,49 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 		VersionCmd(info, isReleaseBuild),
 	)
 	return cmd
+}
+
+func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, command string) {
+	timestamp := time.Now()
+	first := client.First()
+	messages := make([]segment.Message, 0)
+	for {
+		properties := segment.Properties{
+			"jaguar":   true,
+			"first":    first,
+			"command":  command,
+			"platform": runtime.GOOS,
+		}
+
+		if isReleaseBuild {
+			properties.Set("version", info.Version)
+		} else {
+			properties.Set("version", "development")
+		}
+
+		messages = append(messages, segment.Page{
+			Name:       "CLI Execute",
+			Properties: properties,
+			Timestamp:  timestamp,
+		})
+
+		// When we generate the first analytics event, we treat it like a pseudo event
+		// to cleanly separate it from the other events for analysis purposes. This
+		// means that we need to send the same event again but without the first flag set,
+		// so we take another spin in the loop.
+		if !first {
+			break
+		}
+		first = false
+		// Cleanly separate the events in time, so the order is guaranteed to be correct.
+		timestamp = timestamp.Add(1 * time.Second)
+	}
+
+	go func() {
+		for _, message := range messages {
+			client.Enqueue(message)
+		}
+	}()
 }
 
 type UpdateToDate struct {
