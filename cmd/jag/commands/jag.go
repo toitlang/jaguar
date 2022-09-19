@@ -26,7 +26,8 @@ import (
 type ctxKey string
 
 const (
-	ctxKeyInfo ctxKey = "info"
+	ctxKeyInfo          ctxKey = "info"
+	noAnalyticsFlagName string = "no-analytics"
 )
 
 type Info struct {
@@ -56,6 +57,11 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 			"the application on your device, and restart it all within seconds. No need to flash over\n" +
 			"serial, reboot your device, or wait for it to reconnect to your network.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			noAnalytics, err := cmd.Flags().GetBool(noAnalyticsFlagName)
+			if err != nil || noAnalytics {
+				return
+			}
+
 			// Avoid running the analytics and up-to-date check code when
 			// the command is a subcommand of 'config'.
 			current := cmd
@@ -68,9 +74,9 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 
 			// Be careful and assign to the outer analyticsClient, so
 			// we can close it correctly in the post-run action.
-			var err error
-			analyticsClient, err = analytics.GetClient()
-			if err != nil {
+			var analyticsErr error
+			analyticsClient, analyticsErr = analytics.GetClient()
+			if analyticsErr != nil {
 				return
 			}
 
@@ -104,6 +110,9 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 		configCmd,
 		VersionCmd(info, isReleaseBuild),
 	)
+
+	cmd.PersistentFlags().Bool(noAnalyticsFlagName, false, "do not send analytics")
+	cmd.PersistentFlags().MarkHidden(noAnalyticsFlagName)
 	return cmd
 }
 
