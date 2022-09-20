@@ -123,7 +123,6 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, command string) {
 	now := time.Now()
 	first := client.First()
-	messages := make([]segment.Message, 0)
 	for {
 		properties := segment.Properties{
 			"jaguar":   true,
@@ -145,7 +144,7 @@ func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, c
 		if first {
 			timestamp = timestamp.Add(-1 * time.Second)
 		}
-		messages = append(messages, segment.Page{
+		client.Enqueue(segment.Page{
 			Name:       "CLI Execute",
 			Properties: properties,
 			Timestamp:  timestamp,
@@ -160,12 +159,6 @@ func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, c
 		}
 		first = false
 	}
-
-	go func() {
-		for _, message := range messages {
-			client.Enqueue(message)
-		}
-	}()
 }
 
 type UpdateToDate struct {
