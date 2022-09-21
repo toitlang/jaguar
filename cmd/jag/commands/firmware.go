@@ -133,7 +133,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd

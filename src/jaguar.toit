@@ -340,7 +340,7 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
               </section>
               <p class="hr mt-20"></p>
               <p class="mt-40">Run code on this device using</p>
-              <b><a href="https://github.com/toitlang/jaguar">&gt; jag run</a></b>
+              <b><a href="https://github.com/toitlang/jaguar">&gt; jag run -d $name hello.toit</a></b>
               <p class="mt-20">Monitor the serial port console using</p>
               <p class="mb-20"><b><a href="https://github.com/toitlang/jaguar">&gt; jag monitor</a></b></p>
             </div>
