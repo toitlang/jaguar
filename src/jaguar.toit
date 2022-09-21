@@ -60,9 +60,8 @@ main arguments:
     // We try to start all installed containers, but we catch any
     // exceptions that might occur from that to avoid blocking
     // the Jaguar functionality in case something is off.
-    catch --trace:
-      registry_.do: | name/string image/uuid.Uuid defines/Map? |
-        run_image image "started" name defines
+    catch --trace: run_installed_containers
+    // We are now ready to start Jaguar.
     serve arguments
   finally: | is_exception exception |
     // We shouldn't be able to get here without an exception having
@@ -72,6 +71,27 @@ main arguments:
     // Jaguar runs as a critical container, so an uncaught exception
     // will cause the system to reboot.
     logger.error "rebooting due to $exception.value"
+
+run_installed_containers -> none:
+  blockers ::= []
+  registry_.do: | name/string image/uuid.Uuid defines/Map? |
+    start ::= Time.monotonic_us
+    container := run_image image "started" name defines
+    if defines.get JAG_DISABLED:
+      timeout/Duration ::= compute_timeout defines true
+      blockers.add:: run_to_completion name container start timeout
+  if blockers.is_empty: return
+  // We have a number of containers that we need to allow
+  // to run to completion before we return and let Jaguar
+  // start serving requests.
+  semaphore := monitor.Semaphore
+  blockers.do: | lambda/Lambda |
+    task::
+      try:
+        lambda.call
+      finally:
+        semaphore.up
+  blockers.size.repeat: semaphore.down
 
 serve arguments:
   port := HTTP_PORT
@@ -192,7 +212,11 @@ run_image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
 
 install_image image_size/int reader/reader.Reader name/string defines/Map -> none:
   image := flash_image image_size reader name defines
-  run_image image "installed and started" name defines
+  if defines.get JAG_DISABLED:
+    logger.info "container '$name' installed with $defines"
+    logger.info "container '$name' start delayed until reboot"
+  else:
+    run_image image "installed and started" name defines
 
 uninstall_image name/string -> none:
   with_timeout --ms=60_000: flash_mutex.do:
@@ -201,28 +225,49 @@ uninstall_image name/string -> none:
     else:
       logger.error "container '$name' not found"
 
-run_code image_size/int reader/reader.Reader defines/Map -> none:
-  timeout/Duration? := null
+compute_timeout defines/Map disabled/bool -> Duration?:
   jag_timeout := defines.get JAG_TIMEOUT
   if jag_timeout is string:
     value := int.parse jag_timeout[0..jag_timeout.size - 1] --on_error=(: 0)
     if value > 0 and jag_timeout.ends_with "s":
-      timeout = Duration --s=value
+      return Duration --s=value
     else if value > 0 and jag_timeout.ends_with "m":
-      timeout = Duration --m=value
+      return Duration --m=value
     else if value > 0 and jag_timeout.ends_with "h":
-      timeout = Duration --h=value
+      return Duration --h=value
     else:
       logger.error "invalid $JAG_TIMEOUT setting (\"$jag_timeout\")"
   else if jag_timeout is int and jag_timeout > 0:
-    timeout = Duration --s=jag_timeout
+    return Duration --s=jag_timeout
   else if jag_timeout:
     logger.error "invalid $JAG_TIMEOUT setting ($jag_timeout)"
+  return disabled ? (Duration --s=10) : null
 
+run_to_completion name/string? container/containers.Container start/int timeout/Duration?:
+  nick := name ? "container '$name'" : "program $container.id"
+
+  // We're only interested in handling the timeout errors, so we
+  // unwind and produce a stack trace in all other cases.
+  filter ::= : it != DEADLINE_EXCEEDED_ERROR
+
+  // Wait until the container is done or until we time out.
+  code/int? := null
+  catch --unwind=filter --trace=filter:
+    with_timeout timeout: code = container.wait
+  if not code:
+    elapsed ::= Duration --us=Time.monotonic_us - start
+    code = container.stop
+    logger.info "$nick timed out after $elapsed"
+
+  if code == 0:
+    logger.info "$nick stopped"
+  else:
+    logger.error "$nick stopped - exit code $code"
+
+run_code image_size/int reader/reader.Reader defines/Map -> none:
   jag_disabled := defines.get JAG_DISABLED
-  if jag_disabled:
-    if not timeout: timeout = Duration --s=10
-    disabled = true
+  if jag_disabled: disabled = true
+  timeout/Duration? := compute_timeout defines disabled
 
   // Write the image into flash.
   image := flash_image image_size reader null defines
@@ -237,27 +282,10 @@ run_code image_size/int reader/reader.Reader defines/Map -> none:
     // has been shut down and the network to be free.
     if disabled: network_free.down
 
-    // Start the image.
+    // Start the image and wait for it to complete.
     start ::= Time.monotonic_us
     container ::= run_image image "started" null defines
-
-    // We're only interested in handling the timeout errors, so we
-    // unwind and produce a stack trace in all other cases.
-    filter ::= : it != DEADLINE_EXCEEDED_ERROR
-
-    // Wait until the container is done or until we time out.
-    code/int? := null
-    catch --unwind=filter --trace=filter:
-      with_timeout timeout: code = container.wait
-    if not code:
-      elapsed ::= Duration --us=Time.monotonic_us - start
-      code = container.stop
-      logger.info "program $image timed out after $elapsed"
-
-    if code == 0:
-      logger.info "program $image stopped"
-    else:
-      logger.error "program $image stopped - exit code $code"
+    run_to_completion null container start timeout
 
     // If Jaguar was disabled while running the container, now is the
     // time to restart the HTTP server.
