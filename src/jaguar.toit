@@ -78,7 +78,7 @@ run_installed_containers -> none:
     start ::= Time.monotonic_us
     container := run_image image "started" name defines
     if defines.get JAG_DISABLED:
-      timeout/Duration ::= compute_timeout defines true
+      timeout/Duration ::= compute_timeout defines --disabled
       blockers.add:: run_to_completion name container start timeout
   if blockers.is_empty: return
   // We have a number of containers that we need to allow
@@ -213,8 +213,7 @@ run_image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
 install_image image_size/int reader/reader.Reader name/string defines/Map -> none:
   image := flash_image image_size reader name defines
   if defines.get JAG_DISABLED:
-    logger.info "container '$name' installed with $defines"
-    logger.info "container '$name' start delayed until reboot"
+    logger.info "container '$name' installed with $defines; reboot to start"
   else:
     run_image image "installed and started" name defines
 
@@ -225,7 +224,7 @@ uninstall_image name/string -> none:
     else:
       logger.error "container '$name' not found"
 
-compute_timeout defines/Map disabled/bool -> Duration?:
+compute_timeout defines/Map --disabled/bool -> Duration?:
   jag_timeout := defines.get JAG_TIMEOUT
   if jag_timeout is string:
     value := int.parse jag_timeout[0..jag_timeout.size - 1] --on_error=(: 0)
@@ -267,7 +266,7 @@ run_to_completion name/string? container/containers.Container start/int timeout/
 run_code image_size/int reader/reader.Reader defines/Map -> none:
   jag_disabled := defines.get JAG_DISABLED
   if jag_disabled: disabled = true
-  timeout/Duration? := compute_timeout defines disabled
+  timeout/Duration? := compute_timeout defines --disabled=disabled
 
   // Write the image into flash.
   image := flash_image image_size reader null defines
