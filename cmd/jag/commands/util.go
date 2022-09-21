@@ -59,7 +59,12 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 	if !directory.IsReleaseBuild {
 		_, skipVersionCheck = os.LookupEnv(directory.ToitRepoPathEnv)
 	}
-	return res, res.validate(info, skipVersionCheck)
+	err = res.validate(info, skipVersionCheck)
+	if err != nil {
+		fmt.Printf("[jaguar] ERROR: Could not get the correct version of the SDK\n")
+		fmt.Printf("[jaguar] ERROR: Do you need to run `jag setup` or set `JAG_TOIT_REPO_PATH`?\n")
+	}
+	return res, err
 }
 
 func (s *SDK) ToitCompilePath() string {

@@ -203,7 +203,7 @@ func (d *Decoder) decode() {
 			if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
 				fmt.Printf("\n" + separator + "\n")
 				if Version != "" {
-					fmt.Printf("Decoded by `jag` <%s>\n", Version)
+					fmt.Printf("Decoding by `jag`, device has version <%s>\n", Version)
 					fmt.Printf(separator + "\n")
 				}
 				if err := serialDecode(d.cmd, line); err != nil {
