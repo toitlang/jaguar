@@ -131,7 +131,7 @@ func ConfigWifiCmd() *cobra.Command {
 			return directory.WriteConfig(cfg)
 		},
 	}
-	setCmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "default WiFi SSID")
+	setCmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "default WiFi network name")
 	setCmd.Flags().String("wifi-password", os.Getenv(directory.WifiPasswordEnv), "default WiFi password")
 	setCmd.MarkFlagRequired("wifi-ssid")
 	setCmd.MarkFlagRequired("wifi-password")

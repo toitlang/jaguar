@@ -211,7 +211,7 @@ func FlashCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
-	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	return cmd
