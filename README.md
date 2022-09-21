@@ -205,6 +205,20 @@ by passing a separate `-D jag.timeout` option:
 jag run -D jag.disabled -D jag.timeout=5m softap.toit
 ```
 
+This also works for installed containers. Containers that run with `-D jag.disabled` start when the device boots and
+runs to completion before Jaguar is enabled. This allows them to control the WiFi and to prevent Jaguar from taking
+over before they are ready for it:
+
+``` sh
+jag container install -D jag.disabled softap softap.toit
+```
+
+You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
+
+``` sh
+jag container install -D jag.disabled -D jag.timeout=20s softap softap.toit
+```
+
 ---
 
 # Permission to access serial port
