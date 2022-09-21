@@ -213,8 +213,11 @@ run_image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
 install_image image_size/int reader/reader.Reader name/string defines/Map -> none:
   image := flash_image image_size reader name defines
   if defines.get JAG_DISABLED:
-    logger.info "container '$name' installed with $defines; reboot to start"
+    logger.info "container '$name' installed with $defines"
+    logger.warn "container '$name' needs reboot to start with Jaguar disabled"
   else:
+    timeout := compute_timeout defines --no-disabled
+    if timeout: logger.warn "container '$name' needs 'jag.disabled' for 'jag.timeout' to take effect"
     run_image image "installed and started" name defines
 
 uninstall_image name/string -> none:
