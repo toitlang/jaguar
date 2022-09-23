@@ -105,7 +105,8 @@ $(BUILD_DIR)/image/partitions.csv: $(TOIT_PATH)/toolchains/esp32/partitions.csv 
 $(BUILD_DIR)/image/system.snapshot: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
 	cp $(TOIT_PATH)/build/esp32/system.snapshot $@
 
-$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile install-dependencies
+$(BUILD_DIR)/image/jaguar.snapshot: install-dependencies
+$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_DIR)/image/
 	$(JAG_TOIT_PATH)/bin/toit.compile -w $@ $(JAG_ENTRY_POINT)
 
 .PHONY: image
