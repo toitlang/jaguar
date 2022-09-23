@@ -95,8 +95,8 @@ func (s *SDK) SnapshotToImagePath() string {
 	return filepath.Join(s.Path, "tools", directory.Executable("snapshot_to_image"))
 }
 
-func (s *SDK) InjectConfigPath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("inject_config"))
+func (s *SDK) FirmwarePath() string {
+	return filepath.Join(s.Path, "tools", directory.Executable("firmware"))
 }
 
 func (s *SDK) StacktracePath() string {
@@ -132,9 +132,9 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 		s.ToitRunPath(),
 		s.ToitLspPath(),
 		s.VersionPath(),
+		s.FirmwarePath(),
 		s.SystemMessagePath(),
 		s.SnapshotToImagePath(),
-		s.InjectConfigPath(),
 		s.StacktracePath(),
 	}
 	for _, p := range paths {
@@ -170,6 +170,10 @@ func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
 }
 
+func (s *SDK) Firmware(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.FirmwarePath(), args...)
+}
+
 func (s *SDK) SnapshotToImage(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.SnapshotToImagePath(), args...)
 }
@@ -180,10 +184,6 @@ func (s *SDK) SystemMessage(ctx context.Context, args ...string) *exec.Cmd {
 
 func (s *SDK) Stacktrace(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.StacktracePath(), args...)
-}
-
-func (s *SDK) InjectConfig(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.InjectConfigPath(), args...)
 }
 
 func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string) error {
