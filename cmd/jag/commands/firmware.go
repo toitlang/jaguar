@@ -6,9 +6,7 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,15 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
-
-type binaryConfig struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-	Wifi struct {
-		Password string `json:"wifi.password"`
-		SSID     string `json:"wifi.ssid"`
-	} `json:"wifi"`
-}
 
 func FirmwareCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -150,48 +139,51 @@ func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID st
 		return nil, err
 	}
 
-	configFile, err := os.CreateTemp("", "*.json")
+	envelopeInput := filepath.Join(esp32BinPath, "firmware.envelope")
+	envelope, err := os.CreateTemp("", "*.envelope")
 	if err != nil {
 		return nil, err
 	}
-	defer os.Remove(configFile.Name())
-
-	var config binaryConfig
-	config.ID = id
-	config.Name = name
-	config.Wifi.SSID = wifiSSID
-	config.Wifi.Password = wifiPassword
-	if err := json.NewEncoder(configFile).Encode(config); err != nil {
-		configFile.Close()
-		return nil, err
-	}
-	configFile.Close()
-
-	toitBin := filepath.Join(esp32BinPath, "toit.bin")
+	defer envelope.Close()
 
 	binTmpFile, err := os.CreateTemp("", "*.bin")
 	if err != nil {
 		return nil, err
 	}
 
-	binFile, err := os.Open(toitBin)
-	if err != nil {
-		binTmpFile.Close()
-		return nil, err
-	}
-
-	_, err = io.Copy(binTmpFile, binFile)
-	binTmpFile.Close()
-	binFile.Close()
+	jaguarSnapshot, err := directory.GetJaguarSnapshotPath()
 	if err != nil {
 		return nil, err
 	}
 
-	injectCmd := sdk.InjectConfig(ctx, configFile.Name(), "--unique_id", id, binTmpFile.Name())
-	injectCmd.Stderr = os.Stderr
-	injectCmd.Stdout = os.Stdout
-	if err := injectCmd.Run(); err != nil {
+	// TODO(kasper): Can we generate this in a nicer way?
+	wifiProperties := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
+
+	if err := RunFirmwareTool(ctx, sdk, envelopeInput, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
+		return nil, err
+	}
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "uuid", id); err != nil {
+		return nil, err
+	}
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "id", id); err != nil {
+		return nil, err
+	}
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "name", name); err != nil {
+		return nil, err
+	}
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "wifi", wifiProperties); err != nil {
+		return nil, err
+	}
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "extract", "--binary", "-o", binTmpFile.Name()); err != nil {
 		return nil, err
 	}
 	return binTmpFile, nil
+}
+
+func RunFirmwareTool(ctx context.Context, sdk *SDK, envelope string, args ...string) error {
+	args = append([]string{"-e", envelope}, args...)
+	cmd := sdk.Firmware(ctx, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }

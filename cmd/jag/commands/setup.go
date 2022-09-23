@@ -130,8 +130,8 @@ func validateESP32Image() error {
 		return err
 	}
 	paths := []string{
+		filepath.Join(esp32BinPath, "firmware.envelope"),
 		filepath.Join(esp32BinPath, "toit.elf"),
-		filepath.Join(esp32BinPath, "toit.bin"),
 		filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
 		filepath.Join(esp32BinPath, "partitions.bin"),
 	}

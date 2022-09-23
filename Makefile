@@ -70,16 +70,16 @@ jag-macos-sign:
 toit-git-tags:
 	(cd $(TOIT_PATH); git fetch --tags --recurse-submodules=no)
 
-.PHONY: $(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg
-$(JAG_TOIT_PATH)/bin/toit.compiler $(JAG_TOIT_PATH)/bin/toit.pkg: toit-git-tags
+.PHONY: $(JAG_TOIT_PATH)/bin/toit.compile $(JAG_TOIT_PATH)/bin/toit.pkg
+$(JAG_TOIT_PATH)/bin/toit.compile $(JAG_TOIT_PATH)/bin/toit.pkg: toit-git-tags
 	make -C $(TOIT_PATH) sdk
 
 .packages: $(JAG_TOIT_PATH)/bin/toit.pkg $(TOIT_SOURCE)
 	$(JAG_TOIT_PATH)/bin/toit.pkg install
 
 .PHONY: $(TOIT_PATH)/build/esp32/
-$(TOIT_PATH)/build/esp32/: $(TOIT_SOURCE) .packages toit-git-tags install-dependencies
-	make -C $(TOIT_PATH) ESP32_ENTRY=$(JAG_ENTRY_POINT) esp32
+$(TOIT_PATH)/build/esp32/: $(TOIT_SOURCE) .packages toit-git-tags
+	make -C $(TOIT_PATH) esp32
 
 $(BUILD_DIR)/image/:
 	mkdir -p $@
@@ -87,8 +87,8 @@ $(BUILD_DIR)/image/:
 $(BUILD_DIR)/image/bootloader/:
 	mkdir -p $@
 
-$(BUILD_DIR)/image/toit.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/build/esp32/toit.bin $@
+$(BUILD_DIR)/image/firmware.envelope: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
+	cp $(TOIT_PATH)/build/esp32/firmware.envelope $@
 
 $(BUILD_DIR)/image/toit.elf: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
 	cp $(TOIT_PATH)/build/esp32/toit.elf $@
@@ -105,17 +105,20 @@ $(BUILD_DIR)/image/partitions.csv: $(TOIT_PATH)/toolchains/esp32/partitions.csv 
 $(BUILD_DIR)/image/system.snapshot: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
 	cp $(TOIT_PATH)/build/esp32/system.snapshot $@
 
-$(BUILD_DIR)/image/jaguar.snapshot: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/build/esp32/program.snapshot $@
+$(BUILD_DIR)/image/jaguar.snapshot: install-dependencies
+$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_DIR)/image/
+	$(JAG_TOIT_PATH)/bin/toit.compile -w $@ $(JAG_ENTRY_POINT)
 
 .PHONY: image
+image: $(BUILD_DIR)/image/jaguar.snapshot
+image: $(BUILD_DIR)/image/firmware.envelope
+# TODO(kasper): The remaining stuff should be bundled in the
+# firmware.envelope file.
 image: $(BUILD_DIR)/image/toit.elf
-image: $(BUILD_DIR)/image/toit.bin
 image: $(BUILD_DIR)/image/bootloader/bootloader.bin
 image: $(BUILD_DIR)/image/partitions.bin
 image: $(BUILD_DIR)/image/partitions.csv
 image: $(BUILD_DIR)/image/system.snapshot
-image: $(BUILD_DIR)/image/jaguar.snapshot
 
 .PHONY: install-esp-idf
 install-esp-idf:
@@ -123,7 +126,7 @@ install-esp-idf:
 
 .PHONY: install-dependencies
 install-dependencies: $(JAG_TOIT_PATH)/bin/toit.pkg
-	$(JAG_TOIT_PATH)/bin/toit.pkg --auto-sync=false --project-root=$(CURDIR) install
+	$(JAG_TOIT_PATH)/bin/toit.pkg --project-root=$(CURDIR) install
 
 clean:
 	rm -rf $(BUILD_DIR)
