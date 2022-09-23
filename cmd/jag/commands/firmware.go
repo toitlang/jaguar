@@ -157,21 +157,21 @@ func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID st
 	}
 
 	// TODO(kasper): Can we generate this in a nicer way?
-	wifiConfig := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
+	wifiProperties := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
 
 	if err := RunFirmwareTool(ctx, sdk, envelopeInput, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "config", "set", "uuid", id); err != nil {
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "uuid", id); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "config", "set", "id", id); err != nil {
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "id", id); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "config", "set", "name", name); err != nil {
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "name", name); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "config", "set", "wifi", wifiConfig); err != nil {
+	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "wifi", wifiProperties); err != nil {
 		return nil, err
 	}
 	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "extract", "--binary", "-o", binTmpFile.Name()); err != nil {
