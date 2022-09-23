@@ -126,7 +126,7 @@ install-esp-idf:
 
 .PHONY: install-dependencies
 install-dependencies: $(JAG_TOIT_PATH)/bin/toit.pkg
-	$(JAG_TOIT_PATH)/bin/toit.pkg --auto-sync=false --project-root=$(CURDIR) install
+	$(JAG_TOIT_PATH)/bin/toit.pkg --project-root=$(CURDIR) install
 
 clean:
 	rm -rf $(BUILD_DIR)
