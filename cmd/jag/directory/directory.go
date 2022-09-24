@@ -87,7 +87,7 @@ func GetSDKPath() (string, error) {
 		return "", err
 	}
 	if stat, err := os.Stat(sdkCachePath); err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("no SDK found in '%s'.\nYou must setup the esp32 image using 'jag setup'", sdkCachePath)
+		return "", fmt.Errorf("the path '%s' did not hold the SDK.\nYou must setup the SDK using 'jag setup'", sdkCachePath)
 	}
 	return sdkCachePath, nil
 }
@@ -100,44 +100,35 @@ func GetSDKCachePath() (string, error) {
 	return filepath.Join(home, ".cache", "jaguar", "sdk"), nil
 }
 
-func GetESP32ImageCachePath() (string, error) {
+func GetAssetsCachePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "jaguar", "image"), nil
+	return filepath.Join(home, ".cache", "jaguar", "assets"), nil
 }
 
-func GetESP32CachePath() (string, error) {
-	imagePath, err := GetESP32ImageCachePath()
+func GetValidatedAssetsCachePath() (string, error) {
+	assetsPath, err := GetAssetsCachePath()
 	if err != nil {
 		return "", err
 	}
-	if stat, err := os.Stat(imagePath); err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the esp32 image.\nYou must setup the esp32 image using 'jag setup'", imagePath)
+	if stat, err := os.Stat(assetsPath); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' did not hold the Jaguar assets.\nYou must setup the assets using 'jag setup'", assetsPath)
 	}
-	return imagePath, nil
+	return assetsPath, nil
 }
 
-func GetToitToolchainPath() (string, error) {
-	repoPath, ok := getRepoPath()
-	if ok {
-		return filepath.Join(repoPath, "toolchains", "esp32"), nil
-	}
-
-	return GetESP32CachePath()
-}
-
-func GetESP32ImagePath() (string, error) {
+func GetAssetsPath() (string, error) {
 	repoPath, ok := getRepoPath()
 	if ok {
 		return filepath.Join(repoPath, "build", "esp32"), nil
 	}
 
-	return GetESP32CachePath()
+	return GetValidatedAssetsCachePath()
 }
 
-func getImageSnapshotPath(name string) (string, error) {
+func getAssetPath(name string) (string, error) {
 	_, ok := getRepoPath()
 	if ok {
 		// We assume that the jag executable is inside the build directory of
@@ -147,14 +138,14 @@ func getImageSnapshotPath(name string) (string, error) {
 			return "", err
 		}
 		dir := path.Dir(execPath)
-		return filepath.Join(dir, "image", name), nil
+		return filepath.Join(dir, "assets", name), nil
 	}
 
-	imagePath, err := GetESP32ImagePath()
+	assetsPath, err := GetAssetsPath()
 	if err != nil {
 		return "", err
 	}
-	snapshotPath := filepath.Join(imagePath, name)
+	snapshotPath := filepath.Join(assetsPath, name)
 
 	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
 		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the Jaguar snapshot using 'jag setup'", snapshotPath)
@@ -163,11 +154,11 @@ func getImageSnapshotPath(name string) (string, error) {
 }
 
 func GetJaguarSnapshotPath() (string, error) {
-	return getImageSnapshotPath("jaguar.snapshot")
+	return getAssetPath("jaguar.snapshot")
 }
 
-func GetSystemSnapshotPath() (string, error) {
-	return getImageSnapshotPath("system.snapshot")
+func GetFirmwareEnvelopePath() (string, error) {
+	return getAssetPath("firmware.envelope")
 }
 
 func GetEsptoolCachePath() (string, error) {

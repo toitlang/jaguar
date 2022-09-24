@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -95,13 +94,19 @@ func FirmwareUpdateCmd() *cobra.Command {
 			// the device flash stored by an older version are invalidated.
 			newID := uuid.New().String()
 
-			binTmpFile, err := BuildFirmwareImage(ctx, newID, device.Name, wifiSSID, wifiPassword)
+			envelope, err := BuildFirmwareEnvelope(ctx, newID, device.Name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
-			defer os.Remove(binTmpFile.Name())
+			defer os.Remove(envelope.Name())
 
-			bin, err := ioutil.ReadFile(binTmpFile.Name())
+			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "firmware.bin")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(firmwareBin.Name())
+
+			bin, err := ioutil.ReadFile(firmwareBin.Name())
 			if err != nil {
 				return err
 			}
@@ -128,28 +133,22 @@ func FirmwareUpdateCmd() *cobra.Command {
 	return cmd
 }
 
-func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
+func BuildFirmwareEnvelope(ctx context.Context, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	esp32BinPath, err := directory.GetESP32ImagePath()
+	envelopePath, err := directory.GetFirmwareEnvelopePath()
 	if err != nil {
 		return nil, err
 	}
 
-	envelopeInput := filepath.Join(esp32BinPath, "firmware.envelope")
 	envelope, err := os.CreateTemp("", "*.envelope")
 	if err != nil {
 		return nil, err
 	}
 	defer envelope.Close()
-
-	binTmpFile, err := os.CreateTemp("", "*.bin")
-	if err != nil {
-		return nil, err
-	}
 
 	jaguarSnapshot, err := directory.GetJaguarSnapshotPath()
 	if err != nil {
@@ -159,29 +158,42 @@ func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID st
 	// TODO(kasper): Can we generate this in a nicer way?
 	wifiProperties := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
 
-	if err := RunFirmwareTool(ctx, sdk, envelopeInput, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "uuid", id); err != nil {
+	if err := setFirmwareProperty(ctx, sdk, envelope, "uuid", id); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "id", id); err != nil {
+	if err := setFirmwareProperty(ctx, sdk, envelope, "id", id); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "name", name); err != nil {
+	if err := setFirmwareProperty(ctx, sdk, envelope, "name", name); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", "wifi", wifiProperties); err != nil {
+	if err := setFirmwareProperty(ctx, sdk, envelope, "wifi", wifiProperties); err != nil {
 		return nil, err
 	}
-	if err := RunFirmwareTool(ctx, sdk, envelope.Name(), "extract", "--binary", "-o", binTmpFile.Name()); err != nil {
-		return nil, err
-	}
-	return binTmpFile, nil
+	return envelope, nil
 }
 
-func RunFirmwareTool(ctx context.Context, sdk *SDK, envelope string, args ...string) error {
-	args = append([]string{"-e", envelope}, args...)
+func ExtractFirmwarePart(ctx context.Context, sdk *SDK, envelopePath string, part string) (*os.File, error) {
+	partFile, err := os.CreateTemp("", part+".*")
+	if err != nil {
+		return nil, err
+	}
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--"+part, "-o", partFile.Name()); err != nil {
+		partFile.Close()
+		return nil, err
+	}
+	return partFile, nil
+}
+
+func setFirmwareProperty(ctx context.Context, sdk *SDK, envelope *os.File, key string, value string) error {
+	return runFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", key, value)
+}
+
+func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ...string) error {
+	args = append([]string{"-e", envelopePath}, args...)
 	cmd := sdk.Firmware(ctx, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
