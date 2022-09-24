@@ -34,7 +34,7 @@ JAG_BINARY := jag$(EXE_SUFFIX)
 # continuous builders, so we do not need to worry about failing
 # the setup check there.
 .PHONY: all
-all: jag image
+all: jag assets
 	$(BUILD_DIR)/$(JAG_BINARY) setup --check
 
 .PHONY: jag
@@ -74,51 +74,24 @@ toit-git-tags:
 $(JAG_TOIT_PATH)/bin/toit.compile $(JAG_TOIT_PATH)/bin/toit.pkg: toit-git-tags
 	make -C $(TOIT_PATH) sdk
 
-.packages: $(JAG_TOIT_PATH)/bin/toit.pkg $(TOIT_SOURCE)
-	$(JAG_TOIT_PATH)/bin/toit.pkg install
-
-.PHONY: $(TOIT_PATH)/build/esp32/
-$(TOIT_PATH)/build/esp32/: $(TOIT_SOURCE) .packages toit-git-tags
+.PHONY: $(TOIT_PATH)/build/esp32/firmware.envelope
+$(TOIT_PATH)/build/esp32/firmware.envelope: toit-git-tags
 	make -C $(TOIT_PATH) esp32
 
-$(BUILD_DIR)/image/:
+$(BUILD_DIR)/assets/:
 	mkdir -p $@
 
-$(BUILD_DIR)/image/bootloader/:
-	mkdir -p $@
+$(BUILD_DIR)/assets/firmware.envelope: $(TOIT_PATH)/build/esp32/firmware.envelope $(BUILD_DIR)/assets/
+	cp $< $@
 
-$(BUILD_DIR)/image/firmware.envelope: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/build/esp32/firmware.envelope $@
-
-$(BUILD_DIR)/image/toit.elf: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/build/esp32/toit.elf $@
-
-$(BUILD_DIR)/image/bootloader/bootloader.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/bootloader/
-	cp $(TOIT_PATH)/build/esp32/bootloader/bootloader.bin $@
-
-$(BUILD_DIR)/image/partitions.bin: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/build/esp32/partitions.bin $@
-
-$(BUILD_DIR)/image/partitions.csv: $(TOIT_PATH)/toolchains/esp32/partitions.csv $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/toolchains/esp32/partitions.csv $@
-
-$(BUILD_DIR)/image/system.snapshot: $(TOIT_PATH)/build/esp32/ $(BUILD_DIR)/image/
-	cp $(TOIT_PATH)/build/esp32/system.snapshot $@
-
-$(BUILD_DIR)/image/jaguar.snapshot: install-dependencies
-$(BUILD_DIR)/image/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_DIR)/image/
+$(BUILD_DIR)/assets/jaguar.snapshot: install-dependencies
+$(BUILD_DIR)/assets/jaguar.snapshot: $(TOIT_SOURCE)
+$(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_DIR)/assets/
 	$(JAG_TOIT_PATH)/bin/toit.compile -w $@ $(JAG_ENTRY_POINT)
 
-.PHONY: image
-image: $(BUILD_DIR)/image/jaguar.snapshot
-image: $(BUILD_DIR)/image/firmware.envelope
-# TODO(kasper): The remaining stuff should be bundled in the
-# firmware.envelope file.
-image: $(BUILD_DIR)/image/toit.elf
-image: $(BUILD_DIR)/image/bootloader/bootloader.bin
-image: $(BUILD_DIR)/image/partitions.bin
-image: $(BUILD_DIR)/image/partitions.csv
-image: $(BUILD_DIR)/image/system.snapshot
+.PHONY: assets
+assets: $(BUILD_DIR)/assets/jaguar.snapshot
+assets: $(BUILD_DIR)/assets/firmware.envelope
 
 .PHONY: install-esp-idf
 install-esp-idf:
