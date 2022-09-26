@@ -219,7 +219,7 @@ jobs:
 
       - name: Download SDK
         run: |
-          GOOS=linux make JAG_BINARY=linux/jag download-sdk
+          make download-sdk
 
       - name: Build assets
         run: |
