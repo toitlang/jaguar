@@ -108,7 +108,19 @@ func GetAssetsCachePath() (string, error) {
 	return filepath.Join(home, ".cache", "jaguar", "assets"), nil
 }
 
-func GetValidatedAssetsCachePath() (string, error) {
+func GetAssetsPath() (string, error) {
+	_, ok := getRepoPath()
+	if ok {
+		// We assume that the jag executable is inside the build directory of
+		// the Jaguar repository.
+		execPath, err := os.Executable()
+		if err != nil {
+			return "", err
+		}
+		dir := path.Dir(execPath)
+		return filepath.Join(dir, "assets"), nil
+	}
+
 	assetsPath, err := GetAssetsCachePath()
 	if err != nil {
 		return "", err
@@ -119,38 +131,17 @@ func GetValidatedAssetsCachePath() (string, error) {
 	return assetsPath, nil
 }
 
-func GetAssetsPath() (string, error) {
-	repoPath, ok := getRepoPath()
-	if ok {
-		return filepath.Join(repoPath, "build", "esp32"), nil
-	}
-
-	return GetValidatedAssetsCachePath()
-}
-
 func getAssetPath(name string) (string, error) {
-	_, ok := getRepoPath()
-	if ok {
-		// We assume that the jag executable is inside the build directory of
-		// the Jaguar repository.
-		execPath, err := os.Executable()
-		if err != nil {
-			return "", err
-		}
-		dir := path.Dir(execPath)
-		return filepath.Join(dir, "assets", name), nil
-	}
-
 	assetsPath, err := GetAssetsPath()
 	if err != nil {
-		return "", err
+		return "", nil
 	}
-	snapshotPath := filepath.Join(assetsPath, name)
 
-	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the Jaguar snapshot using 'jag setup'", snapshotPath)
+	path := filepath.Join(assetsPath, name)
+	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' did not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", name, path)
 	}
-	return snapshotPath, nil
+	return path, nil
 }
 
 func GetJaguarSnapshotPath() (string, error) {
@@ -158,7 +149,11 @@ func GetJaguarSnapshotPath() (string, error) {
 }
 
 func GetFirmwareEnvelopePath() (string, error) {
-	return getAssetPath("firmware.envelope")
+	repoPath, ok := getRepoPath()
+	if ok {
+		return filepath.Join(repoPath, "build", "esp32", "firmware.envelope"), nil
+	}
+	return getAssetPath("firmware-esp32.envelope")
 }
 
 func GetEsptoolCachePath() (string, error) {

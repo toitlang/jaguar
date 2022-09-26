@@ -7,8 +7,10 @@ package commands
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -173,6 +175,11 @@ func BuildFirmwareEnvelope(ctx context.Context, id string, name string, wifiSSID
 	if err := setFirmwareProperty(ctx, sdk, envelope, "wifi", wifiProperties); err != nil {
 		return nil, err
 	}
+
+	if err := copySnapshotsIntoCache(ctx, sdk, envelope); err != nil {
+		return nil, err
+	}
+
 	return envelope, nil
 }
 
@@ -198,4 +205,55 @@ func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ..
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	return cmd.Run()
+}
+
+func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) error {
+	// TODO(kasper): We should be able to get all the snapshots stored in
+	// the envelope out through extraction. For now, we just make it work
+	// with the jaguar snapshot.
+	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+	if err != nil {
+		return err
+	}
+	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
+		return err
+	}
+
+	snapshot, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "system.snapshot")
+	if err != nil {
+		return err
+	}
+	defer snapshot.Close()
+
+	if err := copySnapshotIntoCache(snapshot.Name()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func copySnapshotIntoCache(path string) error {
+	uuid, err := GetUuid(path)
+	if err != nil {
+		return err
+	}
+
+	cacheDirectory, err := directory.GetSnapshotsCachePath()
+	if err != nil {
+		return err
+	}
+
+	source, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(filepath.Join(cacheDirectory, uuid.String()+".snapshot"))
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }

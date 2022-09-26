@@ -34,7 +34,7 @@ JAG_BINARY := jag$(EXE_SUFFIX)
 # continuous builders, so we do not need to worry about failing
 # the setup check there.
 .PHONY: all
-all: jag assets
+all: jag assets firmware
 	$(BUILD_DIR)/$(JAG_BINARY) setup --check
 
 .PHONY: jag
@@ -81,9 +81,6 @@ $(TOIT_PATH)/build/esp32/firmware.envelope: toit-git-tags
 $(BUILD_DIR)/assets/:
 	mkdir -p $@
 
-$(BUILD_DIR)/assets/firmware.envelope: $(TOIT_PATH)/build/esp32/firmware.envelope $(BUILD_DIR)/assets/
-	cp $< $@
-
 $(BUILD_DIR)/assets/jaguar.snapshot: install-dependencies
 $(BUILD_DIR)/assets/jaguar.snapshot: $(TOIT_SOURCE)
 $(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_DIR)/assets/
@@ -91,7 +88,9 @@ $(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_D
 
 .PHONY: assets
 assets: $(BUILD_DIR)/assets/jaguar.snapshot
-assets: $(BUILD_DIR)/assets/firmware.envelope
+
+.PHONY: firmware
+firmware: $(TOIT_PATH)/build/esp32/firmware.envelope
 
 .PHONY: install-esp-idf
 install-esp-idf:
