@@ -62,8 +62,9 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if check {
-				// TODO(kasper): It looks like this has been suffering and it isn't
-				// clear that we're checking nearly enough any more.
+				if _, err := GetSDK(ctx); err != nil {
+					return err
+				}
 
 				if _, err := directory.GetJaguarSnapshotPath(); err != nil {
 					return err
