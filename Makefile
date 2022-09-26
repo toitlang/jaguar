@@ -18,7 +18,7 @@ endif
 ifdef JAG_TOIT_REPO_PATH
 SDK_PATH := $(JAG_TOIT_REPO_PATH)/build/host/sdk
 else
-SDK_PATH := BUILD_SDK_DIR
+SDK_PATH := $(BUILD_SDK_DIR)
 endif
 
 JAG_BINARY := jag$(EXE_SUFFIX)
@@ -26,12 +26,8 @@ JAG_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
 JAG_TOIT_SOURCES := $(shell find src -name '*.toit') package.lock package.yaml
 JAG_GO_SOURCES := $(shell find cmd -name '*.go')
 
-# The default ("all") target is deliberately not used on the
-# continuous builders, so we do not need to worry about failing
-# the setup check there.
 .PHONY: all
 all: jag assets
-	$(BUILD_DIR)/$(JAG_BINARY) setup --check
 
 .PHONY: jag
 jag: $(BUILD_DIR)/$(JAG_BINARY)
