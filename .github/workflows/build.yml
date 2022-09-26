@@ -210,14 +210,6 @@ jobs:
   build_assets:
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install ninja-build cmake
-          ninja --version
-          cmake --version
-          gcc --version
-
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
