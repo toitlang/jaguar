@@ -213,7 +213,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install ninja-build cmake ccache
+          sudo apt-get install ninja-build cmake
           ninja --version
           cmake --version
           gcc --version
@@ -225,28 +225,12 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - name: Ccache cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ github.workspace }}/.ccache
-          key: image-ccache-${{ github.sha }}
-          restore-keys: image-ccache-
-
       - name: Download SDK
         run: |
           GOOS=linux make JAG_BINARY=linux/jag download-sdk
 
       - name: Build assets
-        env:
-          CCACHE_DIR: ${{ github.workspace }}/.ccache
-          CCACHE_BASEDIR: ${{ github.workspace }}
-          CCACHE_COMPRESS: true
-          CCACHE_COMPRESSLEVEL: '6'
-          CCACHE_MAXSIZE: 400M
         run: |
-          # Make sure the ccache interceptors are before any other path.
-          export PATH="$PWD/ccache_interceptors":$PATH
-
           make assets
           tar -czf build/assets.tar.gz -C ./build -h assets
 
