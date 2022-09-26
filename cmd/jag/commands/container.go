@@ -95,6 +95,11 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
+			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
+			if err != nil {
+				return err
+			}
+
 			entrypoint := args[1]
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
@@ -121,12 +126,13 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
-			return InstallFile(cmd, device, sdk, name, entrypoint, defines)
+			return InstallFile(cmd, device, sdk, name, entrypoint, defines, programAssetsPath)
 		},
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control container on device")
+	cmd.Flags().String("assets", "", "attach assets to the container")
 	return cmd
 }
 

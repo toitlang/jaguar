@@ -15,6 +15,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.2
 	github.com/segmentio/backo-go v1.0.0 // indirect
 	github.com/setanta314/ar v0.0.0-20190524173558-797cd0c6714c
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.9.0
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90
 	github.com/toitlang/tpkg v0.0.0-20220727131228-5d149728b2ba

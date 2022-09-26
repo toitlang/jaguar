@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"github.com/xtgo/uuid"
 	"golang.org/x/crypto/ssh/terminal"
@@ -65,6 +66,25 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 		fmt.Printf("[jaguar] ERROR: Do you need to run `jag setup` or set `JAG_TOIT_REPO_PATH`?\n")
 	}
 	return res, err
+}
+
+func GetProgramAssetsPath(flags *pflag.FlagSet, flagName string) (string, error) {
+	if flags.Changed(flagName) {
+		assetsPath, err := flags.GetString(flagName)
+		if err != nil {
+			return "", err
+		}
+		if stat, err := os.Stat(assetsPath); err != nil {
+			if os.IsNotExist(err) {
+				return "", fmt.Errorf("no such file or directory: '%s'", assetsPath)
+			}
+			return "", fmt.Errorf("can't stat file '%s', reason: %w", assetsPath, err)
+		} else if stat.IsDir() {
+			return "", fmt.Errorf("can't use directory as assets: '%s'", assetsPath)
+		}
+		return assetsPath, nil
+	}
+	return "", nil
 }
 
 func (s *SDK) ToitCompilePath() string {
@@ -196,7 +216,7 @@ func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string) e
 	return nil
 }
 
-func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byte, error) {
+func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, assetsPath string) ([]byte, error) {
 	image, err := os.CreateTemp("", "*.image")
 	if err != nil {
 		return nil, err
@@ -209,7 +229,15 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byt
 		bits = "-m64"
 	}
 
-	buildImage := s.SnapshotToImage(ctx, "--binary", bits, "--output", image.Name(), snapshot)
+	arguments := []string{
+		"--binary", bits,
+		"--output", image.Name(),
+		snapshotPath,
+	}
+	if assetsPath != "" {
+		arguments = append(arguments, "--assets", assetsPath)
+	}
+	buildImage := s.SnapshotToImage(ctx, arguments...)
 	buildImage.Stderr = os.Stderr
 	buildImage.Stdout = os.Stdout
 	if err := buildImage.Run(); err != nil {
