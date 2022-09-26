@@ -35,13 +35,9 @@ jag: $(BUILD_DIR)/$(JAG_BINARY)
 $(BUILD_DIR):
 	mkdir -p $@
 
-.PHONY: update-jag-info
-update-jag-info: $(BUILD_DIR)
-	sed 's/date       = .*/date       = "$(BUILD_DATE)"/' $(CURDIR)/cmd/jag/main.go > $(BUILD_DIR)/new_main.go
-	mv $(BUILD_DIR)/new_main.go $(CURDIR)/cmd/jag/main.go
-
 GO_BUILD_FLAGS := CGO_ENABLED=1 GODEBUG=netdns=go
 GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
+GO_LINK_FLAGS += -X 'main.buildDate="$(BUILD_DATE)"'
 ifdef JAG_BUILD_RELEASE
 GO_LINK_FLAGS += -X 'main.buildMode=release'
 endif
