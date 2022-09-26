@@ -7,12 +7,14 @@ package commands
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/setanta314/ar"
@@ -187,7 +189,7 @@ func RunFile(
 	device *Device,
 	sdk *SDK,
 	path string,
-	defines string,
+	defines map[string]interface{},
 	assetsPath string) error {
 	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
 	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath)
@@ -199,7 +201,7 @@ func InstallFile(
 	sdk *SDK,
 	name string,
 	path string,
-	defines string,
+	defines map[string]interface{},
 	assetsPath string) error {
 	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name)
 	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath)
@@ -212,7 +214,7 @@ func sendCodeFromFile(
 	request string,
 	path string,
 	name string,
-	defines string,
+	defines map[string]interface{},
 	assetsPath string) error {
 
 	ctx := cmd.Context()
@@ -292,6 +294,35 @@ func sendCodeFromFile(
 		}
 	}
 
+	// Split the -D options into the ones we pass in the HTTP header for Jaguar
+	// and the ones we send along as assets.
+	headerMap := make(map[string]interface{})
+	assetsMap := make(map[string]interface{})
+	for key, value := range defines {
+		if strings.HasPrefix(key, "jag.") {
+			headerMap[key] = value
+		} else {
+			assetsMap[key] = value
+		}
+	}
+
+	if len(assetsMap) > 0 {
+		temporaryAssetsFile, err := ioutil.TempFile("", "jag_run_*.assets")
+		if err != nil {
+			return err
+		}
+		defer temporaryAssetsFile.Close()
+		defer os.Remove(temporaryAssetsFile.Name())
+		buildAssets(ctx, sdk, temporaryAssetsFile, assetsPath, assetsMap)
+		assetsPath = temporaryAssetsFile.Name()
+	}
+
+	headerMarshalled, err := json.Marshal(headerMap)
+	if err != nil {
+		return err
+	}
+	headerDefines := string(headerMarshalled)
+
 	b, err := sdk.Build(ctx, device, cacheDestination, assetsPath)
 	if err != nil {
 		// We assume the error has been printed.
@@ -300,7 +331,7 @@ func sendCodeFromFile(
 		return err
 	}
 
-	if err := device.SendCode(ctx, sdk, request, b, name, defines); err != nil {
+	if err := device.SendCode(ctx, sdk, request, b, name, headerDefines); err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.
@@ -309,4 +340,46 @@ func sendCodeFromFile(
 	}
 	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
 	return nil
+}
+
+func buildAssets(ctx context.Context, sdk *SDK, output *os.File, inputPath string, assetsMap map[string]interface{}) error {
+	// Write the defines into a temporary file as JSON.
+	definesJsonFile, err := ioutil.TempFile("", "jag_run_*.defines")
+	if err != nil {
+		return err
+	}
+	definesJson, err := json.Marshal(assetsMap)
+	if err != nil {
+		return err
+	}
+	os.WriteFile(definesJsonFile.Name(), definesJson, 0777)
+	defer definesJsonFile.Close()
+	defer os.Remove(definesJsonFile.Name())
+
+	// Create a new assets file or copy the existing one.
+	if inputPath == "" {
+		if err := runAssetsTool(ctx, sdk, output.Name(), "create"); err != nil {
+			return err
+		}
+	} else {
+		input, err := os.Open(inputPath)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(output, input)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Add the defines as a UBJSON asset under with the name jag.defines.
+	return runAssetsTool(ctx, sdk, output.Name(), "add", "--ubjson", "jag.defines", definesJsonFile.Name())
+}
+
+func runAssetsTool(ctx context.Context, sdk *SDK, assetsPath string, args ...string) error {
+	args = append([]string{"-e", assetsPath}, args...)
+	cmd := sdk.AssetsTool(ctx, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }

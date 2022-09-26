@@ -199,7 +199,7 @@ func onWatchChanges(
 	}
 
 	runOnDevice := func(runCtx context.Context) {
-		if err := RunFile(cmd, device, sdk, entrypoint, "", assetsPath); err != nil {
+		if err := RunFile(cmd, device, sdk, entrypoint, nil, assetsPath); err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
