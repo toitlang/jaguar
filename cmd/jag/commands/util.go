@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"github.com/xtgo/uuid"
 	"golang.org/x/crypto/ssh/terminal"
@@ -67,6 +68,26 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 	return res, err
 }
 
+func GetProgramAssetsPath(flags *pflag.FlagSet, flagName string) (string, error) {
+	if !flags.Changed(flagName) {
+		return "", nil
+	}
+
+	assetsPath, err := flags.GetString(flagName)
+	if err != nil {
+		return "", err
+	}
+	if stat, err := os.Stat(assetsPath); err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("no such file or directory: '%s'", assetsPath)
+		}
+		return "", fmt.Errorf("can't stat file '%s', reason: %w", assetsPath, err)
+	} else if stat.IsDir() {
+		return "", fmt.Errorf("can't use directory as assets: '%s'", assetsPath)
+	}
+	return assetsPath, nil
+}
+
 func (s *SDK) ToitCompilePath() string {
 	return filepath.Join(s.Path, "bin", directory.Executable("toit.compile"))
 }
@@ -95,10 +116,13 @@ func (s *SDK) SnapshotToImagePath() string {
 	return filepath.Join(s.Path, "tools", directory.Executable("snapshot_to_image"))
 }
 
-func (s *SDK) FirmwarePath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("firmware"))
+func (s *SDK) AssetsToolPath() string {
+	return filepath.Join(s.Path, "tools", directory.Executable("assets"))
 }
 
+func (s *SDK) FirmwareToolPath() string {
+	return filepath.Join(s.Path, "tools", directory.Executable("firmware"))
+}
 func (s *SDK) StacktracePath() string {
 	return filepath.Join(s.Path, "tools", directory.Executable("stacktrace"))
 }
@@ -132,7 +156,8 @@ func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
 		s.ToitRunPath(),
 		s.ToitLspPath(),
 		s.VersionPath(),
-		s.FirmwarePath(),
+		s.AssetsToolPath(),
+		s.FirmwareToolPath(),
 		s.SystemMessagePath(),
 		s.SnapshotToImagePath(),
 		s.StacktracePath(),
@@ -170,8 +195,12 @@ func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
 }
 
-func (s *SDK) Firmware(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.FirmwarePath(), args...)
+func (s *SDK) AssetsTool(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.AssetsToolPath(), args...)
+}
+
+func (s *SDK) FirmwareTool(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.FirmwareToolPath(), args...)
 }
 
 func (s *SDK) SnapshotToImage(ctx context.Context, args ...string) *exec.Cmd {
@@ -196,7 +225,7 @@ func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string) e
 	return nil
 }
 
-func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byte, error) {
+func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, assetsPath string) ([]byte, error) {
 	image, err := os.CreateTemp("", "*.image")
 	if err != nil {
 		return nil, err
@@ -209,7 +238,15 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshot string) ([]byt
 		bits = "-m64"
 	}
 
-	buildImage := s.SnapshotToImage(ctx, "--binary", bits, "--output", image.Name(), snapshot)
+	arguments := []string{
+		"--binary", bits,
+		"--output", image.Name(),
+		snapshotPath,
+	}
+	if assetsPath != "" {
+		arguments = append(arguments, "--assets", assetsPath)
+	}
+	buildImage := s.SnapshotToImage(ctx, arguments...)
 	buildImage.Stderr = os.Stderr
 	buildImage.Stdout = os.Stdout
 	if err := buildImage.Run(); err != nil {
@@ -332,14 +369,14 @@ type encoder interface {
 	Encode(interface{}) error
 }
 
-func parseDefineFlags(cmd *cobra.Command, flagName string) (string, error) {
+func parseDefineFlags(cmd *cobra.Command, flagName string) (map[string]interface{}, error) {
 	if !cmd.Flags().Changed(flagName) {
-		return "", nil
+		return nil, nil
 	}
 
 	defineFlags, err := cmd.Flags().GetStringArray(flagName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	definesMap := make(map[string]interface{})
@@ -373,14 +410,14 @@ func parseDefineFlags(cmd *cobra.Command, flagName string) (string, error) {
 		}
 	}
 	if len(definesMap) == 0 {
-		return "", nil
+		return nil, nil
 	}
 
-	marshalled, err := json.Marshal(definesMap)
+	_, err = json.Marshal(definesMap)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(marshalled), nil
+	return definesMap, nil
 }
 
 func parseOutputFlag(cmd *cobra.Command) (encoder, error) {

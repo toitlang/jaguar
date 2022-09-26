@@ -194,7 +194,7 @@ func setFirmwareProperty(ctx context.Context, sdk *SDK, envelope *os.File, key s
 
 func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ...string) error {
 	args = append([]string{"-e", envelopePath}, args...)
-	cmd := sdk.Firmware(ctx, args...)
+	cmd := sdk.FirmwareTool(ctx, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	return cmd.Run()

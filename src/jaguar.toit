@@ -207,8 +207,7 @@ run_image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is_empty ? "" : " with $defines"
   logger.info "$nick $cause$suffix"
-  defines = defines.filter: not it.starts_with "jag."
-  return containers.start image defines
+  return containers.start image
 
 install_image image_size/int reader/reader.Reader name/string defines/Map -> none:
   image := flash_image image_size reader name defines
