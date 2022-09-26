@@ -7,10 +7,10 @@ package commands
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -20,7 +20,7 @@ import (
 )
 
 // Returns position, size of the partitions in partitions.csv.
-func getPartitions(toitToolchainPath string, positions map[string]int, sizes map[string]int) {
+func getPartitions(ctx context.Context, sdk *SDK, envelopePath string, positions map[string]int, sizes map[string]int) {
 	// Load default partitions positions, that can be overridden by the
 	// partitions.csv file.  Some of these (bootloader, partitions) are
 	// commented out in the partitions.csv because they can't be changed.
@@ -36,11 +36,12 @@ func getPartitions(toitToolchainPath string, positions map[string]int, sizes map
 	COLUMN_POSITION := 3
 	COLUMN_SIZE := 4
 
-	file, err := os.Open(filepath.Join(toitToolchainPath, "partitions.csv"))
+	file, err := ExtractFirmwarePart(ctx, sdk, envelopePath, "partitions.csv")
 	if err != nil {
 		panic("Could not find partitions.csv")
 	}
 	defer file.Close()
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		partitionType := ""
@@ -109,14 +110,19 @@ func createZapBytesFile(sizes map[string]int, name string) (*os.File, error) {
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "flash",
-		Short: "Flash an ESP32 with the Jaguar image",
-		Long: "Flash an ESP32 with the Jaguar application image. The initial flashing is\n" +
+		Short: "Flash an ESP32 with the Jaguar firmware",
+		Long: "Flash an ESP32 with the Jaguar firmware. The initial flashing is\n" +
 			"done over a serial connection and it is used to give the ESP32 its initial\n" +
 			"firmware and the necessary WiFi credentials.",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sdk, err := GetSDK(ctx)
+			if err != nil {
+				return err
+			}
+
 			port, err := cmd.Flags().GetString("port")
 			if err != nil {
 				return err
@@ -151,26 +157,34 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			esp32BinPath, err := directory.GetESP32ImagePath()
+			envelope, err := BuildFirmwareEnvelope(ctx, id.String(), name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
+			defer os.Remove(envelope.Name())
 
-			toitToolchainPath, err := directory.GetToitToolchainPath()
+			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "firmware.bin")
 			if err != nil {
 				return err
 			}
+			defer os.Remove(firmwareBin.Name())
 
-			binTmpFile, err := BuildFirmwareImage(ctx, id.String(), name, wifiSSID, wifiPassword)
+			bootloaderBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "bootloader.bin")
 			if err != nil {
 				return err
 			}
-			defer os.Remove(binTmpFile.Name())
+			defer os.Remove(bootloaderBin.Name())
+
+			partitionsBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "partitions.bin")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(partitionsBin.Name())
 
 			positions := make(map[string]int)
 			sizes := make(map[string]int)
 
-			getPartitions(toitToolchainPath, positions, sizes)
+			getPartitions(ctx, sdk, envelope.Name(), positions, sizes)
 
 			// Create a file with zap bytes (0xff) for clearing the OTA data partition.
 			zappedOtaDataFile, err := createZapBytesFile(sizes, "ota")
@@ -187,11 +201,15 @@ func FlashCmd() *cobra.Command {
 			defer os.Remove(zappedNvsDataFile.Name())
 
 			flashArgs := []string{
-				"--chip", "esp32", "--port", port, "--baud", strconv.Itoa(int(baud)), "--before", "default_reset", "--after", "hard_reset", "write_flash", "-z", "--flash_mode", "dio",
+				"--chip", "esp32",
+				"--port", port, "--baud", strconv.Itoa(int(baud)),
+				"--before", "default_reset",
+				"--after", "hard_reset", "write_flash", "-z",
+				"--flash_mode", "dio",
 				"--flash_freq", "40m", "--flash_size", "detect",
-				hex(positions["bootloader"]), filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
-				hex(positions["partitions"]), filepath.Join(esp32BinPath, "partitions.bin"),
-				hex(positions["ota_0"]), binTmpFile.Name(),
+				hex(positions["bootloader"]), bootloaderBin.Name(),
+				hex(positions["partitions"]), partitionsBin.Name(),
+				hex(positions["ota_0"]), firmwareBin.Name(),
 			}
 			if pos, ok := positions["ota"]; ok {
 				// Force bootloader to boot from OTA 0.
@@ -211,7 +229,7 @@ func FlashCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
-	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	return cmd

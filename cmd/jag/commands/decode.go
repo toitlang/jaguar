@@ -154,11 +154,16 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 		return err
 	}
 
-	elf, err := directory.GetESP32ImagePath()
+	envelopePath, err := directory.GetFirmwareEnvelopePath()
 	if err != nil {
 		return err
 	}
-	elf = filepath.Join(elf, "toit.elf")
+
+	firmwareElf, err := ExtractFirmwarePart(ctx, sdk, envelopePath, "firmware.elf")
+	if err != nil {
+		return err
+	}
+	defer firmwareElf.Close()
 
 	objdump, err := exec.LookPath("xtensa-esp32-elf-objdump")
 	if err != nil {
@@ -167,7 +172,7 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 	if err != nil {
 		return err
 	}
-	stacktraceCommand := sdk.Stacktrace(ctx, "--objdump", objdump, "--backtrace", backtrace, elf)
+	stacktraceCommand := sdk.Stacktrace(ctx, "--objdump", objdump, "--backtrace", backtrace, firmwareElf.Name())
 	stacktraceCommand.Stderr = os.Stderr
 	stacktraceCommand.Stdout = os.Stdout
 	fmt.Println("Crash in native code:")
@@ -205,7 +210,7 @@ func (d *Decoder) decode() {
 			if strings.HasPrefix(line, "jag decode ") || strings.HasPrefix(line, "Backtrace:") {
 				fmt.Printf("\n" + separator + "\n")
 				if Version != "" {
-					fmt.Printf("Decoded by `jag` <%s>\n", Version)
+					fmt.Printf("Decoding by `jag`, device has version <%s>\n", Version)
 					fmt.Printf(separator + "\n")
 				}
 				if err := serialDecode(d.cmd, line); err != nil {

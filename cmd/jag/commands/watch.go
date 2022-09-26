@@ -33,6 +33,11 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
+			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
+			if err != nil {
+				return err
+			}
+
 			entrypoint := args[0]
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
@@ -65,7 +70,7 @@ func WatchCmd() *cobra.Command {
 			}
 			defer watcher.Close()
 
-			waitCh, fn := onWatchChanges(cmd, watcher, device, sdk, entrypoint)
+			waitCh, fn := onWatchChanges(cmd, watcher, device, sdk, entrypoint, programAssetsPath)
 			go fn()
 
 			<-waitCh
@@ -73,7 +78,7 @@ func WatchCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
-
+	cmd.Flags().String("assets", "", "attach assets to the program")
 	return cmd
 }
 
@@ -156,7 +161,13 @@ func parseDependeniesToDirs(b []byte) []string {
 	return res
 }
 
-func onWatchChanges(cmd *cobra.Command, watcher *watcher, device *Device, sdk *SDK, entrypoint string) (<-chan struct{}, func()) {
+func onWatchChanges(
+	cmd *cobra.Command,
+	watcher *watcher,
+	device *Device,
+	sdk *SDK,
+	entrypoint string,
+	assetsPath string) (<-chan struct{}, func()) {
 	doneCh := make(chan struct{})
 	ctx := cmd.Context()
 
@@ -188,7 +199,7 @@ func onWatchChanges(cmd *cobra.Command, watcher *watcher, device *Device, sdk *S
 	}
 
 	runOnDevice := func(runCtx context.Context) {
-		if err := RunFile(cmd, device, sdk, entrypoint, ""); err != nil {
+		if err := RunFile(cmd, device, sdk, entrypoint, nil, assetsPath); err != nil {
 			fmt.Println("Error:", err)
 			return
 		}

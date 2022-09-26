@@ -27,8 +27,8 @@ func getToitSDKURL(version string) string {
 	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, currOS)
 }
 
-func getESP32ImageURL(version string) string {
-	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/image.tar.gz", version)
+func getAssetsURL(version string) string {
+	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/assets.tar.gz", version)
 }
 
 func getEsptoolURL(version string) string {
@@ -58,11 +58,12 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if check {
-				if _, err := GetSDK(ctx); err != nil {
+				sdk, err := GetSDK(ctx)
+				if err != nil {
 					return err
 				}
 
-				if err := validateESP32Image(); err != nil {
+				if err := validateAssets(); err != nil {
 					return err
 				}
 
@@ -70,7 +71,7 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if _, err := directory.GetSystemSnapshotPath(); err != nil {
+				if _, err := directory.GetFirmwareEnvelopePath(); err != nil {
 					return err
 				}
 
@@ -78,7 +79,7 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if err := copySnapshotsIntoCache(); err != nil {
+				if err := copySnapshotsIntoCache(ctx, sdk); err != nil {
 					return err
 				}
 
@@ -97,7 +98,12 @@ func SetupCmd(info Info) *cobra.Command {
 				return err
 			}
 
-			if err := downloadESP32Image(ctx, info.Version); err != nil {
+			sdk, err := GetSDK(ctx)
+			if err != nil {
+				return err
+			}
+
+			if err := downloadAssets(ctx, sdk, info.Version); err != nil {
 				return err
 			}
 
@@ -124,34 +130,31 @@ func SetupCmd(info Info) *cobra.Command {
 	return cmd
 }
 
-func validateESP32Image() error {
-	esp32BinPath, err := directory.GetESP32ImagePath()
+func validateAssets() error {
+	assetsPath, err := directory.GetAssetsPath()
 	if err != nil {
 		return err
 	}
 	paths := []string{
-		filepath.Join(esp32BinPath, "toit.elf"),
-		filepath.Join(esp32BinPath, "toit.bin"),
-		filepath.Join(esp32BinPath, "bootloader", "bootloader.bin"),
-		filepath.Join(esp32BinPath, "partitions.bin"),
+		filepath.Join(assetsPath, "firmware.envelope"),
 	}
 	for _, p := range paths {
-		if err := checkFilepath(p, "invalid ESP32 image"); err != nil {
+		if err := checkFilepath(p, "invalid assets"); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func downloadESP32Image(ctx context.Context, version string) error {
-	imagePath, err := directory.GetESP32ImageCachePath()
+func downloadAssets(ctx context.Context, sdk *SDK, version string) error {
+	assetsPath, err := directory.GetAssetsCachePath()
 	if err != nil {
 		return err
 	}
 
-	esp32ImageURL := getESP32ImageURL(version)
-	fmt.Printf("Downloading ESP32 image from %s ...\n", esp32ImageURL)
-	bundle, err := download(ctx, esp32ImageURL)
+	assetsURL := getAssetsURL(version)
+	fmt.Printf("Downloading Jaguar assets from %s ...\n", assetsURL)
+	bundle, err := download(ctx, assetsURL)
 	if err != nil {
 		return err
 	}
@@ -159,28 +162,28 @@ func downloadESP32Image(ctx context.Context, version string) error {
 	gzipReader, err := newGZipReader(bundle)
 	if err != nil {
 		bundle.Close()
-		return fmt.Errorf("failed to read the ESP32 image artifact as gzip file: %w", err)
+		return fmt.Errorf("failed to read the Jaguar assets as gzip file: %w", err)
 	}
 	defer gzipReader.Close()
 
-	if err := os.RemoveAll(imagePath); err != nil {
+	if err := os.RemoveAll(assetsPath); err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll(imagePath, 0755); err != nil {
+	if err := os.MkdirAll(assetsPath, 0755); err != nil {
 		return err
 	}
 
-	if err := extractTarFile(gzipReader, imagePath, "image/"); err != nil {
-		return fmt.Errorf("failed to extract the ESP32 image, reason: %w", err)
+	if err := extractTarFile(gzipReader, assetsPath, "assets/"); err != nil {
+		return fmt.Errorf("failed to extract the Jaguar assets, reason: %w", err)
 	}
 	gzipReader.Close()
 
-	if err := copySnapshotsIntoCache(); err != nil {
+	if err := copySnapshotsIntoCache(ctx, sdk); err != nil {
 		return err
 	}
 
-	fmt.Println("Successfully installed ESP32 image into", imagePath)
+	fmt.Println("Successfully installed Jaguar assets into", assetsPath)
 	return nil
 }
 
@@ -211,7 +214,7 @@ func copySnapshotIntoCache(path string) error {
 	return err
 }
 
-func copySnapshotsIntoCache() error {
+func copySnapshotsIntoCache(ctx context.Context, sdk *SDK) error {
 	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
 	if err != nil {
 		return err
@@ -220,11 +223,18 @@ func copySnapshotsIntoCache() error {
 		return err
 	}
 
-	systemSnapshotPath, err := directory.GetSystemSnapshotPath()
+	envelopePath, err := directory.GetFirmwareEnvelopePath()
 	if err != nil {
 		return err
 	}
-	if err := copySnapshotIntoCache(systemSnapshotPath); err != nil {
+
+	systemSnapshot, err := ExtractFirmwarePart(ctx, sdk, envelopePath, "system.snapshot")
+	if err != nil {
+		return err
+	}
+	defer systemSnapshot.Close()
+
+	if err := copySnapshotIntoCache(systemSnapshot.Name()); err != nil {
 		return err
 	}
 	return nil

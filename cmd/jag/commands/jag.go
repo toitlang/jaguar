@@ -26,7 +26,8 @@ import (
 type ctxKey string
 
 const (
-	ctxKeyInfo ctxKey = "info"
+	ctxKeyInfo          ctxKey = "info"
+	noAnalyticsFlagName string = "no-analytics"
 )
 
 type Info struct {
@@ -56,6 +57,11 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 			"the application on your device, and restart it all within seconds. No need to flash over\n" +
 			"serial, reboot your device, or wait for it to reconnect to your network.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			noAnalytics, err := cmd.Flags().GetBool(noAnalyticsFlagName)
+			if err != nil || noAnalytics {
+				return
+			}
+
 			// Avoid running the analytics and up-to-date check code when
 			// the command is a subcommand of 'config'.
 			current := cmd
@@ -68,31 +74,20 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 
 			// Be careful and assign to the outer analyticsClient, so
 			// we can close it correctly in the post-run action.
-			var err error
-			analyticsClient, err = analytics.GetClient()
-			if err != nil {
+			var analyticsErr error
+			analyticsClient, analyticsErr = analytics.GetClient()
+			if analyticsErr != nil {
 				return
 			}
 
-			properties := segment.Properties{
-				"jaguar":   true,
-				"command":  (*cobra.Command)(cmd).UseLine(),
-				"platform": runtime.GOOS,
-			}
-
-			if isReleaseBuild {
-				properties.Set("version", info.Version)
-			} else {
-				properties.Set("version", "development")
-			}
-
-			go analyticsClient.Enqueue(segment.Page{
-				Name:       "CLI Execute",
-				Properties: properties,
-			})
-
+			command := (*cobra.Command)(cmd).UseLine()
+			enqueueAnalytics(analyticsClient, isReleaseBuild, info, command)
 			CheckUpToDate(info)
 		},
+		// The "post run" function on the 'jag' command needs to run also
+		// when the program exits with an error from main(). The cobra
+		// framework does not handle this automatically, so we special-case
+		// this to make sure we get a chance to close the analytics client.
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			if analyticsClient != nil {
 				analyticsClient.Close()
@@ -119,7 +114,51 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 		configCmd,
 		VersionCmd(info, isReleaseBuild),
 	)
+
+	cmd.PersistentFlags().Bool(noAnalyticsFlagName, false, "do not send analytics")
+	cmd.PersistentFlags().MarkHidden(noAnalyticsFlagName)
 	return cmd
+}
+
+func enqueueAnalytics(client analytics.Client, isReleaseBuild bool, info Info, command string) {
+	now := time.Now()
+	first := client.First()
+	for {
+		properties := segment.Properties{
+			"jaguar":   true,
+			"first":    first,
+			"command":  command,
+			"platform": runtime.GOOS,
+		}
+
+		if isReleaseBuild {
+			properties.Set("version", info.Version)
+		} else {
+			properties.Set("version", "development")
+		}
+
+		// Cleanly separate the events in time, so the order is guaranteed to be correct. We
+		// do this be pretending the first pseudo event happened a second ago, so the real
+		// event has the right timestamp.
+		timestamp := now
+		if first {
+			timestamp = timestamp.Add(-1 * time.Second)
+		}
+		client.Enqueue(segment.Page{
+			Name:       "CLI Execute",
+			Properties: properties,
+			Timestamp:  timestamp,
+		})
+
+		// When we generate the first analytics event, we treat it like a pseudo event
+		// to cleanly separate it from the other events for analysis purposes. This
+		// means that we need to send the same event again but without the first flag set,
+		// so we take another spin in the loop.
+		if !first {
+			break
+		}
+		first = false
+	}
 }
 
 type UpdateToDate struct {

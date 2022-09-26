@@ -26,28 +26,27 @@ version of the program gets to start again from `main`.
 Unless you want to [build Jaguar from source](#building-it-yourself), start by
 downloading and installing the `jag` binary for your host platform.
 
-On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.com/en-us/windows/package-manager/winget/):
-```
-winget install --id=toit.jaguar -e
-```
-
 On macOS, you can use [Homebrew](https://brew.sh/) to manage the installation of `jag`:
 ``` sh
 brew install toitlang/toit/jag
+```
+
+On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.com/en-us/windows/package-manager/winget/):
+```
+winget install --id=toit.jaguar -e
 ```
 
 For Archlinux you can install the AUR package [jaguar-bin](https://aur.archlinux.org/packages/jaguar-bin):
 ``` sh
 yay install jaguar-bin
 ```
-If you see errors when upgrading with `yay` make sure to pick "cleanBuild" for the package.
 
 As alternative to these package managers, we also offer precompiled binaries for download:
 
-- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
-  (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag.dmg)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
+- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
+  (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
   (only as an archive)
 
@@ -204,6 +203,20 @@ by passing a separate `-D jag.timeout` option:
 
 ``` sh
 jag run -D jag.disabled -D jag.timeout=5m softap.toit
+```
+
+This also works for installed containers. Containers that run with `-D jag.disabled` start when the device boots and
+runs to completion before Jaguar is enabled. This allows them to control the WiFi and to prevent Jaguar from taking
+over before they are ready for it:
+
+``` sh
+jag container install -D jag.disabled softap softap.toit
+```
+
+You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
+
+``` sh
+jag container install -D jag.disabled -D jag.timeout=20s softap softap.toit
 ```
 
 ---

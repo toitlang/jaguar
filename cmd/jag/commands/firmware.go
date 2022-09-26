@@ -6,26 +6,14 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
-
-type binaryConfig struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-	Wifi struct {
-		Password string `json:"wifi.password"`
-		SSID     string `json:"wifi.ssid"`
-	} `json:"wifi"`
-}
 
 func FirmwareCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -106,13 +94,19 @@ func FirmwareUpdateCmd() *cobra.Command {
 			// the device flash stored by an older version are invalidated.
 			newID := uuid.New().String()
 
-			binTmpFile, err := BuildFirmwareImage(ctx, newID, device.Name, wifiSSID, wifiPassword)
+			envelope, err := BuildFirmwareEnvelope(ctx, newID, device.Name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
-			defer os.Remove(binTmpFile.Name())
+			defer os.Remove(envelope.Name())
 
-			bin, err := ioutil.ReadFile(binTmpFile.Name())
+			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "firmware.bin")
+			if err != nil {
+				return err
+			}
+			defer os.Remove(firmwareBin.Name())
+
+			bin, err := ioutil.ReadFile(firmwareBin.Name())
 			if err != nil {
 				return err
 			}
@@ -133,65 +127,75 @@ func FirmwareUpdateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("wifi-ssid", "", "default WiFi SSID")
+	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd
 }
 
-func BuildFirmwareImage(ctx context.Context, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
+func BuildFirmwareEnvelope(ctx context.Context, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	esp32BinPath, err := directory.GetESP32ImagePath()
+	envelopePath, err := directory.GetFirmwareEnvelopePath()
 	if err != nil {
 		return nil, err
 	}
 
-	configFile, err := os.CreateTemp("", "*.json")
+	envelope, err := os.CreateTemp("", "*.envelope")
 	if err != nil {
 		return nil, err
 	}
-	defer os.Remove(configFile.Name())
+	defer envelope.Close()
 
-	var config binaryConfig
-	config.ID = id
-	config.Name = name
-	config.Wifi.SSID = wifiSSID
-	config.Wifi.Password = wifiPassword
-	if err := json.NewEncoder(configFile).Encode(config); err != nil {
-		configFile.Close()
-		return nil, err
-	}
-	configFile.Close()
-
-	toitBin := filepath.Join(esp32BinPath, "toit.bin")
-
-	binTmpFile, err := os.CreateTemp("", "*.bin")
+	jaguarSnapshot, err := directory.GetJaguarSnapshotPath()
 	if err != nil {
 		return nil, err
 	}
 
-	binFile, err := os.Open(toitBin)
-	if err != nil {
-		binTmpFile.Close()
-		return nil, err
-	}
+	// TODO(kasper): Can we generate this in a nicer way?
+	wifiProperties := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
 
-	_, err = io.Copy(binTmpFile, binFile)
-	binTmpFile.Close()
-	binFile.Close()
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
+		return nil, err
+	}
+	if err := setFirmwareProperty(ctx, sdk, envelope, "uuid", id); err != nil {
+		return nil, err
+	}
+	if err := setFirmwareProperty(ctx, sdk, envelope, "id", id); err != nil {
+		return nil, err
+	}
+	if err := setFirmwareProperty(ctx, sdk, envelope, "name", name); err != nil {
+		return nil, err
+	}
+	if err := setFirmwareProperty(ctx, sdk, envelope, "wifi", wifiProperties); err != nil {
+		return nil, err
+	}
+	return envelope, nil
+}
+
+func ExtractFirmwarePart(ctx context.Context, sdk *SDK, envelopePath string, part string) (*os.File, error) {
+	partFile, err := os.CreateTemp("", part+".*")
 	if err != nil {
 		return nil, err
 	}
-
-	injectCmd := sdk.InjectConfig(ctx, configFile.Name(), "--unique_id", id, binTmpFile.Name())
-	injectCmd.Stderr = os.Stderr
-	injectCmd.Stdout = os.Stdout
-	if err := injectCmd.Run(); err != nil {
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--"+part, "-o", partFile.Name()); err != nil {
+		partFile.Close()
 		return nil, err
 	}
-	return binTmpFile, nil
+	return partFile, nil
+}
+
+func setFirmwareProperty(ctx context.Context, sdk *SDK, envelope *os.File, key string, value string) error {
+	return runFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", key, value)
+}
+
+func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ...string) error {
+	args = append([]string{"-e", envelopePath}, args...)
+	cmd := sdk.FirmwareTool(ctx, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }

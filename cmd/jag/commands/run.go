@@ -7,12 +7,14 @@ package commands
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/setanta314/ar"
@@ -119,6 +121,11 @@ func RunCmd() *cobra.Command {
 				return fmt.Errorf("Only one argument can be passed to jag run")
 			}
 
+			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
+			if err != nil {
+				return err
+			}
+
 			entrypoint := args[0]
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
@@ -143,13 +150,14 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return RunFile(cmd, device, sdk, entrypoint, defines)
+			return RunFile(cmd, device, sdk, entrypoint, defines, programAssetsPath)
 		},
 	}
 
 	cmd.Flags().StringP("expression", "s", "", "evaluate immediate Toit expression")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control run on device")
+	cmd.Flags().String("assets", "", "attach assets to the program")
 	return cmd
 }
 
@@ -176,14 +184,27 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string) error {
 	return runCmd.Run()
 }
 
-func RunFile(cmd *cobra.Command, device *Device, sdk *SDK, path string, defines string) error {
+func RunFile(
+	cmd *cobra.Command,
+	device *Device,
+	sdk *SDK,
+	path string,
+	defines map[string]interface{},
+	assetsPath string) error {
 	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
-	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines)
+	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath)
 }
 
-func InstallFile(cmd *cobra.Command, device *Device, sdk *SDK, name string, path string, defines string) error {
+func InstallFile(
+	cmd *cobra.Command,
+	device *Device,
+	sdk *SDK,
+	name string,
+	path string,
+	defines map[string]interface{},
+	assetsPath string) error {
 	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name)
-	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines)
+	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath)
 }
 
 func sendCodeFromFile(
@@ -193,7 +214,8 @@ func sendCodeFromFile(
 	request string,
 	path string,
 	name string,
-	defines string) error {
+	defines map[string]interface{},
+	assetsPath string) error {
 
 	ctx := cmd.Context()
 	snapshotsCache, err := directory.GetSnapshotsCachePath()
@@ -272,7 +294,36 @@ func sendCodeFromFile(
 		}
 	}
 
-	b, err := sdk.Build(ctx, device, cacheDestination)
+	// Split the -D options into the ones we pass in the HTTP header for Jaguar
+	// and the ones we send along as assets.
+	headerMap := make(map[string]interface{})
+	assetsMap := make(map[string]interface{})
+	for key, value := range defines {
+		if strings.HasPrefix(key, "jag.") {
+			headerMap[key] = value
+		} else {
+			assetsMap[key] = value
+		}
+	}
+
+	if len(assetsMap) > 0 {
+		temporaryAssetsFile, err := ioutil.TempFile("", "jag_run_*.assets")
+		if err != nil {
+			return err
+		}
+		defer temporaryAssetsFile.Close()
+		defer os.Remove(temporaryAssetsFile.Name())
+		buildAssets(ctx, sdk, temporaryAssetsFile, assetsPath, assetsMap)
+		assetsPath = temporaryAssetsFile.Name()
+	}
+
+	headerMarshalled, err := json.Marshal(headerMap)
+	if err != nil {
+		return err
+	}
+	headerDefines := string(headerMarshalled)
+
+	b, err := sdk.Build(ctx, device, cacheDestination, assetsPath)
 	if err != nil {
 		// We assume the error has been printed.
 		// Mark the command as silent to avoid printing the error twice.
@@ -280,7 +331,7 @@ func sendCodeFromFile(
 		return err
 	}
 
-	if err := device.SendCode(ctx, sdk, request, b, name, defines); err != nil {
+	if err := device.SendCode(ctx, sdk, request, b, name, headerDefines); err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.
@@ -289,4 +340,38 @@ func sendCodeFromFile(
 	}
 	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
 	return nil
+}
+
+func buildAssets(ctx context.Context, sdk *SDK, output *os.File, inputPath string, assetsMap map[string]interface{}) error {
+	// Write the defines into a temporary file as JSON.
+	definesJsonFile, err := ioutil.TempFile("", "jag_run_*.defines")
+	if err != nil {
+		return err
+	}
+	definesJson, err := json.Marshal(assetsMap)
+	if err != nil {
+		return err
+	}
+	os.WriteFile(definesJsonFile.Name(), definesJson, 0777)
+	defer definesJsonFile.Close()
+	defer os.Remove(definesJsonFile.Name())
+
+	// Create a new assets file or copy the existing one.
+	if inputPath == "" {
+		if err := runAssetsTool(ctx, sdk, output.Name(), "create"); err != nil {
+			return err
+		}
+		inputPath = output.Name()
+	}
+
+	// Add the defines as a UBJSON asset under with the name jag.defines.
+	return runAssetsTool(ctx, sdk, inputPath, "add", "-o", output.Name(), "--ubjson", "jag.defines", definesJsonFile.Name())
+}
+
+func runAssetsTool(ctx context.Context, sdk *SDK, assetsPath string, args ...string) error {
+	args = append([]string{"-e", assetsPath}, args...)
+	cmd := sdk.AssetsTool(ctx, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }

@@ -49,7 +49,7 @@ jobs:
         # Check that the version numbers match.
         # This is a sanity check to ensure that tools/prepare_release.sh was called.
         run: |
-          ./jag version | head -n1 | grep --fixed-strings "${{ github.event.release.tag_name }}"
+          ./jag --no-analytics version | head -n1 | grep --fixed-strings "${{ github.event.release.tag_name }}"
 
       - name: Upload jag Linux (tgz)
         if: github.event_name == 'release'
@@ -207,7 +207,7 @@ jobs:
           asset_name: jag.dmg
           overwrite: true
 
-  build_toit_images:
+  build_assets:
     runs-on: ubuntu-latest
     steps:
       - name: Install dependencies
@@ -244,7 +244,7 @@ jobs:
           ln -s $(command -v ccache) xtensa-esp32-elf-gcc
           ln -s $(command -v ccache) xtensa-esp32-elf-g++
 
-      - name: Build artifacts
+      - name: Build assets
         env:
           IDF_CCACHE_ENABLE: 1
           CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -258,23 +258,15 @@ jobs:
           # Make sure the ccache interceptors are before any other path.
           export PATH="$PWD/ccache_interceptors":$PATH
 
-          make image
-          tar -czf build/image.tar.gz -C ./build -h image
+          make assets
+          tar -czf build/assets.tar.gz -C ./build -h assets
 
-      - name: Upload elf
-        uses: actions/upload-artifact@v2
-        if: github.event_name == 'release'
-        with:
-          name: image-elf
-          path: |
-            third_party/toit/build/esp32/toit.elf
-
-      - name: Upload image artifacts
+      - name: Upload assets
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/image.tar.gz
+          file: build/assets.tar.gz
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
