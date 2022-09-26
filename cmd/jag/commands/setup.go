@@ -89,7 +89,7 @@ func SetupCmd(info Info) *cobra.Command {
 			downloaderPath := filepath.Join(sdkPath, "JAGUAR")
 			os.Remove(downloaderPath)
 
-			if err := downloadSDK(ctx, info.SDKVersion); err != nil {
+			if err := downloadSdk(ctx, info.SDKVersion); err != nil {
 				return err
 			}
 
@@ -124,8 +124,27 @@ func SetupCmd(info Info) *cobra.Command {
 			return nil
 		},
 	}
-
+	cmd.AddCommand(SetupSdkCmd(info))
 	cmd.Flags().BoolP("check", "c", false, "if set, will check the local setup")
+	return cmd
+}
+
+func SetupSdkCmd(info Info) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "sdk",
+		Short:        "Setup just the SDK",
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			if len(args) != 1 {
+				return fmt.Errorf("takes exactly one argument")
+			}
+			if err := downloadSdkTo(ctx, info.SDKVersion, args[0]); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
 	return cmd
 }
 
@@ -231,12 +250,15 @@ func downloadEsptool(ctx context.Context, version string) error {
 	return nil
 }
 
-func downloadSDK(ctx context.Context, version string) error {
+func downloadSdk(ctx context.Context, version string) error {
 	sdkPath, err := directory.GetSDKCachePath()
 	if err != nil {
 		return err
 	}
+	return downloadSdkTo(ctx, version, sdkPath)
+}
 
+func downloadSdkTo(ctx context.Context, version string, sdkPath string) error {
 	sdkURL := getToitSDKURL(version)
 	fmt.Printf("Downloading Toit SDK from %s ...\n", sdkURL)
 	sdk, err := download(ctx, getToitSDKURL(version))
