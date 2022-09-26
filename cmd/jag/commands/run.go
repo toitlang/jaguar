@@ -361,19 +361,11 @@ func buildAssets(ctx context.Context, sdk *SDK, output *os.File, inputPath strin
 		if err := runAssetsTool(ctx, sdk, output.Name(), "create"); err != nil {
 			return err
 		}
-	} else {
-		input, err := os.Open(inputPath)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(output, input)
-		if err != nil {
-			return err
-		}
+		inputPath = output.Name()
 	}
 
 	// Add the defines as a UBJSON asset under with the name jag.defines.
-	return runAssetsTool(ctx, sdk, output.Name(), "add", "--ubjson", "jag.defines", definesJsonFile.Name())
+	return runAssetsTool(ctx, sdk, inputPath, "add", "-o", output.Name(), "--ubjson", "jag.defines", definesJsonFile.Name())
 }
 
 func runAssetsTool(ctx context.Context, sdk *SDK, assetsPath string, args ...string) error {
