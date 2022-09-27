@@ -126,7 +126,7 @@ func GetAssetsPath() (string, error) {
 		return "", err
 	}
 	if stat, err := os.Stat(assetsPath); err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the Jaguar assets.\nYou must setup the assets using 'jag setup'", assetsPath)
+		return "", fmt.Errorf("the path '%s' does not hold the Jaguar assets.\nYou must setup the assets using 'jag setup'", assetsPath)
 	}
 	return assetsPath, nil
 }
@@ -139,7 +139,7 @@ func getAssetPath(name string) (string, error) {
 
 	path := filepath.Join(assetsPath, name)
 	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", name, path)
+		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", name, path)
 	}
 	return path, nil
 }
