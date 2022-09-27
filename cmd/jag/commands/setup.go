@@ -93,7 +93,7 @@ func SetupCmd(info Info) *cobra.Command {
 				return err
 			}
 
-			sdk, err := GetSDK(ctx)
+			sdk, err := GetDownloadedSDK(ctx)
 			if err != nil {
 				return err
 			}
@@ -102,7 +102,7 @@ func SetupCmd(info Info) *cobra.Command {
 				return err
 			}
 
-			if err := downloadFirmware(ctx, sdk, info.Version, "esp32"); err != nil {
+			if err := downloadFirmware(ctx, sdk, info.SDKVersion, "esp32"); err != nil {
 				return err
 			}
 
