@@ -93,16 +93,11 @@ func SetupCmd(info Info) *cobra.Command {
 				return err
 			}
 
-			sdk, err := GetDownloadedSDK(ctx)
-			if err != nil {
+			if err := downloadAssets(ctx, info.Version); err != nil {
 				return err
 			}
 
-			if err := downloadAssets(ctx, sdk, info.Version); err != nil {
-				return err
-			}
-
-			if err := downloadFirmware(ctx, sdk, info.SDKVersion, "esp32"); err != nil {
+			if err := downloadFirmware(ctx, info.SDKVersion, "esp32"); err != nil {
 				return err
 			}
 
@@ -148,7 +143,7 @@ func SetupSdkCmd(info Info) *cobra.Command {
 	return cmd
 }
 
-func downloadAssets(ctx context.Context, sdk *SDK, version string) error {
+func downloadAssets(ctx context.Context, version string) error {
 	assetsPath, err := directory.GetAssetsCachePath()
 	if err != nil {
 		return err
@@ -184,7 +179,7 @@ func downloadAssets(ctx context.Context, sdk *SDK, version string) error {
 	return nil
 }
 
-func downloadFirmware(ctx context.Context, sdk *SDK, version string, model string) error {
+func downloadFirmware(ctx context.Context, version string, model string) error {
 	assetsPath, err := directory.GetAssetsCachePath()
 	if err != nil {
 		return err
