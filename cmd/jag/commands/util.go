@@ -34,6 +34,14 @@ type SDK struct {
 }
 
 func GetSDK(ctx context.Context) (*SDK, error) {
+	return getSDK(ctx, false)
+}
+
+func GetDownloadedSDK(ctx context.Context) (*SDK, error) {
+	return getSDK(ctx, true)
+}
+
+func getSDK(ctx context.Context, skipDownloaderCheck bool) (*SDK, error) {
 	toit, err := directory.GetSDKPath()
 	if err != nil {
 		return nil, err
@@ -59,12 +67,9 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 	skipVersionCheck := false
 	if !directory.IsReleaseBuild {
 		_, skipVersionCheck = os.LookupEnv(directory.ToitRepoPathEnv)
+		skipDownloaderCheck = skipDownloaderCheck || skipVersionCheck
 	}
-	err = res.validate(info, skipVersionCheck)
-	if err != nil {
-		fmt.Printf("[jaguar] ERROR: Could not get the correct version of the SDK\n")
-		fmt.Printf("[jaguar] ERROR: Do you need to run `jag setup` or set `JAG_TOIT_REPO_PATH`?\n")
-	}
+	err = res.validate(info, skipVersionCheck, skipDownloaderCheck)
 	return res, err
 }
 
@@ -127,14 +132,16 @@ func (s *SDK) StacktracePath() string {
 	return filepath.Join(s.Path, "tools", directory.Executable("stacktrace"))
 }
 
-func (s *SDK) validate(info Info, skipSDKVersionCheck bool) error {
-	if !skipSDKVersionCheck {
+func (s *SDK) validate(info Info, skipSdkVersionCheck bool, skipDownloaderCheck bool) error {
+	if !skipSdkVersionCheck {
 		if s.Version == "" {
 			return fmt.Errorf("SDK in '%s' is too old. Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, info.Version, info.SDKVersion)
 		} else if info.SDKVersion != s.Version {
 			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version, info.Version, info.SDKVersion)
 		}
+	}
 
+	if !skipDownloaderCheck {
 		downloaderInfoBytes, err := ioutil.ReadFile(s.DownloaderInfoPath())
 		if err != nil {
 			return fmt.Errorf("SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this.", s.Path)
