@@ -108,27 +108,7 @@ func GetAssetsCachePath() (string, error) {
 	return filepath.Join(home, ".cache", "jaguar", "assets"), nil
 }
 
-func GetValidatedAssetsCachePath() (string, error) {
-	assetsPath, err := GetAssetsCachePath()
-	if err != nil {
-		return "", err
-	}
-	if stat, err := os.Stat(assetsPath); err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the Jaguar assets.\nYou must setup the assets using 'jag setup'", assetsPath)
-	}
-	return assetsPath, nil
-}
-
 func GetAssetsPath() (string, error) {
-	repoPath, ok := getRepoPath()
-	if ok {
-		return filepath.Join(repoPath, "build", "esp32"), nil
-	}
-
-	return GetValidatedAssetsCachePath()
-}
-
-func getAssetPath(name string) (string, error) {
 	_, ok := getRepoPath()
 	if ok {
 		// We assume that the jag executable is inside the build directory of
@@ -138,19 +118,30 @@ func getAssetPath(name string) (string, error) {
 			return "", err
 		}
 		dir := path.Dir(execPath)
-		return filepath.Join(dir, "assets", name), nil
+		return filepath.Join(dir, "assets"), nil
 	}
 
-	assetsPath, err := GetAssetsPath()
+	assetsPath, err := GetAssetsCachePath()
 	if err != nil {
 		return "", err
 	}
-	snapshotPath := filepath.Join(assetsPath, name)
-
-	if stat, err := os.Stat(snapshotPath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the snapshot file.\nYou must setup the Jaguar snapshot using 'jag setup'", snapshotPath)
+	if stat, err := os.Stat(assetsPath); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' does not hold the Jaguar assets.\nYou must setup the assets using 'jag setup'", assetsPath)
 	}
-	return snapshotPath, nil
+	return assetsPath, nil
+}
+
+func getAssetPath(name string) (string, error) {
+	assetsPath, err := GetAssetsPath()
+	if err != nil {
+		return "", nil
+	}
+
+	path := filepath.Join(assetsPath, name)
+	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", name, path)
+	}
+	return path, nil
 }
 
 func GetJaguarSnapshotPath() (string, error) {
@@ -158,7 +149,11 @@ func GetJaguarSnapshotPath() (string, error) {
 }
 
 func GetFirmwareEnvelopePath() (string, error) {
-	return getAssetPath("firmware.envelope")
+	repoPath, ok := getRepoPath()
+	if ok {
+		return filepath.Join(repoPath, "build", "esp32", "firmware.envelope"), nil
+	}
+	return getAssetPath("firmware-esp32.envelope")
 }
 
 func GetEsptoolCachePath() (string, error) {

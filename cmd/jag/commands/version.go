@@ -19,12 +19,11 @@ func VersionCmd(info Info, isReleaseBuild bool) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			version := "---"
 			sdkVersion := "unknown"
-			buildDate := "---"
+			buildDate := info.Date
 
 			if isReleaseBuild {
 				version = info.Version
 				sdkVersion = info.SDKVersion
-				buildDate = info.Date
 			} else {
 				ctx := cmd.Context()
 				sdk, _ := GetSDK(ctx)
