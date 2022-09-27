@@ -2,7 +2,6 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-import encoding.json
 import http
 import log
 import net
@@ -13,6 +12,10 @@ import esp32
 import uuid
 import monitor
 
+import encoding.json
+import encoding.ubjson
+
+import system.assets
 import system.containers
 import system.firmware
 
@@ -98,15 +101,15 @@ serve arguments:
   if arguments.size >= 1:
     port = int.parse arguments[0]
 
-  image_config := {:}
-  if platform == PLATFORM_FREERTOS:
-    image_config = esp32.image_config or {:}
+  config := {:}
+  assets.decode.get "config" --if_present=: | encoded |
+    catch: config = ubjson.decode encoded
 
   id/uuid.Uuid := uuid.NIL
   if arguments.size >= 2:
     id = uuid.parse arguments[1]
   else:
-    id = image_config.get "id"
+    id = config.get "id"
       --if_absent=: id
       --if_present=: uuid.parse it
 
@@ -114,7 +117,7 @@ serve arguments:
   if arguments.size >= 3:
     name = arguments[2]
   else:
-    name = image_config.get "name" --if_absent=: name
+    name = config.get "name" --if_absent=: name
 
   while true:
     attempts ::= 3

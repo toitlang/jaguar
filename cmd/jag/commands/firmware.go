@@ -6,6 +6,7 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -157,19 +158,46 @@ func BuildFirmwareEnvelope(ctx context.Context, id string, name string, wifiSSID
 		return nil, err
 	}
 
+	configMap := map[string]interface{}{
+		"id":   id,
+		"name": name,
+	}
+	configJson, err := json.Marshal(configMap)
+	if err != nil {
+		return nil, err
+	}
+
+	configJsonFile, err := os.CreateTemp("", "*.json.assets")
+	if err != nil {
+		return nil, err
+	}
+	defer configJsonFile.Close()
+
+	if err := os.WriteFile(configJsonFile.Name(), configJson, 0666); err != nil {
+		return nil, err
+	}
+
+	assetsFile, err := os.CreateTemp("", "*.assets")
+	if err != nil {
+		return nil, err
+	}
+	defer assetsFile.Close()
+
+	if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "create"); err != nil {
+		return nil, err
+	}
+
+	if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "add", "--ubjson", "config", configJsonFile.Name()); err != nil {
+		return nil, err
+	}
+
 	// TODO(kasper): Can we generate this in a nicer way?
 	wifiProperties := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
 
-	if err := runFirmwareTool(ctx, sdk, envelopePath, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "container", "install", "--assets", assetsFile.Name(), "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
 		return nil, err
 	}
 	if err := setFirmwareProperty(ctx, sdk, envelope, "uuid", id); err != nil {
-		return nil, err
-	}
-	if err := setFirmwareProperty(ctx, sdk, envelope, "id", id); err != nil {
-		return nil, err
-	}
-	if err := setFirmwareProperty(ctx, sdk, envelope, "name", name); err != nil {
 		return nil, err
 	}
 	if err := setFirmwareProperty(ctx, sdk, envelope, "wifi", wifiProperties); err != nil {
