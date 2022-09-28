@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	date       = "2022-09-21T13:17:18Z"
-	version    = "v1.6.6"
-	sdkVersion = "v2.0.0-alpha.27"
+	version    = "v1.6.9"
+	sdkVersion = "v2.0.0-alpha.28"
 )
 
+var buildDate = "unknown"
 var buildMode = "development"
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	directory.IsReleaseBuild = isReleaseBuild
 
 	info := commands.Info{
-		Date:       date,
+		Date:       buildDate,
 		Version:    version,
 		SDKVersion: sdkVersion,
 	}

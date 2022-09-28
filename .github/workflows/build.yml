@@ -159,11 +159,11 @@ jobs:
           name: jag-build
           path: build
 
-      - name: setup binary rights
+      - name: Setup binary rights
         run: |
           chmod +x build/macos/jag
 
-      - name: import signing keychain
+      - name: Import signing keychain
         uses: apple-actions/import-codesign-certs@v1
         with:
           p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
@@ -210,54 +210,19 @@ jobs:
   build_assets:
     runs-on: ubuntu-latest
     steps:
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install ninja-build cmake ccache
-          ninja --version
-          cmake --version
-          gcc --version
-
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
 
       - uses: actions/checkout@v2
-        with:
-          submodules: "recursive"
 
-      - name: Install esp-idf tools
-        run: make install-esp-idf
-
-      - name: Ccache cache
-        uses: actions/cache@v2
-        with:
-          path: ${{ github.workspace }}/.ccache
-          key: image-ccache-${{ github.sha }}
-          restore-keys: image-ccache-
-
-      - name: Ccache symlinks
+      - name: Download SDK
         run: |
-          mkdir ccache_interceptors
-          cd ccache_interceptors
-          ln -s $(command -v ccache) xtensa-esp32-elf-gcc
-          ln -s $(command -v ccache) xtensa-esp32-elf-g++
+          make download-sdk
 
       - name: Build assets
-        env:
-          IDF_CCACHE_ENABLE: 1
-          CCACHE_DIR: ${{ github.workspace }}/.ccache
-          CCACHE_BASEDIR: ${{ github.workspace }}
-          CCACHE_COMPRESS: true
-          CCACHE_COMPRESSLEVEL: '6'
-          CCACHE_MAXSIZE: 400M
         run: |
-          . ./third_party/toit/third_party/esp-idf/export.sh
-
-          # Make sure the ccache interceptors are before any other path.
-          export PATH="$PWD/ccache_interceptors":$PATH
-
           make assets
           tar -czf build/assets.tar.gz -C ./build -h assets
 

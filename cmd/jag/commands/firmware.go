@@ -6,9 +6,12 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -155,24 +158,56 @@ func BuildFirmwareEnvelope(ctx context.Context, id string, name string, wifiSSID
 		return nil, err
 	}
 
+	configMap := map[string]interface{}{
+		"id":   id,
+		"name": name,
+	}
+	configJson, err := json.Marshal(configMap)
+	if err != nil {
+		return nil, err
+	}
+
+	configJsonFile, err := os.CreateTemp("", "*.json.assets")
+	if err != nil {
+		return nil, err
+	}
+	defer configJsonFile.Close()
+
+	if err := os.WriteFile(configJsonFile.Name(), configJson, 0666); err != nil {
+		return nil, err
+	}
+
+	assetsFile, err := os.CreateTemp("", "*.assets")
+	if err != nil {
+		return nil, err
+	}
+	defer assetsFile.Close()
+
+	if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "create"); err != nil {
+		return nil, err
+	}
+
+	if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "add", "--ubjson", "config", configJsonFile.Name()); err != nil {
+		return nil, err
+	}
+
 	// TODO(kasper): Can we generate this in a nicer way?
 	wifiProperties := "{ \"wifi.ssid\": \"" + wifiSSID + "\", \"wifi.password\": \"" + wifiPassword + "\" }"
 
-	if err := runFirmwareTool(ctx, sdk, envelopePath, "container", "install", "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "container", "install", "--assets", assetsFile.Name(), "-o", envelope.Name(), "jaguar", jaguarSnapshot); err != nil {
 		return nil, err
 	}
 	if err := setFirmwareProperty(ctx, sdk, envelope, "uuid", id); err != nil {
 		return nil, err
 	}
-	if err := setFirmwareProperty(ctx, sdk, envelope, "id", id); err != nil {
-		return nil, err
-	}
-	if err := setFirmwareProperty(ctx, sdk, envelope, "name", name); err != nil {
-		return nil, err
-	}
 	if err := setFirmwareProperty(ctx, sdk, envelope, "wifi", wifiProperties); err != nil {
 		return nil, err
 	}
+
+	if err := copySnapshotsIntoCache(ctx, sdk, envelope); err != nil {
+		return nil, err
+	}
+
 	return envelope, nil
 }
 
@@ -198,4 +233,55 @@ func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ..
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	return cmd.Run()
+}
+
+func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) error {
+	// TODO(kasper): We should be able to get all the snapshots stored in
+	// the envelope out through extraction. For now, we just make it work
+	// with the jaguar snapshot.
+	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+	if err != nil {
+		return err
+	}
+	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
+		return err
+	}
+
+	snapshot, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "system.snapshot")
+	if err != nil {
+		return err
+	}
+	defer snapshot.Close()
+
+	if err := copySnapshotIntoCache(snapshot.Name()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func copySnapshotIntoCache(path string) error {
+	uuid, err := GetUuid(path)
+	if err != nil {
+		return err
+	}
+
+	cacheDirectory, err := directory.GetSnapshotsCachePath()
+	if err != nil {
+		return err
+	}
+
+	source, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(filepath.Join(cacheDirectory, uuid.String()+".snapshot"))
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }

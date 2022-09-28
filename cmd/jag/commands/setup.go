@@ -31,6 +31,10 @@ func getAssetsURL(version string) string {
 	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/assets.tar.gz", version)
 }
 
+func getFirmwareURL(version string, model string) string {
+	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/firmware-%s.gz", version, model)
+}
+
 func getEsptoolURL(version string) string {
 	currOS := runtime.GOOS
 	if currOS == "darwin" {
@@ -58,12 +62,7 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if check {
-				sdk, err := GetSDK(ctx)
-				if err != nil {
-					return err
-				}
-
-				if err := validateAssets(); err != nil {
+				if _, err := GetSDK(ctx); err != nil {
 					return err
 				}
 
@@ -79,10 +78,6 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if err := copySnapshotsIntoCache(ctx, sdk); err != nil {
-					return err
-				}
-
 				fmt.Println("Jaguar setup is valid.")
 				return nil
 			}
@@ -94,16 +89,15 @@ func SetupCmd(info Info) *cobra.Command {
 			downloaderPath := filepath.Join(sdkPath, "JAGUAR")
 			os.Remove(downloaderPath)
 
-			if err := downloadSDK(ctx, info.SDKVersion); err != nil {
+			if err := downloadSdk(ctx, info.SDKVersion); err != nil {
 				return err
 			}
 
-			sdk, err := GetSDK(ctx)
-			if err != nil {
+			if err := downloadAssets(ctx, info.Version); err != nil {
 				return err
 			}
 
-			if err := downloadAssets(ctx, sdk, info.Version); err != nil {
+			if err := downloadFirmware(ctx, info.SDKVersion, "esp32"); err != nil {
 				return err
 			}
 
@@ -125,28 +119,31 @@ func SetupCmd(info Info) *cobra.Command {
 			return nil
 		},
 	}
-
+	cmd.AddCommand(SetupSdkCmd(info))
 	cmd.Flags().BoolP("check", "c", false, "if set, will check the local setup")
 	return cmd
 }
 
-func validateAssets() error {
-	assetsPath, err := directory.GetAssetsPath()
-	if err != nil {
-		return err
+func SetupSdkCmd(info Info) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "sdk",
+		Short:        "Setup just the SDK",
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			if len(args) != 1 {
+				return fmt.Errorf("takes exactly one argument")
+			}
+			if err := downloadSdkTo(ctx, info.SDKVersion, args[0]); err != nil {
+				return err
+			}
+			return nil
+		},
 	}
-	paths := []string{
-		filepath.Join(assetsPath, "firmware.envelope"),
-	}
-	for _, p := range paths {
-		if err := checkFilepath(p, "invalid assets"); err != nil {
-			return err
-		}
-	}
-	return nil
+	return cmd
 }
 
-func downloadAssets(ctx context.Context, sdk *SDK, version string) error {
+func downloadAssets(ctx context.Context, version string) error {
 	assetsPath, err := directory.GetAssetsCachePath()
 	if err != nil {
 		return err
@@ -162,7 +159,7 @@ func downloadAssets(ctx context.Context, sdk *SDK, version string) error {
 	gzipReader, err := newGZipReader(bundle)
 	if err != nil {
 		bundle.Close()
-		return fmt.Errorf("failed to read the Jaguar assets as gzip file: %w", err)
+		return fmt.Errorf("failed to read Jaguar assets as gzip file: %w", err)
 	}
 	defer gzipReader.Close()
 
@@ -175,68 +172,49 @@ func downloadAssets(ctx context.Context, sdk *SDK, version string) error {
 	}
 
 	if err := extractTarFile(gzipReader, assetsPath, "assets/"); err != nil {
-		return fmt.Errorf("failed to extract the Jaguar assets, reason: %w", err)
-	}
-	gzipReader.Close()
-
-	if err := copySnapshotsIntoCache(ctx, sdk); err != nil {
-		return err
+		return fmt.Errorf("failed to extract Jaguar assets, reason: %w", err)
 	}
 
 	fmt.Println("Successfully installed Jaguar assets into", assetsPath)
 	return nil
 }
 
-func copySnapshotIntoCache(path string) error {
-	uuid, err := GetUuid(path)
+func downloadFirmware(ctx context.Context, version string, model string) error {
+	assetsPath, err := directory.GetAssetsCachePath()
 	if err != nil {
 		return err
 	}
 
-	cacheDirectory, err := directory.GetSnapshotsCachePath()
+	firmwareURL := getFirmwareURL(version, "esp32")
+	fmt.Printf("Downloading %s firmware from %s ...\n", model, firmwareURL)
+	bundle, err := download(ctx, firmwareURL)
 	if err != nil {
 		return err
 	}
 
-	source, err := os.Open(path)
+	gzipReader, err := newGZipReader(bundle)
 	if err != nil {
+		bundle.Close()
+		return fmt.Errorf("failed to read %s firmware as gzip file: %w", model, err)
+	}
+	defer gzipReader.Close()
+
+	if err := os.MkdirAll(assetsPath, 0755); err != nil {
 		return err
 	}
-	defer source.Close()
 
-	destination, err := os.Create(filepath.Join(cacheDirectory, uuid.String()+".snapshot"))
+	destination, err := os.Create(filepath.Join(assetsPath, "firmware-esp32.envelope"))
 	if err != nil {
 		return err
 	}
 	defer destination.Close()
 
-	_, err = io.Copy(destination, source)
-	return err
-}
-
-func copySnapshotsIntoCache(ctx context.Context, sdk *SDK) error {
-	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
-	if err != nil {
-		return err
-	}
-	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
-		return err
-	}
-
-	envelopePath, err := directory.GetFirmwareEnvelopePath()
+	_, err = io.Copy(destination, gzipReader)
 	if err != nil {
 		return err
 	}
 
-	systemSnapshot, err := ExtractFirmwarePart(ctx, sdk, envelopePath, "system.snapshot")
-	if err != nil {
-		return err
-	}
-	defer systemSnapshot.Close()
-
-	if err := copySnapshotIntoCache(systemSnapshot.Name()); err != nil {
-		return err
-	}
+	fmt.Printf("Successfully installed %s firmware into %s\n", model, assetsPath)
 	return nil
 }
 
@@ -267,12 +245,15 @@ func downloadEsptool(ctx context.Context, version string) error {
 	return nil
 }
 
-func downloadSDK(ctx context.Context, version string) error {
+func downloadSdk(ctx context.Context, version string) error {
 	sdkPath, err := directory.GetSDKCachePath()
 	if err != nil {
 		return err
 	}
+	return downloadSdkTo(ctx, version, sdkPath)
+}
 
+func downloadSdkTo(ctx context.Context, version string, sdkPath string) error {
 	sdkURL := getToitSDKURL(version)
 	fmt.Printf("Downloading Toit SDK from %s ...\n", sdkURL)
 	sdk, err := download(ctx, getToitSDKURL(version))
@@ -316,7 +297,7 @@ func download(ctx context.Context, url string) (io.ReadCloser, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("failed downloading the Toit SDK artifact: %v", resp.Status)
+		return nil, fmt.Errorf("failed downloading from %s: %v", url, resp.Status)
 	}
 
 	progress := pb.New64(resp.ContentLength)

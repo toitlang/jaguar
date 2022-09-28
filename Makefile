@@ -2,7 +2,9 @@
 # Use of this source code is governed by an MIT-style license that can be
 # found in the LICENSE file.
 
-BUILD_DIR := build
+BUILD_DIR := $(CURDIR)/build
+BUILD_SDK_DIR := $(CURDIR)/build/sdk
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 ifeq ($(OS),Windows_NT)
   EXE_SUFFIX=.exe
@@ -12,94 +14,96 @@ else
   DETECTED_OS=$(shell uname)
 endif
 
-GO_SOURCE := $(shell find cmd -name '*.go')
-TOIT_SOURCE := $(shell find src -name '*.toit') package.lock package.yaml
-JAG_TOIT_REPO_PATH ?= $(CURDIR)/third_party/toit
-
-TOIT_PATH := $(JAG_TOIT_REPO_PATH)
-JAG_TOIT_PATH := $(TOIT_PATH)/build/host/sdk
-JAG_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
-IDF_PATH := $(TOIT_PATH)/third_party/esp-idf
-
-# The following variables are only executed when used.
-# This way we don't run the commands when the Makefile is run for
-#   commands that don't use them.
-BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-BUILD_VERSION = $(shell ./tools/gitversion)
-BUILD_SDK_VERSION = $(shell cd ./third_party/toit; ./../../tools/gitversion)
+ifdef JAG_TOIT_REPO_PATH
+SDK_PATH := $(JAG_TOIT_REPO_PATH)/build/host/sdk
+else
+SDK_PATH := $(BUILD_SDK_DIR)
+endif
 
 JAG_BINARY := jag$(EXE_SUFFIX)
+JAG_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
+JAG_TOIT_SOURCES := $(shell find src -name '*.toit') package.lock package.yaml
+JAG_GO_SOURCES := $(shell find cmd -name '*.go')
 
-# The default ("all") target is deliberately not used on the
-# continuous builders, so we do not need to worry about failing
-# the setup check there.
-.PHONY: all
-all: jag assets
-	$(BUILD_DIR)/$(JAG_BINARY) setup --check
-
-.PHONY: jag
-jag: $(BUILD_DIR)/$(JAG_BINARY)
-
-$(BUILD_DIR):
-	mkdir -p $@
-
-.PHONY: update-jag-info
-update-jag-info: $(BUILD_DIR)
-	sed 's/date       = .*/date       = "$(BUILD_DATE)"/' $(CURDIR)/cmd/jag/main.go | \
-	sed 's/version    = .*/version    = "$(BUILD_VERSION)"/' | \
-	sed 's/sdkVersion = .*/sdkVersion = "$(BUILD_SDK_VERSION)"/' > $(BUILD_DIR)/new_main.go
-	mv $(BUILD_DIR)/new_main.go $(CURDIR)/cmd/jag/main.go
-
+# Setup Go compilation flags.
 GO_BUILD_FLAGS := CGO_ENABLED=1 GODEBUG=netdns=go
 GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
+GO_LINK_FLAGS += -X 'main.buildDate="$(BUILD_DATE)"'
 ifdef JAG_BUILD_RELEASE
 GO_LINK_FLAGS += -X 'main.buildMode=release'
 endif
 
-$(BUILD_DIR)/$(JAG_BINARY): $(GO_SOURCE) $(BUILD_DIR)
-	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
+.PHONY: all
+all: jag assets
 
-$(BUILD_DIR)/macos:
-	mkdir -p $@
+.PHONY: clean
+clean:
+	rm -rf $(BUILD_DIR)
+
+#############################
+# Rules for the Jaguar binary
+#############################
+.PHONY: jag
+jag: $(BUILD_DIR)/$(JAG_BINARY)
+
+$(BUILD_DIR)/$(JAG_BINARY): $(JAG_GO_SOURCES)
+	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
 
 .PHONY: jag-macos-sign
 jag-macos-sign:
-	gon -log-level=debug -log-json ./tools/gon.json
+	gon -log-level=debug -log-json $(CURDIR)/tools/gon.json
 
-.PHONY: toit-git-tags
-toit-git-tags:
-	(cd $(TOIT_PATH); git fetch --tags --recurse-submodules=no)
-
-.PHONY: $(JAG_TOIT_PATH)/bin/toit.compile $(JAG_TOIT_PATH)/bin/toit.pkg
-$(JAG_TOIT_PATH)/bin/toit.compile $(JAG_TOIT_PATH)/bin/toit.pkg: toit-git-tags
-	make -C $(TOIT_PATH) sdk
-
-.PHONY: $(TOIT_PATH)/build/esp32/firmware.envelope
-$(TOIT_PATH)/build/esp32/firmware.envelope: toit-git-tags
-	make -C $(TOIT_PATH) esp32
-
-$(BUILD_DIR)/assets/:
-	mkdir -p $@
-
-$(BUILD_DIR)/assets/firmware.envelope: $(TOIT_PATH)/build/esp32/firmware.envelope $(BUILD_DIR)/assets/
-	cp $< $@
-
-$(BUILD_DIR)/assets/jaguar.snapshot: install-dependencies
-$(BUILD_DIR)/assets/jaguar.snapshot: $(TOIT_SOURCE)
-$(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_PATH)/bin/toit.compile $(BUILD_DIR)/assets/
-	$(JAG_TOIT_PATH)/bin/toit.compile -w $@ $(JAG_ENTRY_POINT)
-
+#############################
+# Rules for the Jaguar assets
+#############################
 .PHONY: assets
 assets: $(BUILD_DIR)/assets/jaguar.snapshot
-assets: $(BUILD_DIR)/assets/firmware.envelope
 
-.PHONY: install-esp-idf
-install-esp-idf:
-	IDF_PATH=$(IDF_PATH) $(IDF_PATH)/install.sh
+$(BUILD_DIR)/assets/jaguar.snapshot: install-dependencies
+$(BUILD_DIR)/assets/jaguar.snapshot: $(SDK_PATH)/bin/toit.compile
+$(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_SOURCES)
+	mkdir -p $(BUILD_DIR)/assets
+	$(SDK_PATH)/bin/toit.compile -w $@ $(JAG_ENTRY_POINT)
 
 .PHONY: install-dependencies
-install-dependencies: $(JAG_TOIT_PATH)/bin/toit.pkg
-	$(JAG_TOIT_PATH)/bin/toit.pkg --project-root=$(CURDIR) install
+install-dependencies: $(SDK_PATH)/bin/toit.pkg
+	$(SDK_PATH)/bin/toit.pkg --project-root=$(CURDIR) install
 
-clean:
-	rm -rf $(BUILD_DIR)
+############################################
+# Rules to build with JAG_TOIT_REPO_PATH set
+############################################
+
+ifdef JAG_TOIT_REPO_PATH
+all: $(JAG_TOIT_REPO_PATH)/build/esp32/firmware.envelope
+
+JAG_TOIT_DEPENDENCIES  = $(SDK_PATH)/bin/toit.compile
+JAG_TOIT_DEPENDENCIES += $(SDK_PATH)/bin/toit.pkg
+JAG_TOIT_DEPENDENCIES += $(JAG_TOIT_REPO_PATH)/build/esp32/firmware.envelope
+
+# We use a marker in the build directory to avoid
+# recompiling the SDK multiple times during one
+# invocation of this Makefile.
+SDK_BUILD_MARKER := $(BUILD_DIR)/sdk.build
+$(JAG_TOIT_DEPENDENCIES): force-rebuild-sdk
+$(JAG_TOIT_DEPENDENCIES): $(SDK_BUILD_MARKER)
+
+# The SDK build marker is *not* phony, so we only
+# use the rule once per invocation of this Makefile.
+$(SDK_BUILD_MARKER):
+	make -C $(JAG_TOIT_REPO_PATH) version-file esp32
+	mkdir -p $(BUILD_DIR)
+	echo "$(BUILD_DATE)" > $@
+
+.PHONY: force-rebuild-sdk
+force-rebuild-sdk:
+	rm -f $(SDK_BUILD_MARKER)
+endif
+
+###############################################
+# Rules to build without JAG_TOIT_REPO_PATH set
+###############################################
+
+.PHONY: download-sdk
+download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
+	rm -rf $(BUILD_SDK_DIR)
+	$(BUILD_DIR)/$(JAG_BINARY) --no-analytics setup sdk $(BUILD_SDK_DIR)
