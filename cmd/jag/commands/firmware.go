@@ -60,11 +60,11 @@ func FirmwareCmd() *cobra.Command {
 
 func FirmwareUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update",
+		Use:   "update [envelope]",
 		Short: "Update the firmware on a Jaguar device",
 		Long: "Update the firmware on a Jaguar device via WiFi. The device name and\n" +
 			"id are preserved across the operation.",
-		Args:         cobra.NoArgs,
+		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := directory.GetDeviceConfig()
@@ -93,11 +93,21 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			var envelopePath string
+			if len(args) == 1 {
+				envelopePath = args[0]
+			} else {
+				envelopePath, err = directory.GetFirmwareEnvelopePath()
+				if err != nil {
+					return err
+				}
+			}
+
 			// We need to generate a new ID for the device, so entries in
 			// the device flash stored by an older version are invalidated.
 			newID := uuid.New().String()
 
-			envelope, err := BuildFirmwareEnvelope(ctx, newID, device.Name, wifiSSID, wifiPassword)
+			envelope, err := BuildFirmwareEnvelope(ctx, envelopePath, newID, device.Name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
@@ -136,13 +146,8 @@ func FirmwareUpdateCmd() *cobra.Command {
 	return cmd
 }
 
-func BuildFirmwareEnvelope(ctx context.Context, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
+func BuildFirmwareEnvelope(ctx context.Context, envelopePath string, id string, name string, wifiSSID string, wifiPassword string) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	envelopePath, err := directory.GetFirmwareEnvelopePath()
 	if err != nil {
 		return nil, err
 	}
