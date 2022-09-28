@@ -134,14 +134,17 @@ func jagDecode(cmd *cobra.Command, base64Message string) error {
 	}
 	snapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
 
+	var decodeCommand *exec.Cmd
 	if programId != uuid.Nil {
 		if _, err := os.Stat(snapshot); errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "No such file: %s\n", snapshot)
 			return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
 		}
+		decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message)
+	} else {
+		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message)
 	}
 
-	decodeCommand := sdk.SystemMessage(ctx, snapshot, "-b", base64Message)
 	decodeCommand.Stderr = os.Stderr
 	decodeCommand.Stdout = os.Stdout
 	return decodeCommand.Run()
