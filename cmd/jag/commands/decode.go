@@ -191,7 +191,7 @@ type Decoder struct {
 func (d *Decoder) decode() {
 	POSTPONED_LINES := map[string]bool{
 		"----": true,
-		"Received a Toit stack trace. Executing the command below will": true,
+		"Received a Toit system message. Executing the command below will": true,
 		"make it human readable:": true,
 	}
 
