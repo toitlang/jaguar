@@ -109,12 +109,12 @@ func createZapBytesFile(sizes map[string]int, name string) (*os.File, error) {
 
 func FlashCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "flash",
+		Use:   "flash [envelope]",
 		Short: "Flash an ESP32 with the Jaguar firmware",
 		Long: "Flash an ESP32 with the Jaguar firmware. The initial flashing is\n" +
 			"done over a serial connection and it is used to give the ESP32 its initial\n" +
 			"firmware and the necessary WiFi credentials.",
-		Args:         cobra.NoArgs,
+		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -157,7 +157,17 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			envelope, err := BuildFirmwareEnvelope(ctx, id.String(), name, wifiSSID, wifiPassword)
+			var envelopePath string
+			if len(args) == 1 {
+				envelopePath = args[0]
+			} else {
+				envelopePath, err = directory.GetFirmwareEnvelopePath()
+				if err != nil {
+					return err
+				}
+			}
+
+			envelope, err := BuildFirmwareEnvelope(ctx, envelopePath, id.String(), name, wifiSSID, wifiPassword)
 			if err != nil {
 				return err
 			}
