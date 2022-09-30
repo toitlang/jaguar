@@ -16,13 +16,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/spf13/viper"
+	"github.com/toitware/ubjson"
 )
 
 const (
-	JaguarDeviceIDHeader      = "X-Jaguar-Device-ID"
-	JaguarSDKVersionHeader    = "X-Jaguar-SDK-Version"
-	JaguarDefinesHeader       = "X-Jaguar-Defines"
-	JaguarContainerNameHeader = "X-Jaguar-Container-Name"
+	JaguarDeviceIDHeader         = "X-Jaguar-Device-ID"
+	JaguarSDKVersionHeader       = "X-Jaguar-SDK-Version"
+	JaguarDisabledHeader         = "X-Jaguar-Disabled"
+	JaguarContainerNameHeader    = "X-Jaguar-Container-Name"
+	JaguarContainerTimeoutHeader = "X-Jaguar-Container-Timeout"
 )
 
 type Devices struct {
@@ -75,18 +77,15 @@ func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
 	return res.StatusCode == http.StatusOK
 }
 
-func (d Device) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, name string, defines string) error {
+func (d Device) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error {
 	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+request, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 	req.Header.Set(JaguarDeviceIDHeader, d.ID)
 	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	if defines != "" {
-		req.Header.Set(JaguarDefinesHeader, defines)
-	}
-	if name != "" {
-		req.Header.Set(JaguarContainerNameHeader, name)
+	for key, value := range headersMap {
+		req.Header.Set(key, value)
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -122,8 +121,10 @@ func (d Device) ContainerList(ctx context.Context, sdk *SDK) (map[string]string,
 	}
 
 	var unmarshalled map[string]string
-	if err = json.Unmarshal(body, &unmarshalled); err != nil {
-		return nil, err
+	if err = ubjson.Unmarshal(body, &unmarshalled); err != nil {
+		if err = json.Unmarshal(body, &unmarshalled); err != nil {
+			return nil, err
+		}
 	}
 
 	return unmarshalled, nil
