@@ -12,7 +12,6 @@ import esp32
 import uuid
 import monitor
 
-import encoding.json
 import encoding.ubjson
 
 import system.assets
@@ -24,11 +23,13 @@ import .container_registry
 HTTP_PORT        ::= 9000
 IDENTIFY_PORT    ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
+STATUS_OK        ::= """{ "status": "OK" }"""
 
-HEADER_DEVICE_ID      ::= "X-Jaguar-Device-ID"
-HEADER_SDK_VERSION    ::= "X-Jaguar-SDK-Version"
-HEADER_DEFINES        ::= "X-Jaguar-Defines"
-HEADER_CONTAINER_NAME ::= "X-Jaguar-Container-Name"
+HEADER_DEVICE_ID         ::= "X-Jaguar-Device-ID"
+HEADER_SDK_VERSION       ::= "X-Jaguar-SDK-Version"
+HEADER_DISABLED          ::= "X-Jaguar-Disabled"
+HEADER_CONTAINER_NAME    ::= "X-Jaguar-Container-Name"
+HEADER_CONTAINER_TIMEOUT ::= "X-Jaguar-Container-Timeout"
 
 // Defines recognized by Jaguar for /run requests.
 JAG_DISABLED       ::= "jag.disabled"
@@ -102,8 +103,9 @@ serve arguments:
     port = int.parse arguments[0]
 
   config := {:}
-  assets.decode.get "config" --if_present=: | encoded |
-    catch: config = ubjson.decode encoded
+  if platform == PLATFORM_FREERTOS:
+    assets.decode.get "config" --if_present=: | encoded |
+      catch: config = ubjson.decode encoded
 
   id/uuid.Uuid := uuid.NIL
   if arguments.size >= 2:
@@ -231,17 +233,7 @@ uninstall_image name/string -> none:
 
 compute_timeout defines/Map --disabled/bool -> Duration?:
   jag_timeout := defines.get JAG_TIMEOUT
-  if jag_timeout is string:
-    value := int.parse jag_timeout[0..jag_timeout.size - 1] --on_error=(: 0)
-    if value > 0 and jag_timeout.ends_with "s":
-      return Duration --s=value
-    else if value > 0 and jag_timeout.ends_with "m":
-      return Duration --m=value
-    else if value > 0 and jag_timeout.ends_with "h":
-      return Duration --h=value
-    else:
-      logger.error "invalid $JAG_TIMEOUT setting (\"$jag_timeout\")"
-  else if jag_timeout is int and jag_timeout > 0:
+  if jag_timeout is int and jag_timeout > 0:
     return Duration --s=jag_timeout
   else if jag_timeout:
     logger.error "invalid $JAG_TIMEOUT setting ($jag_timeout)"
@@ -315,16 +307,18 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
       writer.close
 
 identity_payload id/uuid.Uuid name/string address/string -> ByteArray:
-  return json.encode {
-    "method": "jaguar.identify",
-    "payload": {
-      "name": name,
-      "id": id.stringify,
-      "sdkVersion": vm_sdk_version,
-      "address": address,
-      "wordSize": BYTES_PER_WORD,
+  identity := """
+    { "method": "jaguar.identify",
+      "payload": {
+        "name": "$name",
+        "id": "$id",
+        "sdkVersion": "$vm_sdk_version",
+        "address": "$address",
+        "wordSize": $BYTES_PER_WORD
+      }
     }
-  }
+  """
+  return identity.to_byte_array
 
 broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
   payload ::= identity_payload id name address
@@ -498,26 +492,22 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
 
     // Handle pings.
     else if path == "/ping" and request.method == "GET":
-      writer.write
-          json.encode {"status": "OK"}
+      writer.write STATUS_OK
 
     // Handle listing containers.
     else if path == "/list" and request.method == "GET":
-      writer.write
-          json.encode registry_.entries
+      writer.write (ubjson.encode registry_.entries)
 
     // Handle uninstalling containers.
     else if path == "/uninstall" and request.method == "PUT":
       container_name ::= headers.single HEADER_CONTAINER_NAME
       uninstall_image container_name
-      writer.write
-          json.encode {"status": "OK"}
+      writer.write STATUS_OK
 
     // Handle firmware updates.
     else if path == "/firmware" and request.method == "PUT":
       install_firmware request.content_length request.body
-      writer.write
-          json.encode {"status": "OK"}
+      writer.write STATUS_OK
       // TODO(kasper): Maybe we can share the way we try to close down
       // the HTTP server nicely with the corresponding code where we
       // handle /code requests?
@@ -535,15 +525,13 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
       container_name ::= headers.single HEADER_CONTAINER_NAME
       defines ::= extract_defines headers
       install_image request.content_length request.body container_name defines
-      writer.write
-          json.encode {"status": "OK"}
+      writer.write STATUS_OK
 
     // Handle code running.
     else if path == "/run" and request.method == "PUT":
       defines ::= extract_defines headers
       run_code request.content_length request.body defines
-      writer.write
-          json.encode {"status": "OK"}
+      writer.write STATUS_OK
       if disabled:
         // TODO(kasper): There is no great way of closing down the HTTP server loop
         // and make sure we get a response delivered to all clients. For now, we
@@ -554,5 +542,10 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
           self.cancel
 
 extract_defines headers/http.Headers -> Map:
-  defines_string ::= headers.single HEADER_DEFINES
-  return defines_string ? (json.parse defines_string) : {:}
+  defines := {:}
+  if headers.single HEADER_DISABLED:
+    defines[JAG_DISABLED] = true
+  if header := headers.single HEADER_CONTAINER_TIMEOUT:
+    timeout := int.parse header --on_error=: null
+    if timeout: defines[JAG_TIMEOUT] = timeout
+  return defines

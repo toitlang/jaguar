@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/setanta314/ar"
@@ -296,11 +298,34 @@ func sendCodeFromFile(
 
 	// Split the -D options into the ones we pass in the HTTP header for Jaguar
 	// and the ones we send along as assets.
-	headerMap := make(map[string]interface{})
+	headersMap := make(map[string]string)
+	headersMap[JaguarContainerNameHeader] = name
 	assetsMap := make(map[string]interface{})
 	for key, value := range defines {
 		if strings.HasPrefix(key, "jag.") {
-			headerMap[key] = value
+			if key == "jag.disabled" {
+				switch converted := value.(type) {
+				case bool:
+					if converted {
+						headersMap[JaguarDisabledHeader] = "true"
+					}
+				default:
+					return fmt.Errorf("jag.disabled must be a bool")
+				}
+			} else if key == "jag.timeout" {
+				switch converted := value.(type) {
+				case int:
+					headersMap[JaguarContainerTimeoutHeader] = fmt.Sprint(converted)
+				case string:
+					duration, err := time.ParseDuration(converted)
+					if err != nil {
+						return fmt.Errorf("cannot parse jag.timeout ('%s') as a duration", converted)
+					}
+					headersMap[JaguarContainerTimeoutHeader] = fmt.Sprint(int(math.Ceil(duration.Seconds())))
+				default:
+					return fmt.Errorf("jag.timeout must be a string or an int")
+				}
+			}
 		} else {
 			assetsMap[key] = value
 		}
@@ -317,12 +342,6 @@ func sendCodeFromFile(
 		assetsPath = temporaryAssetsFile.Name()
 	}
 
-	headerMarshalled, err := json.Marshal(headerMap)
-	if err != nil {
-		return err
-	}
-	headerDefines := string(headerMarshalled)
-
 	b, err := sdk.Build(ctx, device, cacheDestination, assetsPath)
 	if err != nil {
 		// We assume the error has been printed.
@@ -331,7 +350,7 @@ func sendCodeFromFile(
 		return err
 	}
 
-	if err := device.SendCode(ctx, sdk, request, b, name, headerDefines); err != nil {
+	if err := device.SendCode(ctx, sdk, request, b, headersMap); err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.

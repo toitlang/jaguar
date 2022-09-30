@@ -19,6 +19,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
+	"github.com/toitware/ubjson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -281,25 +282,36 @@ looping:
 }
 
 type udpMessage struct {
-	Method  string          `json:"method"`
-	Payload json.RawMessage `json:"payload"`
+	Method  string                 `json:"method"`
+	Payload map[string]interface{} `json:"payload"`
 }
 
-func parseDevice(b []byte) (*Device, error) {
-	var res Device
+func parseDevice(bytes []byte) (*Device, error) {
+	var device Device
 
 	var msg udpMessage
-	if err := json.Unmarshal(b, &msg); err != nil {
-		return nil, fmt.Errorf("could not parse message: %s. Reason: %w", string(b), err)
+	if err := ubjson.Unmarshal(bytes, &msg); err != nil {
+		if err := json.Unmarshal(bytes, &msg); err != nil {
+			return nil, fmt.Errorf("could not parse message: %s. Reason: %w", string(bytes), err)
+
+		}
 	}
+
 	if msg.Method != "jaguar.identify" {
 		return nil, nil
 	}
 
-	if err := json.Unmarshal(msg.Payload, &res); err != nil {
-		return nil, fmt.Errorf("failed to parse payload of jaguar.identify: %s. reason: %w", string(b), err)
+	// We marshal the payload into JSON again, so we can use the reflection
+	// based support in encoding/json to fill in the fields in the device
+	// struct before returning it.
+	payload, err := json.Marshal(msg.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to re-marshal jaguar.identify: %s. reason: %w", string(bytes), err)
 	}
-	return &res, nil
+	if err := json.Unmarshal(payload, &device); err != nil {
+		return nil, fmt.Errorf("failed to parse payload of jaguar.identify: %s. reason: %w", string(bytes), err)
+	}
+	return &device, nil
 }
 
 func isTimeoutError(err error) bool {
