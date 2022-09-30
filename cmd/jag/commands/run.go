@@ -387,8 +387,8 @@ func buildAssets(ctx context.Context, sdk *SDK, output *os.File, inputPath strin
 		inputPath = output.Name()
 	}
 
-	// Add the defines as a UBJSON asset under with the name jag.defines.
-	return runAssetsTool(ctx, sdk, inputPath, "add", "-o", output.Name(), "--ubjson", "jag.defines", definesJsonFile.Name())
+	// Add the defines as a TISON asset under with the name jag.defines.
+	return runAssetsTool(ctx, sdk, inputPath, "add", "-o", output.Name(), "--format=tison", "jag.defines", definesJsonFile.Name())
 }
 
 func runAssetsTool(ctx context.Context, sdk *SDK, assetsPath string, args ...string) error {

@@ -192,7 +192,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelopePath string, id string, 
 		return nil, err
 	}
 
-	if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "add", "--ubjson", "config", configJsonFile.Name()); err != nil {
+	if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "add", "--format=tison", "config", configJsonFile.Name()); err != nil {
 		return nil, err
 	}
 
