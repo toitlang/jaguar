@@ -119,8 +119,10 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			if len(args) != 1 {
-				return fmt.Errorf("Only one argument can be passed to jag run")
+			if len(args) == 0 {
+				return fmt.Errorf("No input file provided")
+			} else if len(args) > 1 {
+				return fmt.Errorf("Passing arguments is only supported with 'jag run -d host'")
 			}
 
 			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
@@ -325,6 +327,8 @@ func sendCodeFromFile(
 				default:
 					return fmt.Errorf("jag.timeout must be a string or an int")
 				}
+			} else {
+				return fmt.Errorf("unsupported Jaguar define: %s", key)
 			}
 		} else {
 			assetsMap[key] = value
