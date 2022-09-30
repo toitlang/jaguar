@@ -31,7 +31,7 @@ HEADER_DISABLED          ::= "X-Jaguar-Disabled"
 HEADER_CONTAINER_NAME    ::= "X-Jaguar-Container-Name"
 HEADER_CONTAINER_TIMEOUT ::= "X-Jaguar-Container-Timeout"
 
-// Defines recognized by Jaguar for /run requests.
+// Defines recognized by Jaguar for /run and /install requests.
 JAG_DISABLED       ::= "jag.disabled"
 JAG_TIMEOUT        ::= "jag.timeout"
 
