@@ -30,23 +30,33 @@ func DecodeCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return serialDecode(cmd, args[0])
+			pretty, err := cmd.Flags().GetBool("force_pretty")
+			if err != nil {
+				return err
+			}
+			plain, err := cmd.Flags().GetBool("force_plain")
+			if err != nil {
+				return err
+			}
+			return serialDecode(cmd, args[0], pretty, plain)
 		},
 	}
+	cmd.Flags().BoolP("force_pretty", "r", false, "Force output to use terminal graphics")
+	cmd.Flags().BoolP("force_plain", "l", false, "Force output to use plain ASCII text")
 	return cmd
 }
 
-func serialDecode(cmd *cobra.Command, message string) error {
+func serialDecode(cmd *cobra.Command, message string, forcePretty bool, forcePlain bool) error {
 	if strings.HasPrefix(message, "jag decode ") {
-		return jagDecode(cmd, message[11:])
+		return jagDecode(cmd, message[11:], forcePretty, forcePlain)
 	} else if strings.HasPrefix(message, "Backtrace:") {
 		return crashDecode(cmd, message)
 	} else {
-		return jagDecode(cmd, message)
+		return jagDecode(cmd, message, forcePretty, forcePlain)
 	}
 }
 
-func jagDecode(cmd *cobra.Command, base64Message string) error {
+func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, forcePlain bool) error {
 	ctx := cmd.Context()
 	sdk, err := GetSDK(ctx)
 	if err != nil {
@@ -134,15 +144,24 @@ func jagDecode(cmd *cobra.Command, base64Message string) error {
 	}
 	snapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
 
+	pretty := "--no-force_pretty"
+	if forcePretty {
+		pretty = "--force_pretty"
+	}
+	plain := "--no-force_plain"
+	if forcePlain {
+		plain = "--force_plain"
+	}
+
 	var decodeCommand *exec.Cmd
 	if programId != uuid.Nil {
 		if _, err := os.Stat(snapshot); errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "No such file: %s\n", snapshot)
 			return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
 		}
-		decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message)
+		decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, pretty, plain)
 	} else {
-		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message)
+		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
 	}
 
 	decodeCommand.Stderr = os.Stderr
@@ -188,7 +207,7 @@ type Decoder struct {
 	cmd     *cobra.Command
 }
 
-func (d *Decoder) decode() {
+func (d *Decoder) decode(forcePretty bool, forcePlain bool) {
 	POSTPONED_LINES := map[string]bool{
 		"----": true,
 		"Received a Toit system message. Executing the command below will": true,
@@ -216,7 +235,7 @@ func (d *Decoder) decode() {
 					fmt.Printf("Decoding by `jag`, device has version <%s>\n", Version)
 					fmt.Printf(separator + "\n")
 				}
-				if err := serialDecode(d.cmd, line); err != nil {
+				if err := serialDecode(d.cmd, line, forcePretty, forcePlain); err != nil {
 					if len(postponed) != 0 {
 						fmt.Println(strings.Join(postponed, "\n"))
 						postponed = []string{}
