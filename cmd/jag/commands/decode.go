@@ -144,13 +144,13 @@ func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, force
 	}
 	snapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
 
-	pretty := "--no-force_pretty"
+	pretty := "--no-force-pretty"
 	if forcePretty {
-		pretty = "--force_pretty"
+		pretty = "--force-pretty"
 	}
-	plain := "--no-force_plain"
+	plain := "--no-force-plain"
 	if forcePlain {
-		plain = "--force_plain"
+		plain = "--force-plain"
 	}
 
 	var decodeCommand *exec.Cmd
