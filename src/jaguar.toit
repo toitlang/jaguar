@@ -13,6 +13,7 @@ import uuid
 import monitor
 
 import encoding.ubjson
+import encoding.tison
 
 import system.assets
 import system.containers
@@ -105,7 +106,7 @@ serve arguments:
   config := {:}
   if platform == PLATFORM_FREERTOS:
     assets.decode.get "config" --if_present=: | encoded |
-      catch: config = ubjson.decode encoded
+      catch: config = tison.decode encoded
 
   id/uuid.Uuid := uuid.NIL
   if arguments.size >= 2:

@@ -88,5 +88,7 @@ class ContainerRegistry:
     return id
 
   store_ -> none:
-    entries := entry_by_id_string_.map: | _ entry/List | entry[0..2]
+    // TODO(kasper): Once encoding.tison supports list slices, there is no
+    // need to copy the slices before encoding them.
+    entries := entry_by_id_string_.map: | _ entry/List | entry[0..2].copy
     flash_.set KEY_ entries
