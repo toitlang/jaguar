@@ -30,19 +30,19 @@ func DecodeCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pretty, err := cmd.Flags().GetBool("force_pretty")
+			pretty, err := cmd.Flags().GetBool("force-pretty")
 			if err != nil {
 				return err
 			}
-			plain, err := cmd.Flags().GetBool("force_plain")
+			plain, err := cmd.Flags().GetBool("force-plain")
 			if err != nil {
 				return err
 			}
 			return serialDecode(cmd, args[0], pretty, plain)
 		},
 	}
-	cmd.Flags().BoolP("force_pretty", "r", false, "Force output to use terminal graphics")
-	cmd.Flags().BoolP("force_plain", "l", false, "Force output to use plain ASCII text")
+	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
 	return cmd
 }
 

@@ -51,12 +51,12 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			pretty, err := cmd.Flags().GetBool("force_pretty")
+			pretty, err := cmd.Flags().GetBool("force-pretty")
 			if err != nil {
 				return err
 			}
 
-			plain, err := cmd.Flags().GetBool("force_plain")
+			plain, err := cmd.Flags().GetBool("force-plain")
 			if err != nil {
 				return err
 			}
@@ -82,8 +82,8 @@ func SimulateCmd() *cobra.Command {
 
 	cmd.Flags().UintP("port", "p", 0, "port to run the simulator on")
 	cmd.Flags().String("name", "", "name for the simulator, if not set a name will be auto generated")
-	cmd.Flags().BoolP("force_pretty", "r", false, "Force output to use terminal graphics")
-	cmd.Flags().BoolP("force_plain", "l", false, "Force output to use plain ASCII text")
+	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
 
 	return cmd
 }
