@@ -51,6 +51,16 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
+			pretty, err := cmd.Flags().GetBool("force-pretty")
+			if err != nil {
+				return err
+			}
+
+			plain, err := cmd.Flags().GetBool("force-plain")
+			if err != nil {
+				return err
+			}
+
 			outReader, outWriter := io.Pipe()
 
 			// Goroutine that gets data from the pipe and converts it into
@@ -60,7 +70,7 @@ func SimulateCmd() *cobra.Command {
 
 				decoder := Decoder{scanner, cmd}
 
-				decoder.decode()
+				decoder.decode(pretty, plain)
 			}()
 
 			simCmd := sdk.ToitRun(ctx, snapshot, strconv.Itoa(int(port)), id.String(), name)
@@ -72,6 +82,8 @@ func SimulateCmd() *cobra.Command {
 
 	cmd.Flags().UintP("port", "p", 0, "port to run the simulator on")
 	cmd.Flags().String("name", "", "name for the simulator, if not set a name will be auto generated")
+	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
 
 	return cmd
 }

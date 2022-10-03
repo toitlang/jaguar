@@ -42,6 +42,16 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
+			pretty, err := cmd.Flags().GetBool("force-pretty")
+			if err != nil {
+				return err
+			}
+
+			plain, err := cmd.Flags().GetBool("force-plain")
+			if err != nil {
+				return err
+			}
+
 			fmt.Printf("Starting serial monitor of port '%s' ...\n", port)
 			dev, err := serialOpen(port, &serial.Mode{
 				BaudRate: int(baud),
@@ -58,7 +68,7 @@ func MonitorCmd() *cobra.Command {
 
 			decoder := Decoder{scanner, cmd}
 
-			decoder.decode()
+			decoder.decode(pretty, plain)
 
 			return scanner.Err()
 		},
@@ -66,6 +76,8 @@ func MonitorCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "port to monitor")
 	cmd.Flags().BoolP("attach", "a", false, "attach to the serial output without rebooting it")
+	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
 	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
 	return cmd
 }
