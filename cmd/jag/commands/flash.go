@@ -136,6 +136,11 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
+			esptoolPath, err := directory.GetEsptoolPath()
+			if err != nil {
+				return err
+			}
+
 			id := uuid.New()
 			var name string
 			if cmd.Flags().Changed("name") {
@@ -152,9 +157,11 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			esptoolPath, err := directory.GetEsptoolPath()
-			if err != nil {
-				return err
+			deviceOptions := DeviceOptions{
+				Id:           id.String(),
+				Name:         name,
+				WifiSsid:     wifiSSID,
+				WifiPassword: wifiPassword,
 			}
 
 			var envelopePath string
@@ -167,25 +174,30 @@ func FlashCmd() *cobra.Command {
 				}
 			}
 
-			envelope, err := BuildFirmwareEnvelope(ctx, envelopePath, id.String(), name, wifiSSID, wifiPassword)
+			envelopeOptions := EnvelopeOptions{
+				Path:          envelopePath,
+				ExcludeJaguar: false,
+			}
+
+			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions)
 			if err != nil {
 				return err
 			}
-			defer os.Remove(envelope.Name())
+			defer os.Remove(envelopeFile.Name())
 
-			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "firmware.bin")
+			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelopeFile.Name(), "firmware.bin")
 			if err != nil {
 				return err
 			}
 			defer os.Remove(firmwareBin.Name())
 
-			bootloaderBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "bootloader.bin")
+			bootloaderBin, err := ExtractFirmwarePart(ctx, sdk, envelopeFile.Name(), "bootloader.bin")
 			if err != nil {
 				return err
 			}
 			defer os.Remove(bootloaderBin.Name())
 
-			partitionsBin, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "partitions.bin")
+			partitionsBin, err := ExtractFirmwarePart(ctx, sdk, envelopeFile.Name(), "partitions.bin")
 			if err != nil {
 				return err
 			}
@@ -194,7 +206,7 @@ func FlashCmd() *cobra.Command {
 			positions := make(map[string]int)
 			sizes := make(map[string]int)
 
-			getPartitions(ctx, sdk, envelope.Name(), positions, sizes)
+			getPartitions(ctx, sdk, envelopeFile.Name(), positions, sizes)
 
 			// Create a file with zap bytes (0xff) for clearing the OTA data partition.
 			zappedOtaDataFile, err := createZapBytesFile(sizes, "ota")
