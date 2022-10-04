@@ -33,7 +33,7 @@ brew install toitlang/toit/jag
 
 On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.com/en-us/windows/package-manager/winget/):
 ```
-winget install --id=toit.jaguar -e
+winget install --id=Toit.Jaguar -e
 ```
 
 For Archlinux you can install the AUR package [jaguar-bin](https://aur.archlinux.org/packages/jaguar-bin):
@@ -63,8 +63,8 @@ jag setup
 
 ### Flashing via serial
 Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
-application onto it. Running `jag flash` will ask you for the serial port to use and the WiFi 
-credentials, but be aware that the tooling requires 
+application onto it. Running `jag flash` will ask you for the serial port to use and the WiFi
+credentials, but be aware that the tooling requires
 [permission to access your serial port](#permission-to-access-serial-port).
 
 ``` sh
@@ -94,7 +94,7 @@ and store it in your file system and then run:
 jag run hello.toit
 ```
 
-Be aware that you can configure the way your applications run by [providing options](#options-for-jag-run) 
+Be aware that you can configure the way your applications run by [providing options](#options-for-jag-run)
 to `jag run`. Also, Jaguar is fast enough that it is possible to ask Jaguar to keep watching your Toit code
 on disk and to *live reload* it when it changes. Simply write:
 
@@ -106,7 +106,7 @@ and edit `hello.toit` or any of the files it depends on in your favorite editor.
 
 ### Installing services and drivers
 Jaguar supports installing named containers that are automatically run when the system boots. They can be used
-to provide services and implement drivers for peripherals. The services and drivers can be used by 
+to provide services and implement drivers for peripherals. The services and drivers can be used by
 applications and as such they form an instrumental part of the extensibility of a Jaguar based system.
 
 You can list the currently installed containers on a device through:
@@ -180,7 +180,7 @@ It is possible to provide options for `jag run` that control how your applicatio
 lists the options and provides an explanation for when they might come in handy.
 
 ## Limiting application run time
-You can control how much time Jaguar gives your application to run through the `-D jag.timeout` setting. It takes a value 
+You can control how much time Jaguar gives your application to run through the `-D jag.timeout` setting. It takes a value
 like `10s`, `5m`, or `1h` to indicate how many seconds, minutes, or hours the app can run before being shut down by Jaguar.
 
 ``` sh
@@ -188,17 +188,17 @@ jag run -D jag.timeout=10s service.toit
 ```
 
 ## Temporarily disabling Jaguar
-You can disable Jaguar while your application runs using the `-D jag.disabled`. This is useful if Jaguar otherwise 
-interferes with your application. As an example, consider an application that uses the WiFi to setup a 
-software-enabled access point ("Soft AP"). This would normally conflict with Jaguar's use of the WiFi, so your 
-application and Jaguar cannot run at the same time. By temporarily disabling Jaguar, it is possible to test and tinker with 
+You can disable Jaguar while your application runs using the `-D jag.disabled`. This is useful if Jaguar otherwise
+interferes with your application. As an example, consider an application that uses the WiFi to setup a
+software-enabled access point ("Soft AP"). This would normally conflict with Jaguar's use of the WiFi, so your
+application and Jaguar cannot run at the same time. By temporarily disabling Jaguar, it is possible to test and tinker with
 the Soft AP based service.
 
 ``` sh
 jag run -D jag.disabled softap.toit
 ```
 
-By default this runs with a 10 seconds timeout to avoid completely shutting down Jaguar. However, this can be configured 
+By default this runs with a 10 seconds timeout to avoid completely shutting down Jaguar. However, this can be configured
 by passing a separate `-D jag.timeout` option:
 
 ``` sh
