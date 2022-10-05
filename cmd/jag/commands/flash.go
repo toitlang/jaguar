@@ -174,9 +174,14 @@ func FlashCmd() *cobra.Command {
 				}
 			}
 
+			excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
+			if err != nil {
+				return err
+			}
+
 			envelopeOptions := EnvelopeOptions{
 				Path:          envelopePath,
-				ExcludeJaguar: false,
+				ExcludeJaguar: excludeJaguar,
 			}
 
 			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions)
@@ -254,5 +259,6 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
+	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
 	return cmd
 }
