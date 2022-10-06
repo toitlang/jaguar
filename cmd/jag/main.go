@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	version    = "v1.7.0"
+	version    = "v1.7.1"
 	sdkVersion = "v2.0.0-alpha.33"
 )
 
