@@ -62,7 +62,7 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 				return
 			}
 
-			if isRunningOnBuildbot() {
+			if isLikelyRunningOnBuildbot() {
 				return
 			}
 

@@ -540,9 +540,9 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 	return wifiSSID, wifiPassword, nil
 }
 
-// isRunningOnBuildbot returns true if the current process is running on a buildbot.
+// isLikelyRunningOnBuildbot returns true if the current process is running on a buildbot.
 // It uses some heuristics to determine this, and may not be 100% accurate.
-func isRunningOnBuildbot() bool {
+func isLikelyRunningOnBuildbot() bool {
 	envVars := []string{
 		"JENKINS_HOME",
 		"GITLAB_CI",
