@@ -202,6 +202,11 @@ flash_image image_size/int reader/reader.Reader name/string? defines/Map -> uuid
       written_size := 0
       writer := containers.ContainerImageWriter image_size
       while data := reader.read:
+        // This is really subtle, but because the firmware writing crosses the RPC
+        // boundary, the provided data might get neutered and handed over to another
+        // process. In that case, the size after the call to writer.write is zero,
+        // which isn't great for tracking progress. So we update the written size
+        // before calling out to writer.write.
         written_size += data.size
         writer.write data
       logger.debug "installing container image with $image_size bytes -> wrote $written_size bytes"
