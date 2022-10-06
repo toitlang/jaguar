@@ -62,6 +62,10 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 				return
 			}
 
+			if isRunningOnBuildbot() {
+				return
+			}
+
 			// Avoid running the analytics and up-to-date check code when
 			// the command is a subcommand of 'config'.
 			current := cmd
