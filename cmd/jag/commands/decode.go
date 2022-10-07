@@ -159,7 +159,7 @@ func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, force
 			fmt.Fprintf(os.Stderr, "No such file: %s\n", snapshot)
 			return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
 		}
-		decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, pretty, plain)
+		decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
 	} else {
 		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
 	}
