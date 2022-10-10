@@ -89,7 +89,7 @@ func hex(num int) string {
 
 func createZapBytesFile(sizes map[string]int, name string) (*os.File, error) {
 	// Create a file with zap bytes (0xff) for clearing select partitions.
-	zappedDataFile, err := os.CreateTemp("", fmt.Sprint("*.%sdata", name))
+	zappedDataFile, err := os.CreateTemp("", fmt.Sprintf("*.%sdata", name))
 	if err != nil {
 		return nil, err
 	}
