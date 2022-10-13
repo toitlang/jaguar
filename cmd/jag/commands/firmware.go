@@ -130,7 +130,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
-			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelopeFile.Name(), "firmware.bin")
+			firmwareBin, err := ExtractFirmware(ctx, sdk, envelopeFile.Name(), "binary")
 			if err != nil {
 				return err
 			}
@@ -284,28 +284,52 @@ func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ..
 }
 
 func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) error {
-	// TODO(kasper): We should be able to get all the snapshots stored in
-	// the envelope out through extraction. For now, we just make it work
-	// with the jaguar snapshot.
-	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+	listFile, err := os.CreateTemp("", "firmware-list.*")
 	if err != nil {
 		return err
 	}
-	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
+	defer os.Remove(listFile.Name())
+
+	if err := runFirmwareTool(ctx, sdk, envelope.Name(), "container", "list", "-o", listFile.Name()); err != nil {
 		return err
 	}
 
-	/*
-		snapshot, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "system.snapshot")
+	listBytes, err := ioutil.ReadFile(listFile.Name())
+	if err != nil {
+		return err
+	}
+
+	var entries map[string]map[string]interface{}
+	if err := json.Unmarshal(listBytes, &entries); err != nil {
+		return err
+	}
+
+	for name, entry := range entries {
+		kind := entry["kind"]
+		if kind != "snapshot" {
+			continue
+		}
+
+		snapshotFile, err := os.CreateTemp("", "firmware-snapshot.*")
 		if err != nil {
 			return err
 		}
-		defer snapshot.Close()
+		defer os.Remove(snapshotFile.Name())
 
-		if err := copySnapshotIntoCache(snapshot.Name()); err != nil {
+		snapshotExtractArguments := []string{
+			"container", "extract",
+			"-o", snapshotFile.Name(),
+			"--part=image",
+			name,
+		}
+		if err := runFirmwareTool(ctx, sdk, envelope.Name(), snapshotExtractArguments...); err != nil {
 			return err
 		}
-	*/
+
+		if err := copySnapshotIntoCache(snapshotFile.Name()); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
