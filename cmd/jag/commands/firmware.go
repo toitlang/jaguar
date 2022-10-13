@@ -259,12 +259,12 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 	return envelopeFile, nil
 }
 
-func ExtractFirmwarePart(ctx context.Context, sdk *SDK, envelopePath string, part string) (*os.File, error) {
-	partFile, err := os.CreateTemp("", part+".*")
+func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format string) (*os.File, error) {
+	partFile, err := os.CreateTemp("", "firmware-"+format+".*")
 	if err != nil {
 		return nil, err
 	}
-	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--"+part, "-o", partFile.Name()); err != nil {
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--format", format, "-o", partFile.Name()); err != nil {
 		partFile.Close()
 		return nil, err
 	}
@@ -295,15 +295,17 @@ func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) er
 		return err
 	}
 
-	snapshot, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "system.snapshot")
-	if err != nil {
-		return err
-	}
-	defer snapshot.Close()
+	/*
+		snapshot, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "system.snapshot")
+		if err != nil {
+			return err
+		}
+		defer snapshot.Close()
 
-	if err := copySnapshotIntoCache(snapshot.Name()); err != nil {
-		return err
-	}
+		if err := copySnapshotIntoCache(snapshot.Name()); err != nil {
+			return err
+		}
+	*/
 	return nil
 }
 
