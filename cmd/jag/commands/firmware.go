@@ -130,7 +130,8 @@ func FirmwareUpdateCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
-			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelopeFile.Name(), "firmware.bin")
+			config := deviceOptions.GetConfig()
+			firmwareBin, err := ExtractFirmware(ctx, sdk, envelopeFile.Name(), config)
 			if err != nil {
 				return err
 			}
@@ -176,6 +177,15 @@ type EnvelopeOptions struct {
 	ExcludeJaguar bool
 }
 
+func (d DeviceOptions) GetConfig() map[string]interface{} {
+	return map[string]interface{}{
+		"wifi": map[string]string{
+			"wifi.ssid":     d.WifiSsid,
+			"wifi.password": d.WifiPassword,
+		},
+	}
+}
+
 func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
@@ -204,22 +214,22 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			return nil, err
 		}
 
-		configMap := map[string]interface{}{
+		configAssetMap := map[string]interface{}{
 			"id":   device.Id,
 			"name": device.Name,
 		}
-		configJson, err := json.Marshal(configMap)
+		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {
 			return nil, err
 		}
 
-		configJsonFile, err := os.CreateTemp("", "*.json.assets")
+		configAssetJsonFile, err := os.CreateTemp("", "*.json.assets")
 		if err != nil {
 			return nil, err
 		}
-		defer configJsonFile.Close()
+		defer configAssetJsonFile.Close()
 
-		if err := os.WriteFile(configJsonFile.Name(), configJson, 0666); err != nil {
+		if err := os.WriteFile(configAssetJsonFile.Name(), configAssetJson, 0666); err != nil {
 			return nil, err
 		}
 
@@ -233,7 +243,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			return nil, err
 		}
 
-		if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "add", "--format=tison", "config", configJsonFile.Name()); err != nil {
+		if err := runAssetsTool(ctx, sdk, assetsFile.Name(), "add", "--format=tison", "config", configAssetJsonFile.Name()); err != nil {
 			return nil, err
 		}
 
@@ -242,13 +252,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 		}
 	}
 
-	// TODO(kasper): Can we generate this in a nicer way?
-	wifiProperties := "{ \"wifi.ssid\": \"" + device.WifiSsid + "\", \"wifi.password\": \"" + device.WifiPassword + "\" }"
-
 	if err := setFirmwareProperty(ctx, sdk, envelopeFile, "uuid", device.Id); err != nil {
-		return nil, err
-	}
-	if err := setFirmwareProperty(ctx, sdk, envelopeFile, "wifi", wifiProperties); err != nil {
 		return nil, err
 	}
 
@@ -257,6 +261,41 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 	}
 
 	return envelopeFile, nil
+}
+
+func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}) (*os.File, error) {
+	configFile, err := os.CreateTemp("", "*.json.config")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(configFile.Name())
+
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.WriteFile(configFile.Name(), configBytes, 0666); err != nil {
+		return nil, err
+	}
+
+	binaryFile, err := os.CreateTemp("", "firmware.bin.*")
+	if err != nil {
+		return nil, err
+	}
+
+	arguments := []string{
+		"extract",
+		"--format=binary",
+		"-o", binaryFile.Name(),
+		"--config", configFile.Name(),
+	}
+
+	if err := runFirmwareTool(ctx, sdk, envelopePath, arguments...); err != nil {
+		binaryFile.Close()
+		return nil, err
+	}
+	return binaryFile, nil
 }
 
 func ExtractFirmwarePart(ctx context.Context, sdk *SDK, envelopePath string, part string) (*os.File, error) {
