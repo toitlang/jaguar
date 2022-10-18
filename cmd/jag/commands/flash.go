@@ -190,7 +190,8 @@ func FlashCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
-			firmwareBin, err := ExtractFirmwarePart(ctx, sdk, envelopeFile.Name(), "firmware.bin")
+			config := deviceOptions.GetConfig()
+			firmwareBin, err := ExtractFirmware(ctx, sdk, envelopeFile.Name(), config)
 			if err != nil {
 				return err
 			}
