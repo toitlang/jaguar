@@ -35,18 +35,6 @@ func getFirmwareURL(version string, model string) string {
 	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/firmware-%s.gz", version, model)
 }
 
-func getEsptoolURL(version string) string {
-	currOS := runtime.GOOS
-	if currOS == "darwin" {
-		currOS = "macos"
-	}
-	return directory.Executable(fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/esptool-%s/esptool_%s_%s", version, currOS, version))
-}
-
-const (
-	esptoolVersion = "v3.0"
-)
-
 func SetupCmd(info Info) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
@@ -74,10 +62,6 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if _, err := directory.GetEsptoolPath(); err != nil {
-					return err
-				}
-
 				fmt.Println("Jaguar setup is valid.")
 				return nil
 			}
@@ -98,10 +82,6 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if err := downloadFirmware(ctx, info.SDKVersion, "esp32"); err != nil {
-				return err
-			}
-
-			if err := downloadEsptool(ctx, esptoolVersion); err != nil {
 				return err
 			}
 
@@ -215,33 +195,6 @@ func downloadFirmware(ctx context.Context, version string, model string) error {
 	}
 
 	fmt.Printf("Successfully installed %s firmware into %s\n", model, assetsPath)
-	return nil
-}
-
-func downloadEsptool(ctx context.Context, version string) error {
-	esptoolPath, err := directory.GetEsptoolCachePath()
-	if err != nil {
-		return err
-	}
-
-	esptoolURL := getEsptoolURL(version)
-	fmt.Printf("Downloading esptool from %s ...\n", esptoolURL)
-	bundle, err := download(ctx, esptoolURL)
-	if err != nil {
-		return err
-	}
-	defer bundle.Close()
-
-	f, err := os.OpenFile(esptoolPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if _, err := io.Copy(f, bundle); err != nil {
-		return err
-	}
-	bundle.Close()
-	fmt.Println("Successfully installed esptool into", esptoolPath)
 	return nil
 }
 

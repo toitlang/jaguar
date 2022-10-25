@@ -156,29 +156,22 @@ func GetFirmwareEnvelopePath() (string, error) {
 	return getAssetPath("firmware-esp32.envelope")
 }
 
-func GetEsptoolCachePath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, ".cache", "jaguar", Executable("esptool")), nil
-}
-
 func GetEsptoolPath() (string, error) {
 	repoPath, ok := getRepoPath()
 	if ok {
 		return filepath.Join(repoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
 	}
 
-	cachePath, err := GetEsptoolCachePath()
+	sdkCachePath, err := GetSDKCachePath()
 	if err != nil {
 		return "", err
 	}
+	esptoolPath := filepath.Join(sdkCachePath, "tools", "esptool")
 
-	if stat, err := os.Stat(cachePath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the esptool using 'jag setup'", cachePath)
+	if stat, err := os.Stat(esptoolPath); err != nil || stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the SDK using 'jag setup'", esptoolPath)
 	}
-	return cachePath, nil
+	return esptoolPath, nil
 }
 
 func ensureDirectory(dir string, err error) (string, error) {
