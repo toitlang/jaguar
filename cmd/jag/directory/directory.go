@@ -166,7 +166,7 @@ func GetEsptoolPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	esptoolPath := filepath.Join(sdkCachePath, "tools", "esptool")
+	esptoolPath := filepath.Join(sdkCachePath, "tools", Executable("esptool"))
 
 	if stat, err := os.Stat(esptoolPath); err != nil || stat.IsDir() {
 		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the SDK using 'jag setup'", esptoolPath)
