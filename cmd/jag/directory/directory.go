@@ -32,6 +32,15 @@ const (
 // Hackishly set by main.go.
 var IsReleaseBuild = false
 
+func GetFirmwareModels() []string {
+	return []string{
+		"esp32",
+		"esp32c3",
+		"esp32s2",
+		"esp32s3",
+	}
+}
+
 func GetUserConfigPath() (string, error) {
 	if path, ok := os.LookupEnv(UserConfigPathEnv); ok {
 		return path, nil
@@ -139,7 +148,7 @@ func getAssetPath(name string) (string, error) {
 
 	path := filepath.Join(assetsPath, name)
 	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", name, path)
+		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", assetsPath, name)
 	}
 	return path, nil
 }
@@ -148,12 +157,18 @@ func GetJaguarSnapshotPath() (string, error) {
 	return getAssetPath("jaguar.snapshot")
 }
 
-func GetFirmwareEnvelopePath() (string, error) {
+func GetFirmwareEnvelopeFileName(model string) string {
+	return fmt.Sprintf("firmware-%s.envelope", model)
+}
+
+func GetFirmwareEnvelopePath(model string) (string, error) {
 	repoPath, ok := getRepoPath()
 	if ok {
+		// TODO(kasper): It is a little weird that we store the different
+		// ESP32 firmware variants in the same build directory.
 		return filepath.Join(repoPath, "build", "esp32", "firmware.envelope"), nil
 	}
-	return getAssetPath("firmware-esp32.envelope")
+	return getAssetPath(GetFirmwareEnvelopeFileName(model))
 }
 
 func GetEsptoolPath() (string, error) {

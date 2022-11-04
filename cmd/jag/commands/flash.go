@@ -168,7 +168,7 @@ func FlashCmd() *cobra.Command {
 			if len(args) == 1 {
 				envelopePath = args[0]
 			} else {
-				envelopePath, err = directory.GetFirmwareEnvelopePath()
+				envelopePath, err = directory.GetFirmwareEnvelopePath("esp32")
 				if err != nil {
 					return err
 				}
