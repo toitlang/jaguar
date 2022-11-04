@@ -58,8 +58,11 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if _, err := directory.GetFirmwareEnvelopePath(); err != nil {
-					return err
+				models := directory.GetFirmwareModels()
+				for _, model := range models {
+					if _, err := directory.GetFirmwareEnvelopePath(model); err != nil {
+						return err
+					}
 				}
 
 				fmt.Println("Jaguar setup is valid.")
@@ -81,7 +84,7 @@ func SetupCmd(info Info) *cobra.Command {
 				return err
 			}
 
-			if err := downloadFirmware(ctx, info.SDKVersion, "esp32"); err != nil {
+			if err := downloadFirmwareAll(ctx, info.SDKVersion); err != nil {
 				return err
 			}
 
@@ -159,13 +162,23 @@ func downloadAssets(ctx context.Context, version string) error {
 	return nil
 }
 
+func downloadFirmwareAll(ctx context.Context, version string) error {
+	models := directory.GetFirmwareModels()
+	for _, model := range models {
+		if err := downloadFirmware(ctx, version, model); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func downloadFirmware(ctx context.Context, version string, model string) error {
 	assetsPath, err := directory.GetAssetsCachePath()
 	if err != nil {
 		return err
 	}
 
-	firmwareURL := getFirmwareURL(version, "esp32")
+	firmwareURL := getFirmwareURL(version, model)
 	fmt.Printf("Downloading %s firmware from %s ...\n", model, firmwareURL)
 	bundle, err := download(ctx, firmwareURL)
 	if err != nil {
@@ -183,7 +196,8 @@ func downloadFirmware(ctx context.Context, version string, model string) error {
 		return err
 	}
 
-	destination, err := os.Create(filepath.Join(assetsPath, "firmware-esp32.envelope"))
+	envelopeFileName := directory.GetFirmwareEnvelopeFileName(model)
+	destination, err := os.Create(filepath.Join(assetsPath, envelopeFileName))
 	if err != nil {
 		return err
 	}

@@ -176,7 +176,7 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 		return err
 	}
 
-	envelopePath, err := directory.GetFirmwareEnvelopePath()
+	envelopePath, err := directory.GetFirmwareEnvelopePath("esp32")
 	if err != nil {
 		return err
 	}
