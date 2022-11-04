@@ -35,6 +35,7 @@ var IsReleaseBuild = false
 func GetFirmwareModels() []string {
 	return []string{
 		"esp32",
+		"esp32c3",
 		"esp32s2",
 		"esp32s3",
 	}
