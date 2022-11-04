@@ -82,8 +82,15 @@ func ConfigUpToDateCmd(info Info) *cobra.Command {
 func ConfigWifiCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "wifi",
-		Short: "Configure the WiFi settings for Jaguar devices",
-		Args:  cobra.NoArgs,
+		Short: "Configure the default WiFi settings for Jaguar devices",
+		Long: `Sets the default WiFi credentials for Jaguar devices.
+
+When Jaguar flashes a device ('jag flash'), or updates the firmware
+('jag firmware update'), then it will use the stored credentials.
+
+Without any stored credentials, Jaguar will prompt for the WiFi
+credentials whenever necessary.`,
+		Args: cobra.NoArgs,
 	}
 	cmd.AddCommand(
 		&cobra.Command{
