@@ -35,7 +35,7 @@ var IsReleaseBuild = false
 func GetFirmwareModels() []string {
 	return []string{
 		"esp32",
-		// TODO(kasper): Add "esp32s2" once we're on SDK alpha.38
+		"esp32s2",
 		"esp32s3",
 	}
 }
