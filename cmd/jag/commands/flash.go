@@ -70,7 +70,7 @@ func FlashCmd() *cobra.Command {
 			if len(args) == 1 {
 				envelopePath = args[0]
 			} else {
-				envelopePath, err = directory.GetFirmwareEnvelopePath()
+				envelopePath, err = directory.GetFirmwareEnvelopePath("esp32")
 				if err != nil {
 					return err
 				}
@@ -100,7 +100,8 @@ func FlashCmd() *cobra.Command {
 			}
 
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
-			return runFirmwareTool(ctx, sdk, envelopeFile.Name(), flashArguments...)
+			config := deviceOptions.GetConfig()
+			return runFirmwareToolWithConfig(ctx, sdk, envelopeFile.Name(), config, flashArguments...)
 		},
 	}
 

@@ -32,6 +32,15 @@ const (
 // Hackishly set by main.go.
 var IsReleaseBuild = false
 
+func GetFirmwareModels() []string {
+	return []string{
+		"esp32",
+		"esp32c3",
+		"esp32s2",
+		"esp32s3",
+	}
+}
+
 func GetUserConfigPath() (string, error) {
 	if path, ok := os.LookupEnv(UserConfigPathEnv); ok {
 		return path, nil
@@ -139,7 +148,7 @@ func getAssetPath(name string) (string, error) {
 
 	path := filepath.Join(assetsPath, name)
 	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", name, path)
+		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", assetsPath, name)
 	}
 	return path, nil
 }
@@ -148,20 +157,18 @@ func GetJaguarSnapshotPath() (string, error) {
 	return getAssetPath("jaguar.snapshot")
 }
 
-func GetFirmwareEnvelopePath() (string, error) {
-	repoPath, ok := getRepoPath()
-	if ok {
-		return filepath.Join(repoPath, "build", "esp32", "firmware.envelope"), nil
-	}
-	return getAssetPath("firmware-esp32.envelope")
+func GetFirmwareEnvelopeFileName(model string) string {
+	return fmt.Sprintf("firmware-%s.envelope", model)
 }
 
-func GetEsptoolCachePath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+func GetFirmwareEnvelopePath(model string) (string, error) {
+	repoPath, ok := getRepoPath()
+	if ok {
+		// TODO(kasper): It is a little weird that we store the different
+		// ESP32 firmware variants in the same build directory.
+		return filepath.Join(repoPath, "build", "esp32", "firmware.envelope"), nil
 	}
-	return filepath.Join(home, ".cache", "jaguar", Executable("esptool")), nil
+	return getAssetPath(GetFirmwareEnvelopeFileName(model))
 }
 
 func GetEsptoolPath() (string, error) {
@@ -170,15 +177,16 @@ func GetEsptoolPath() (string, error) {
 		return filepath.Join(repoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
 	}
 
-	cachePath, err := GetEsptoolCachePath()
+	sdkCachePath, err := GetSDKCachePath()
 	if err != nil {
 		return "", err
 	}
+	esptoolPath := filepath.Join(sdkCachePath, "tools", Executable("esptool"))
 
-	if stat, err := os.Stat(cachePath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the esptool using 'jag setup'", cachePath)
+	if stat, err := os.Stat(esptoolPath); err != nil || stat.IsDir() {
+		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the SDK using 'jag setup'", esptoolPath)
 	}
-	return cachePath, nil
+	return esptoolPath, nil
 }
 
 func ensureDirectory(dir string, err error) (string, error) {
