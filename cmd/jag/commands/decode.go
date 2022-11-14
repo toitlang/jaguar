@@ -181,7 +181,7 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 		return err
 	}
 
-	firmwareElf, err := ExtractFirmwarePart(ctx, sdk, envelopePath, "firmware.elf")
+	firmwareElf, err := ExtractFirmware(ctx, sdk, envelopePath, "elf")
 	if err != nil {
 		return err
 	}

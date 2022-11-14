@@ -131,7 +131,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			defer os.Remove(envelopeFile.Name())
 
 			config := deviceOptions.GetConfig()
-			firmwareBin, err := ExtractFirmware(ctx, sdk, envelopeFile.Name(), config)
+			firmwareBin, err := ExtractFirmwareBin(ctx, sdk, envelopeFile.Name(), config)
 			if err != nil {
 				return err
 			}
@@ -263,22 +263,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 	return envelopeFile, nil
 }
 
-func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}) (*os.File, error) {
-	configFile, err := os.CreateTemp("", "*.json.config")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(configFile.Name())
-
-	configBytes, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := os.WriteFile(configFile.Name(), configBytes, 0666); err != nil {
-		return nil, err
-	}
-
+func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}) (*os.File, error) {
 	binaryFile, err := os.CreateTemp("", "firmware.bin.*")
 	if err != nil {
 		return nil, err
@@ -288,30 +273,49 @@ func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, config 
 		"extract",
 		"--format=binary",
 		"-o", binaryFile.Name(),
-		"--config", configFile.Name(),
 	}
 
-	if err := runFirmwareTool(ctx, sdk, envelopePath, arguments...); err != nil {
+	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, arguments...); err != nil {
 		binaryFile.Close()
 		return nil, err
 	}
 	return binaryFile, nil
 }
 
-func ExtractFirmwarePart(ctx context.Context, sdk *SDK, envelopePath string, part string) (*os.File, error) {
-	partFile, err := os.CreateTemp("", part+".*")
+func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format string) (*os.File, error) {
+	outputFile, err := os.CreateTemp("", "firmware-"+format+".*")
 	if err != nil {
 		return nil, err
 	}
-	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--"+part, "-o", partFile.Name()); err != nil {
-		partFile.Close()
+	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--format", format, "-o", outputFile.Name()); err != nil {
+		outputFile.Close()
 		return nil, err
 	}
-	return partFile, nil
+	return outputFile, nil
 }
 
 func setFirmwareProperty(ctx context.Context, sdk *SDK, envelope *os.File, key string, value string) error {
 	return runFirmwareTool(ctx, sdk, envelope.Name(), "property", "set", key, value)
+}
+
+func runFirmwareToolWithConfig(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}, args ...string) error {
+	configFile, err := os.CreateTemp("", "*.json.config")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(configFile.Name())
+
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(configFile.Name(), configBytes, 0666); err != nil {
+		return err
+	}
+
+	args = append(args, "--config", configFile.Name())
+	return runFirmwareTool(ctx, sdk, envelopePath, args...)
 }
 
 func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ...string) error {
@@ -323,25 +327,51 @@ func runFirmwareTool(ctx context.Context, sdk *SDK, envelopePath string, args ..
 }
 
 func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) error {
-	// TODO(kasper): We should be able to get all the snapshots stored in
-	// the envelope out through extraction. For now, we just make it work
-	// with the jaguar snapshot.
-	jaguarSnapshotPath, err := directory.GetJaguarSnapshotPath()
+	listFile, err := os.CreateTemp("", "firmware-list.*")
 	if err != nil {
 		return err
 	}
-	if err := copySnapshotIntoCache(jaguarSnapshotPath); err != nil {
+	defer os.Remove(listFile.Name())
+
+	if err := runFirmwareTool(ctx, sdk, envelope.Name(), "container", "list", "-o", listFile.Name()); err != nil {
 		return err
 	}
 
-	snapshot, err := ExtractFirmwarePart(ctx, sdk, envelope.Name(), "system.snapshot")
+	listBytes, err := ioutil.ReadFile(listFile.Name())
 	if err != nil {
 		return err
 	}
-	defer snapshot.Close()
 
-	if err := copySnapshotIntoCache(snapshot.Name()); err != nil {
+	var entries map[string]map[string]interface{}
+	if err := json.Unmarshal(listBytes, &entries); err != nil {
 		return err
+	}
+
+	for name, entry := range entries {
+		kind := entry["kind"]
+		if kind != "snapshot" {
+			continue
+		}
+
+		snapshotFile, err := os.CreateTemp("", "firmware-snapshot.*")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(snapshotFile.Name())
+
+		snapshotExtractArguments := []string{
+			"container", "extract",
+			"-o", snapshotFile.Name(),
+			"--part=image",
+			name,
+		}
+		if err := runFirmwareTool(ctx, sdk, envelope.Name(), snapshotExtractArguments...); err != nil {
+			return err
+		}
+
+		if err := copySnapshotIntoCache(snapshotFile.Name()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
