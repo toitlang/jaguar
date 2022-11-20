@@ -28,6 +28,8 @@ jobs:
           GOOS=linux make JAG_BINARY=linux/jag jag
           GOOS=darwin make JAG_BINARY=macos/jag jag
           GOOS=windows make JAG_BINARY=windows/jag.exe jag
+          GOOS=linux GOARCH=arm make JAG_BINARY=linux-arm/jag jag
+          GOOS=linux GOARCH=arm64 make JAG_BINARY=linux-arm64/jag jag
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
@@ -37,11 +39,23 @@ jobs:
             build/linux/
             build/macos/
             build/windows/
+            build/linux-arm/
+            build/linux-arm64/
 
       - name: Create archive Linux
         working-directory: ./build/linux
         run: |
           tar -czf jag.tgz jag
+
+      - name: Create archive Linux ARM
+        working-directory: ./build/linux-arm
+        run: |
+          tar -czf jag-arm.tgz jag
+
+      - name: Create archive Linux
+        working-directory: ./build/linux-arm64
+        run: |
+          tar -czf jag-arm64.tgz jag
 
       - name: Check version number
         if: github.event_name == 'release'
@@ -59,6 +73,26 @@ jobs:
           file: build/linux/jag.tgz
           tag: ${{ github.ref }}
           asset_name: jag_linux.tgz
+          overwrite: true
+
+      - name: Upload jag Linux-ARM (tgz)
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/linux/jag-arm.tgz
+          tag: ${{ github.ref }}
+          asset_name: jag_linux-arm.tgz
+          overwrite: true
+
+      - name: Upload jag Linux-ARM64 (tgz)
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/linux/jag-arm64.tgz
+          tag: ${{ github.ref }}
+          asset_name: jag_linux-arm64.tgz
           overwrite: true
 
   sign_jag_windows:
