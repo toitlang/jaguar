@@ -31,12 +31,10 @@ On macOS, you can use [Homebrew](https://brew.sh/) to manage the installation of
 brew install toitlang/toit/jag
 ```
 
-<!---
 On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.com/en-us/windows/package-manager/winget/):
 ```
 winget install --id=Toit.Jaguar -e
 ```
--->
 
 For Archlinux you can install the AUR package [jaguar-bin](https://aur.archlinux.org/packages/jaguar-bin):
 ``` sh
@@ -47,8 +45,8 @@ As alternative to these package managers, we also offer precompiled binaries for
 
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag.dmg)
   (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_macos.zip))
-- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/download/v1.7.5/jag_installer.exe)
-  (or as an [archive](https://github.com/toitlang/jaguar/releases/download/v1.7.5/jag_windows.zip))
+- [Download Jaguar for Windows](https://github.com/toitlang/jaguar/releases/latest/download/jag_installer.exe)
+  (or as an [archive](https://github.com/toitlang/jaguar/releases/latest/download/jag_windows.zip))
 - [Download Jaguar for Linux](https://github.com/toitlang/jaguar/releases/latest/download/jag_linux.tgz)
   (only as an archive)
 
