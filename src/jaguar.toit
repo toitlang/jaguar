@@ -99,34 +99,12 @@ run_installed_containers -> none:
   blockers.size.repeat: semaphore.down
 
 serve arguments:
-  port := HTTP_PORT
-  if arguments.size >= 1:
-    port = int.parse arguments[0]
-
-  config := {:}
-  if platform == PLATFORM_FREERTOS:
-    assets.decode.get "config" --if_present=: | encoded |
-      catch: config = tison.decode encoded
-
-  id/uuid.Uuid := uuid.NIL
-  if arguments.size >= 2:
-    id = uuid.parse arguments[1]
-  else:
-    id = config.get "id"
-      --if_absent=: id
-      --if_present=: uuid.parse it
-
-  name/string := "unknown"
-  if arguments.size >= 3:
-    name = arguments[2]
-  else:
-    name = config.get "name" --if_absent=: name
-
+  device := Device.parse arguments
   while true:
     attempts ::= 3
     failures := 0
     while failures < attempts:
-      exception := catch: run id name port
+      exception := catch: run device
       if disabled:
         network_free.up      // Signal to start running the container.
         container_done.down  // Wait until done running the container.
@@ -144,7 +122,44 @@ serve arguments:
     logger.info "backing off for $backoff"
     sleep backoff
 
-run id/uuid.Uuid name/string port/int:
+class Device:
+  id/uuid.Uuid
+  name/string
+  port/int
+  chip/string
+  constructor --.id --.name --.port --.chip:
+
+  static parse arguments -> Device:
+    config := {:}
+    if platform == PLATFORM_FREERTOS:
+      assets.decode.get "config" --if_present=: | encoded |
+        catch: config = tison.decode encoded
+
+    id/uuid.Uuid? := null
+    if arguments.size >= 2:
+      id = uuid.parse arguments[1]
+    else:
+      id = config.get "id" --if_present=: uuid.parse it
+
+    name/string? := null
+    if arguments.size >= 3:
+      name = arguments[2]
+    else:
+      name = config.get "name"
+
+    port := HTTP_PORT
+    if arguments.size >= 1:
+      port = int.parse arguments[0]
+
+    chip/string? := config.get "chip"
+
+    return Device
+        --id=id or uuid.NIL
+        --name=name or "unknown"
+        --port=port
+        --chip=chip or "unknown"
+
+run device/Device:
   broadcast_task := null
   server_task := null
   network/net.Interface? := null
@@ -153,9 +168,9 @@ run id/uuid.Uuid name/string port/int:
   socket/tcp.ServerSocket? := null
   try:
     network = net.open
-    socket = network.tcp_listen port
+    socket = network.tcp_listen device.port
     address := "http://$network.address:$socket.local_address.port"
-    logger.info "running Jaguar device '$name' (id: '$id') on '$address'"
+    logger.info "running Jaguar device '$device.name' (id: '$device.id') on '$address'"
 
     // We've successfully connected to the network, so we consider
     // the current firmware functional. Go ahead and validate the
@@ -173,7 +188,7 @@ run id/uuid.Uuid name/string port/int:
     done := monitor.Semaphore
     server_task = task::
       try:
-        error = catch: serve_incoming_requests socket id name address
+        error = catch: serve_incoming_requests socket device address
       finally:
         server_task = null
         if broadcast_task: broadcast_task.cancel
@@ -181,7 +196,7 @@ run id/uuid.Uuid name/string port/int:
 
     broadcast_task = task::
       try:
-        error = catch: broadcast_identity network id name address
+        error = catch: broadcast_identity network device address
       finally:
         broadcast_task = null
         if server_task: server_task.cancel
@@ -312,12 +327,13 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
     finally:
       writer.close
 
-identity_payload id/uuid.Uuid name/string address/string -> ByteArray:
+identity_payload device/Device address/string -> ByteArray:
   identity := """
     { "method": "jaguar.identify",
       "payload": {
-        "name": "$name",
-        "id": "$id",
+        "name": "$device.name",
+        "id": "$device.id",
+        "chip": "$device.chip",
         "sdkVersion": "$vm_sdk_version",
         "address": "$address",
         "wordSize": $BYTES_PER_WORD
@@ -326,8 +342,8 @@ identity_payload id/uuid.Uuid name/string address/string -> ByteArray:
   """
   return identity.to_byte_array
 
-broadcast_identity network/net.Interface id/uuid.Uuid name/string address/string -> none:
-  payload ::= identity_payload id name address
+broadcast_identity network/net.Interface device/Device address/string -> none:
+  payload ::= identity_payload device address
   datagram ::= udp.Datagram
       payload
       net.SocketAddress IDENTIFY_ADDRESS IDENTIFY_PORT
@@ -473,12 +489,13 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
     writer.write_headers 404
     writer.write "Not found: $path"
 
-serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address/string -> none:
+serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> none:
   self := Task.current
 
   server := http.Server --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     headers ::= request.headers
+    device_id := "$device.id"
     device_id_header := headers.single HEADER_DEVICE_ID
     sdk_version_header := headers.single HEADER_SDK_VERSION
     path := request.path
@@ -486,15 +503,15 @@ serve_incoming_requests socket/tcp.ServerSocket id/uuid.Uuid name/string address
     // Handle identification requests before validation, as the caller doesn't know that information yet.
     if path == "/identify" and request.method == "GET":
       writer.write
-          identity_payload id name address
+          identity_payload device address
 
     else if path == "/" or path.ends_with ".html" or path.ends_with ".css" or path.ends_with ".ico":
-      handle_browser_request name request writer
+      handle_browser_request device.name request writer
 
     // Validate device ID.
-    else if device_id_header != id.stringify:
-      logger.info "denied request, header: '$HEADER_DEVICE_ID' was '$device_id_header' not '$id'"
-      writer.write_headers 403 --message="Device has id '$id', jag is trying to talk to '$device_id_header'"
+    else if device_id_header != device_id:
+      logger.info "denied request, header: '$HEADER_DEVICE_ID' was '$device_id_header' not '$device_id'"
+      writer.write_headers 403 --message="Device has id '$device_id', jag is trying to talk to '$device_id_header'"
 
     // Handle pings.
     else if path == "/ping" and request.method == "GET":

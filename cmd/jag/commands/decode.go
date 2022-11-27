@@ -41,8 +41,8 @@ func DecodeCmd() *cobra.Command {
 			return serialDecode(cmd, args[0], pretty, plain)
 		},
 	}
-	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
-	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
+	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
 	return cmd
 }
 
