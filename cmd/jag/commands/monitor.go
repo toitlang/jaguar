@@ -76,8 +76,8 @@ func MonitorCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "port to monitor")
 	cmd.Flags().BoolP("attach", "a", false, "attach to the serial output without rebooting it")
-	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
-	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
+	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
 	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
 	return cmd
 }

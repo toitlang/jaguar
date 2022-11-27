@@ -80,6 +80,6 @@ func CompileCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Specify output (snapshot) file")
+	cmd.Flags().StringP("output", "o", "", "specify output (snapshot) file")
 	return cmd
 }
