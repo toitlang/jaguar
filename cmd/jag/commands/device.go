@@ -42,6 +42,7 @@ func (d Devices) Elements() []Short {
 type Device struct {
 	ID         string `mapstructure:"id" yaml:"id" json:"id"`
 	Name       string `mapstructure:"name" yaml:"name" json:"name"`
+	Chip       string `mapstructure:"chip" yaml:"chip" json:"chip"`
 	Address    string `mapstructure:"address" yaml:"address" json:"address"`
 	SDKVersion string `mapstructure:"sdkVersion" yaml:"sdkVersion" json:"sdkVersion"`
 	WordSize   int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
