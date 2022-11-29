@@ -90,9 +90,19 @@ $(JAG_TOIT_DEPENDENCIES): $(SDK_BUILD_MARKER)
 # The SDK build marker is *not* phony, so we only
 # use the rule once per invocation of this Makefile.
 $(SDK_BUILD_MARKER):
-	make -C $(JAG_TOIT_REPO_PATH) version-file esp32 esptool
+	make -C $(JAG_TOIT_REPO_PATH) version-file esptool
+	make -C $(JAG_TOIT_REPO_PATH) esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s2 esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s3 esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c3 esp32
 	mkdir -p $(BUILD_DIR)
 	echo "$(BUILD_DATE)" > $@
+
+.PHONY: all-chips
+all-chips:
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s2 esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s3 esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c3 esp32
 
 .PHONY: force-rebuild-sdk
 force-rebuild-sdk:
