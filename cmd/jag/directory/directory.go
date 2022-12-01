@@ -164,9 +164,7 @@ func GetFirmwareEnvelopeFileName(model string) string {
 func GetFirmwareEnvelopePath(model string) (string, error) {
 	repoPath, ok := getRepoPath()
 	if ok {
-		// TODO(kasper): It is a little weird that we store the different
-		// ESP32 firmware variants in the same build directory.
-		return filepath.Join(repoPath, "build", "esp32", "firmware.envelope"), nil
+		return filepath.Join(repoPath, "build", model, "firmware.envelope"), nil
 	}
 	return getAssetPath(GetFirmwareEnvelopeFileName(model))
 }
