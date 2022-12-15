@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload jag Linux (tgz)
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/linux/jag.tgz
@@ -100,7 +100,7 @@ jobs:
           path: build/windows
 
       - name: Upload jag Windows (zip)
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag.zip
@@ -109,7 +109,7 @@ jobs:
           overwrite: true
 
       - name: Upload jag Windows (installer_x64)
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer_x64.exe
@@ -118,7 +118,7 @@ jobs:
           overwrite: true
 
       - name: Upload jag Windows (installer)
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer.exe
@@ -189,7 +189,7 @@ jobs:
 
       - name: Upload jag macOS (zip)
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/macos/jag.zip
@@ -199,7 +199,7 @@ jobs:
 
       - name: Upload jag macOS (dmg)
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/macos/jag.dmg
@@ -228,7 +228,7 @@ jobs:
 
       - name: Upload assets
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2.3
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/assets.tar.gz
