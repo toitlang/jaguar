@@ -12,7 +12,7 @@ jobs:
   build_jag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -30,7 +30,7 @@ jobs:
           GOOS=windows make JAG_BINARY=windows/jag.exe jag
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: jag-build
           path: |
@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload jag Linux (tgz)
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/linux/jag.tgz
@@ -66,9 +66,9 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: jag-build
           path: build
@@ -84,7 +84,7 @@ jobs:
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "::set-output name=version::$version"
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Build installer
         run: |
@@ -94,13 +94,13 @@ jobs:
           cp build/windows/jag_installer_x64.exe build/windows/jag_installer.exe
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: jag-signed-windows
           path: build/windows
 
       - name: Upload jag Windows (zip)
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag.zip
@@ -109,7 +109,7 @@ jobs:
           overwrite: true
 
       - name: Upload jag Windows (installer_x64)
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer_x64.exe
@@ -118,7 +118,7 @@ jobs:
           overwrite: true
 
       - name: Upload jag Windows (installer)
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer.exe
@@ -137,7 +137,7 @@ jobs:
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "::set-output name=version::$version"
+          echo "version$version" >> $GITHUB_OUTPUT
 
       - name: Download winget binary
         run: |
@@ -152,9 +152,9 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: jag-build
           path: build
@@ -182,14 +182,14 @@ jobs:
           make jag-macos-sign
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: jag-macos
           path: build/macos/
 
       - name: Upload jag macOS (zip)
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/macos/jag.zip
@@ -199,7 +199,7 @@ jobs:
 
       - name: Upload jag macOS (dmg)
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/macos/jag.dmg
@@ -215,7 +215,7 @@ jobs:
         with:
           go-version: 1.16
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download SDK
         run: |
@@ -228,7 +228,7 @@ jobs:
 
       - name: Upload assets
         if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@v2.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/assets.tar.gz
@@ -242,7 +242,7 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Version number
         id: version
@@ -250,7 +250,7 @@ jobs:
         run: |
           VERSION_WITH_V="${{ github.event.release.tag_name }}"
           VERSION=${VERSION_WITH_V#v}
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
 
       - name: Ssh
         env:
