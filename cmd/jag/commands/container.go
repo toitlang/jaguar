@@ -110,6 +110,14 @@ func ContainerInstallCmd() *cobra.Command {
 				return fmt.Errorf("can't run directory: '%s'", entrypoint)
 			}
 
+			optimizationLevel := -1
+			if cmd.Flags().Changed("optimization-level") {
+				optimizationLevel, err = cmd.Flags().GetInt("optimization-level")
+				if err != nil {
+					return err
+				}
+			}
+
 			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
@@ -126,13 +134,14 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
-			return InstallFile(cmd, device, sdk, name, entrypoint, defines, programAssetsPath)
+			return InstallFile(cmd, device, sdk, name, entrypoint, defines, programAssetsPath, optimizationLevel)
 		},
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control container on device")
 	cmd.Flags().String("assets", "", "attach assets to the container")
+	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
 	return cmd
 }
 
