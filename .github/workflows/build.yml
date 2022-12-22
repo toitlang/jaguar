@@ -137,7 +137,7 @@ jobs:
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "version$version" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Download winget binary
         run: |
