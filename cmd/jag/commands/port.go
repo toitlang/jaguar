@@ -134,7 +134,7 @@ func pickPort(all bool) (string, error) {
 	ports, err := getPorts(all)
 	if err != nil || ports.Len() == 0 {
 		if runtime.GOOS == "linux" {
-			return "", fmt.Errorf("no serial ports detected. Have you installed the driver for the ESP32 you have connected?\nDo you need to reboot after the kernel package was updated.")
+			return "", fmt.Errorf("no serial ports detected. Have you installed the driver for the ESP32 you have connected?\nDo you need to reboot after the kernel package was updated?")
 		} else {
 			return "", fmt.Errorf("no serial ports detected. Have you installed the driver for the ESP32 you have connected?")
 		}
