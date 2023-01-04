@@ -81,10 +81,11 @@ jobs:
 
       - name: Version number
         id: version
+        shell: pwsh
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Build installer
         run: |
@@ -134,10 +135,11 @@ jobs:
     steps:
       - name: Version number
         id: version
+        shell: pwsh
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Download winget binary
         run: |
@@ -250,7 +252,7 @@ jobs:
         run: |
           VERSION_WITH_V="${{ github.event.release.tag_name }}"
           VERSION=${VERSION_WITH_V#v}
-          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Ssh
         env:
