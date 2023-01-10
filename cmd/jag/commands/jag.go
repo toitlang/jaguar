@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	segment "github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/analytics"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
-	segment "gopkg.in/segmentio/analytics-go.v3"
 )
 
 type ctxKey string
