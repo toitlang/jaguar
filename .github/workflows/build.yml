@@ -12,10 +12,10 @@ jobs:
   build_jag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.16
 
@@ -32,7 +32,7 @@ jobs:
           GOOS=linux GOARCH=arm64 make JAG_BINARY=linux-arm64/jag jag
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: jag-build
           path: |
@@ -100,9 +100,9 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: jag-build
           path: build
@@ -115,10 +115,11 @@ jobs:
 
       - name: Version number
         id: version
+        shell: pwsh
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "::set-output name=version::$version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Build installer
         run: |
@@ -128,7 +129,7 @@ jobs:
           cp build/windows/jag_installer_x64.exe build/windows/jag_installer.exe
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: jag-signed-windows
           path: build/windows
@@ -168,10 +169,11 @@ jobs:
     steps:
       - name: Version number
         id: version
+        shell: pwsh
         run: |
           $versionV = "${{ github.event.release.tag_name }}"
           $version = $versionV.Substring(1)
-          echo "::set-output name=version::$version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Download winget binary
         run: |
@@ -186,9 +188,9 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: jag-build
           path: build
@@ -216,7 +218,7 @@ jobs:
           make jag-macos-sign
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: jag-macos
           path: build/macos/
@@ -245,11 +247,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: 1.16
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Download SDK
         run: |
@@ -276,7 +278,7 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Version number
         id: version
@@ -284,7 +286,7 @@ jobs:
         run: |
           VERSION_WITH_V="${{ github.event.release.tag_name }}"
           VERSION=${VERSION_WITH_V#v}
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Ssh
         env:

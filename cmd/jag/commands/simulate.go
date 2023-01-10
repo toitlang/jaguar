@@ -82,8 +82,8 @@ func SimulateCmd() *cobra.Command {
 
 	cmd.Flags().UintP("port", "p", 0, "port to run the simulator on")
 	cmd.Flags().String("name", "", "name for the simulator, if not set a name will be auto generated")
-	cmd.Flags().BoolP("force-pretty", "r", false, "Force output to use terminal graphics")
-	cmd.Flags().BoolP("force-plain", "l", false, "Force output to use plain ASCII text")
+	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
+	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
 
 	return cmd
 }

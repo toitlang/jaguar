@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -211,8 +212,13 @@ func (s *SDK) Stacktrace(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.StacktracePath(), args...)
 }
 
-func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string) error {
-	buildSnap := s.ToitCompile(ctx, "-w", snapshot, entrypoint)
+func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string, optimizationLevel int) error {
+	var buildSnap *exec.Cmd
+	if optimizationLevel >= 0 {
+		buildSnap = s.ToitCompile(ctx, "-w", snapshot, "-O"+strconv.Itoa(optimizationLevel), entrypoint)
+	} else {
+		buildSnap = s.ToitCompile(ctx, "-w", snapshot, entrypoint)
+	}
 	buildSnap.Stderr = os.Stderr
 	buildSnap.Stdout = os.Stdout
 	if err := buildSnap.Run(); err != nil {

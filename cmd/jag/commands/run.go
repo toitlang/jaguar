@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,11 +104,19 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
+			optimizationLevel := -1
+			if cmd.Flags().Changed("optimization-level") {
+				optimizationLevel, err = cmd.Flags().GetInt("optimization-level")
+				if err != nil {
+					return err
+				}
+			}
+
 			if name, ok := deviceSelect.(deviceNameSelect); ok && string(name) == "host" {
 				if cmd.Flags().Changed("define") {
 					return fmt.Errorf("--define/-D is not yet supported when running on host")
 				}
-				return runOnHost(ctx, cmd, args)
+				return runOnHost(ctx, cmd, args, optimizationLevel)
 			}
 
 			if cmd.Flags().Changed("expression") {
@@ -154,7 +163,8 @@ func RunCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return RunFile(cmd, device, sdk, entrypoint, defines, programAssetsPath)
+
+			return RunFile(cmd, device, sdk, entrypoint, defines, programAssetsPath, optimizationLevel)
 		},
 	}
 
@@ -162,13 +172,18 @@ func RunCmd() *cobra.Command {
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control run on device")
 	cmd.Flags().String("assets", "", "attach assets to the program")
+	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
 	return cmd
 }
 
-func runOnHost(ctx context.Context, cmd *cobra.Command, args []string) error {
+func runOnHost(ctx context.Context, cmd *cobra.Command, args []string, optimizationLevel int) error {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return err
+	}
+
+	if optimizationLevel >= 0 {
+		args = append([]string{"-O" + strconv.Itoa(optimizationLevel)}, args...)
 	}
 
 	expression, err := cmd.Flags().GetString("expression")
@@ -194,9 +209,10 @@ func RunFile(
 	sdk *SDK,
 	path string,
 	defines map[string]interface{},
-	assetsPath string) error {
+	assetsPath string,
+	optimizationLevel int) error {
 	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
-	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath)
+	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel)
 }
 
 func InstallFile(
@@ -206,9 +222,10 @@ func InstallFile(
 	name string,
 	path string,
 	defines map[string]interface{},
-	assetsPath string) error {
+	assetsPath string,
+	optimizationLevel int) error {
 	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name)
-	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath)
+	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath, optimizationLevel)
 }
 
 func sendCodeFromFile(
@@ -219,7 +236,8 @@ func sendCodeFromFile(
 	path string,
 	name string,
 	defines map[string]interface{},
-	assetsPath string) error {
+	assetsPath string,
+	optimizationLevel int) error {
 
 	ctx := cmd.Context()
 	snapshotsCache, err := directory.GetSnapshotsCachePath()
@@ -245,7 +263,7 @@ func sendCodeFromFile(
 			return err
 		}
 		snapshot = snapshotFile.Name()
-		err = sdk.Compile(ctx, snapshot, path)
+		err = sdk.Compile(ctx, snapshot, path, optimizationLevel)
 		if err != nil {
 			// We assume the error has been printed.
 			// Mark the command as silent to avoid printing the error twice.

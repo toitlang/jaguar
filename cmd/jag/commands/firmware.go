@@ -92,6 +92,16 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			chip, err := cmd.Flags().GetString("chip")
+			if err != nil {
+				return err
+			}
+
+			// TODO(kasper): Make 'auto' the default.
+			if chip == "auto" {
+				chip = device.Chip
+			}
+
 			wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
 			if err != nil {
 				return err
@@ -100,6 +110,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			deviceOptions := DeviceOptions{
 				Id:           newID,
 				Name:         device.Name,
+				Chip:         chip,
 				WifiSsid:     wifiSSID,
 				WifiPassword: wifiPassword,
 			}
@@ -108,7 +119,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			if len(args) == 1 {
 				envelopePath = args[0]
 			} else {
-				envelopePath, err = directory.GetFirmwareEnvelopePath("esp32")
+				envelopePath, err = directory.GetFirmwareEnvelopePath(chip)
 				if err != nil {
 					return err
 				}
@@ -158,6 +169,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringP("chip", "c", "esp32", "chip of the target device")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
@@ -168,6 +180,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 type DeviceOptions struct {
 	Id           string
 	Name         string
+	Chip         string
 	WifiSsid     string
 	WifiPassword string
 }
@@ -217,6 +230,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 		configAssetMap := map[string]interface{}{
 			"id":   device.Id,
 			"name": device.Name,
+			"chip": device.Chip,
 		}
 		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {

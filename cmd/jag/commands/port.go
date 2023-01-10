@@ -55,8 +55,8 @@ func PortCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(PortSetCmd())
-	cmd.Flags().BoolP("list", "l", false, "If set, list the ports")
-	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
+	cmd.Flags().BoolP("list", "l", false, "if set, list the ports")
+	cmd.Flags().StringP("output", "o", "short", "set output format to json, yaml or short (works only with '--list')")
 	cmd.Flags().Bool("all", false, "if set, will show all available ports")
 	return cmd
 }
@@ -133,7 +133,11 @@ func CheckPort(port string) (string, error) {
 func pickPort(all bool) (string, error) {
 	ports, err := getPorts(all)
 	if err != nil || ports.Len() == 0 {
-		return "", fmt.Errorf("no serial ports detected. Have you installed the driver for the ESP32 you have connected?")
+		if runtime.GOOS == "linux" {
+			return "", fmt.Errorf("no serial ports detected. Have you installed the driver for the ESP32 you have connected?\nDo you need to reboot after the kernel package was updated?")
+		} else {
+			return "", fmt.Errorf("no serial ports detected. Have you installed the driver for the ESP32 you have connected?")
+		}
 	}
 
 	prompt := promptui.Select{

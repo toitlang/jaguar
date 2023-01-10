@@ -102,8 +102,8 @@ func ScanCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolP("list", "l", false, "If set, list the devices")
-	cmd.Flags().StringP("output", "o", "short", "Set output format to json, yaml or short (works only with '--list')")
+	cmd.Flags().BoolP("list", "l", false, "if set, list the devices")
+	cmd.Flags().StringP("output", "o", "short", "set output format to json, yaml or short (works only with '--list')")
 	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on (ignored when an address is given)")
 	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
 	return cmd

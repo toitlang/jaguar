@@ -40,8 +40,15 @@ func CompileCmd() *cobra.Command {
 				return err
 			}
 
-			outputfile := ""
+			optimizationLevel := -1
+			if cmd.Flags().Changed("optimization-level") {
+				optimizationLevel, err = cmd.Flags().GetInt("optimization-level")
+				if err != nil {
+					return err
+				}
+			}
 
+			outputfile := ""
 			if !cmd.Flags().Changed("output") {
 				dot := strings.LastIndex(entrypoint, ".")
 				slash := strings.LastIndex(entrypoint, "/")
@@ -67,7 +74,7 @@ func CompileCmd() *cobra.Command {
 
 			fmt.Printf("Compiling '%s' to '%s'\n", entrypoint, outputfile)
 
-			err = sdk.Compile(ctx, outputfile, entrypoint)
+			err = sdk.Compile(ctx, outputfile, entrypoint, optimizationLevel)
 			if err != nil {
 				// We assume the error has been printed.
 				// Mark the command as silent to avoid printing the error twice.
@@ -80,6 +87,7 @@ func CompileCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Specify output (snapshot) file")
+	cmd.Flags().StringP("output", "o", "", "specify output (snapshot) file")
+	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
 	return cmd
 }

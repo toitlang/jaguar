@@ -43,6 +43,15 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
+			chip, err := cmd.Flags().GetString("chip")
+			if err != nil {
+				return err
+			}
+
+			if chip == "auto" {
+				return fmt.Errorf("auto-detecting chip type isn't supported yet")
+			}
+
 			id := uuid.New()
 			var name string
 			if cmd.Flags().Changed("name") {
@@ -62,6 +71,7 @@ func FlashCmd() *cobra.Command {
 			deviceOptions := DeviceOptions{
 				Id:           id.String(),
 				Name:         name,
+				Chip:         chip,
 				WifiSsid:     wifiSSID,
 				WifiPassword: wifiPassword,
 			}
@@ -70,7 +80,7 @@ func FlashCmd() *cobra.Command {
 			if len(args) == 1 {
 				envelopePath = args[0]
 			} else {
-				envelopePath, err = directory.GetFirmwareEnvelopePath("esp32")
+				envelopePath, err = directory.GetFirmwareEnvelopePath(chip)
 				if err != nil {
 					return err
 				}
@@ -94,7 +104,7 @@ func FlashCmd() *cobra.Command {
 
 			flashArguments := []string{
 				"flash",
-				"--chip", "esp32",
+				"--chip", chip,
 				"--port", port,
 				"--baud", strconv.Itoa(int(baud)),
 			}
@@ -107,6 +117,7 @@ func FlashCmd() *cobra.Command {
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
+	cmd.Flags().StringP("chip", "c", "esp32", "chip of the target device")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")

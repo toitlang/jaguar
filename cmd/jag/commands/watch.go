@@ -64,13 +64,21 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
+			optimizationLevel := -1
+			if cmd.Flags().Changed("optimization-level") {
+				optimizationLevel, err = cmd.Flags().GetInt("optimization-level")
+				if err != nil {
+					return err
+				}
+			}
+
 			watcher, err := newWatcher()
 			if err != nil {
 				return err
 			}
 			defer watcher.Close()
 
-			waitCh, fn := onWatchChanges(cmd, watcher, device, sdk, entrypoint, programAssetsPath)
+			waitCh, fn := onWatchChanges(cmd, watcher, device, sdk, entrypoint, programAssetsPath, optimizationLevel)
 			go fn()
 
 			<-waitCh
@@ -79,6 +87,7 @@ func WatchCmd() *cobra.Command {
 	}
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().String("assets", "", "attach assets to the program")
+	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
 	return cmd
 }
 
@@ -167,7 +176,8 @@ func onWatchChanges(
 	device *Device,
 	sdk *SDK,
 	entrypoint string,
-	assetsPath string) (<-chan struct{}, func()) {
+	assetsPath string,
+	optimizationLevel int) (<-chan struct{}, func()) {
 	doneCh := make(chan struct{})
 	ctx := cmd.Context()
 
@@ -199,7 +209,7 @@ func onWatchChanges(
 	}
 
 	runOnDevice := func(runCtx context.Context) {
-		if err := RunFile(cmd, device, sdk, entrypoint, nil, assetsPath); err != nil {
+		if err := RunFile(cmd, device, sdk, entrypoint, nil, assetsPath, optimizationLevel); err != nil {
 			fmt.Println("Error:", err)
 			return
 		}
