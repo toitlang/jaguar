@@ -26,7 +26,8 @@ func getToitSDKURL(version string) (string, error) {
 	}
 	currARCH := runtime.GOARCH
 	if currARCH == "arm" || currARCH == "arm64" {
-		return "", fmt.Errorf("Jaguar does not support automatic downloading of the Toit SDK on ARM-based processors")
+		fmt.Printf("Enter the URL of the ARM SDK (version %v).", version)
+		return ReadLine()
 	}
 	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, currOS), nil
 }
