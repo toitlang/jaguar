@@ -74,7 +74,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: jag-build
+          name: jag-build-ubuntu-latest
           path: build
 
       - name: Sign jag
@@ -162,7 +162,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: jag-build
+          name: jag-build-ubuntu-latest
           path: build
 
       - name: Setup binary rights
