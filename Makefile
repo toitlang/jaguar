@@ -27,7 +27,6 @@ JAG_GO_SOURCES := $(shell find cmd -name '*.go')
 
 # Setup Go compilation flags.
 GO_BUILD_FLAGS := GODEBUG=netdns=go
-GO_LINK_FLAGS := $(GO_LINK_FLAGS) -extldflags '-static'
 GO_LINK_FLAGS += -X 'main.buildDate="$(BUILD_DATE)"'
 ifdef JAG_BUILD_RELEASE
 GO_LINK_FLAGS += -X 'main.buildMode=release'
