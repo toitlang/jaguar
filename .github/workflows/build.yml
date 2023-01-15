@@ -10,7 +10,11 @@ on:
 
 jobs:
   build_jag:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: [ ubuntu-latest, ubuntu-20.04 ]
+
+    runs-on: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v3
 
@@ -32,7 +36,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: jag-build
+          name: jag-build-${{ matrix.container }}
           path: |
             build/linux/
             build/macos/
@@ -52,7 +56,7 @@ jobs:
           ./jag --no-analytics version | head -n1 | grep --fixed-strings "${{ github.event.release.tag_name }}"
 
       - name: Upload jag Linux (tgz)
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && ${{ matrix.container == 'ubuntu-20.04' }}
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -70,7 +74,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: jag-build
+          name: jag-build-ubuntu-latest
           path: build
 
       - name: Sign jag
@@ -158,7 +162,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: jag-build
+          name: jag-build-ubuntu-latest
           path: build
 
       - name: Setup binary rights
