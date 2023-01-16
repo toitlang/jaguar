@@ -41,10 +41,10 @@ jobs:
           name: jag-build-${{ matrix.container }}
           path: |
             build/linux/
-            build/macos/
-            build/windows/
             build/linux-arm/
             build/linux-arm64/
+            build/macos/
+            build/windows/
 
       - name: Create archive Linux
         working-directory: ./build/linux
@@ -80,23 +80,23 @@ jobs:
           overwrite: true
 
       - name: Upload jag Linux ARM (tgz)
-        if: github.event_name == 'release'
+        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/linux/jag-arm.tgz
+          file: build/linux-arm/jag-arm.tgz
           tag: ${{ github.ref }}
-          asset_name: jag_linux-arm.tgz
+          asset_name: jag_linux_arm.tgz
           overwrite: true
 
       - name: Upload jag Linux ARM64 (tgz)
-        if: github.event_name == 'release'
+        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/linux/jag-arm64.tgz
+          file: build/linux-arm64/jag-arm64.tgz
           tag: ${{ github.ref }}
-          asset_name: jag_linux-arm64.tgz
+          asset_name: jag_linux_arm64.tgz
           overwrite: true
 
   sign_jag_windows:
