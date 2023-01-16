@@ -56,7 +56,7 @@ jobs:
         run: |
           tar -czf jag-arm.tgz jag
 
-      - name: Create archive Linux
+      - name: Create archive Linux ARM64
         working-directory: ./build/linux-arm64
         run: |
           tar -czf jag-arm64.tgz jag
@@ -79,7 +79,7 @@ jobs:
           asset_name: jag_linux.tgz
           overwrite: true
 
-      - name: Upload jag Linux-ARM (tgz)
+      - name: Upload jag Linux ARM (tgz)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
@@ -89,7 +89,7 @@ jobs:
           asset_name: jag_linux-arm.tgz
           overwrite: true
 
-      - name: Upload jag Linux-ARM64 (tgz)
+      - name: Upload jag Linux ARM64 (tgz)
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
