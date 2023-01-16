@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/viper"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
-	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 type Config struct {
