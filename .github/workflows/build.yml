@@ -56,7 +56,7 @@ jobs:
           ./jag --no-analytics version | head -n1 | grep --fixed-strings "${{ github.event.release.tag_name }}"
 
       - name: Upload jag Linux (tgz)
-        if: (github.event_name == 'release') && (${{ matrix.container }} == 'ubuntu-20.04')
+        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
