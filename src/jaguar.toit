@@ -20,6 +20,7 @@ import system.containers
 import system.firmware
 
 import .container_registry
+import .server
 
 HTTP_PORT        ::= 9000
 IDENTIFY_PORT    ::= 1990
@@ -492,7 +493,7 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
 serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> none:
   self := Task.current
 
-  server := http.Server --logger=logger
+  server := JaguarServer --logger=logger
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     headers ::= request.headers
     device_id := "$device.id"
