@@ -20,6 +20,17 @@ Toit programs that are relocated and installed in flash on the device. Before in
 program, we stop any old version of the program and free the resources it has consumed. The new
 version of the program gets to start again from `main`.
 
+## Community
+
+Use this [invite](https://discord.gg/Q7Y9VQ5nh2) to join our Discord server, and follow the development and get help.
+We're eager to hear of your experience building with Toit. The discord
+chat is publicly accessible through our [Linen](https://linen.dev/d/toit).
+
+We also use [GitHub Discussions](https://github.com/toitlang/toit/discussions) to discuss and learn.
+
+We follow a [code of conduct](CODE_OF_CONDUCT.md) in all our community interactions.
+
+
 ## How do I use it?
 
 ### Download
