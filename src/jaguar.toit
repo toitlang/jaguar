@@ -161,14 +161,9 @@ class Device:
         --chip=chip or "unknown"
 
 run device/Device:
-  broadcast_task := null
-  server_task := null
-  network/net.Interface? := null
-  error := null
-
+  network ::= net.open
   socket/tcp.ServerSocket? := null
   try:
-    network = net.open
     socket = network.tcp_listen device.port
     address := "http://$network.address:$socket.local_address.port"
     logger.info "running Jaguar device '$device.name' (id: '$device.id') on '$address'"
@@ -184,32 +179,16 @@ run device/Device:
         logger.error "firmware update failed to validate"
 
     // We run two tasks concurrently: One broadcasts the device identity
-    // via UDP and one serves incoming HTTP requests. If one of the tasks
-    // fail, we take the other one down to clean up nicely.
-    done := monitor.Semaphore
-    server_task = task::
-      try:
-        error = catch: serve_incoming_requests socket device address
-      finally:
-        server_task = null
-        if broadcast_task: broadcast_task.cancel
-        critical_do: done.up
-
-    broadcast_task = task::
-      try:
-        error = catch: broadcast_identity network device address
-      finally:
-        broadcast_task = null
-        if server_task: server_task.cancel
-        critical_do: done.up
-
-    // Wait for both tasks to finish.
-    2.repeat: done.down
-
+    // via UDP and one serves incoming HTTP requests. We run the tasks
+    // in a group so if one of them fails, we take the other one down and
+    // clean up nicely.
+    Task.group [
+      :: broadcast_identity network device address,
+      :: serve_incoming_requests socket device address,
+    ]
   finally:
     if socket: socket.close
-    if network: network.close
-    if error: throw error
+    network.close
 
 flash_image image_size/int reader/reader.Reader name/string? defines/Map -> uuid.Uuid:
   with_timeout --ms=60_000: flash_mutex.do:
