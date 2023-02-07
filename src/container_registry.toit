@@ -2,18 +2,18 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-import device
 import uuid
 import system.containers
 import system.api.containers show ContainerService
+import system.storage
 
 JAGUAR_INSTALLED_MAGIC ::= 0xb16_ca7  // Magic is "big cat".
 
-flash_ ::= device.FlashStore
+flash_ / storage.Bucket ::= storage.Bucket.open --flash "toitlang.org/jag"
 jaguar_ / uuid.Uuid ::= containers.current
 
 class ContainerRegistry:
-  static KEY_ /string ::= "jag.containers"
+  static KEY_ /string ::= "containers"
 
   id_by_name_         / Map ::= {:}  // Map<string, uuid.Uuid>
   name_by_id_         / Map ::= {:}  // Map<uuid.Uuid, string>
@@ -40,7 +40,7 @@ class ContainerRegistry:
       entry ::= entries.get id_as_string
       name/string? := null
       catch: name = entry[0]
-      name = name or ((id == jaguar_) ? "jaguar" : "container-$(index++)")
+      name = name or image.name or "container-$(index++)"
       defines/Map := {:}
       catch: defines = entry[1]
       // Update the in-memory registry mappings.
@@ -89,4 +89,4 @@ class ContainerRegistry:
 
   store_ -> none:
     entries := entry_by_id_string_.map: | _ entry/List | entry[0..2]
-    flash_.set KEY_ entries
+    flash_[KEY_] = entries

@@ -8,7 +8,6 @@ import net
 import net.udp
 import net.tcp
 import reader
-import esp32
 import uuid
 import monitor
 
