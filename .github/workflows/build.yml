@@ -7,6 +7,7 @@ on:
     # You also have to change the description slightly, if you want to change a
     # prerelease to a release.
     types: [ published, edited ]
+  workflow_dispatch:
 
 jobs:
   build_jag:
