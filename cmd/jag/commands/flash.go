@@ -102,6 +102,10 @@ func FlashCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
+			if chip == "esp32s3octo" {
+				chip = "esp32s3"
+			}
+
 			flashArguments := []string{
 				"flash",
 				"--chip", chip,

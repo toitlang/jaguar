@@ -38,6 +38,7 @@ func GetFirmwareModels() []string {
 		"esp32c3",
 		"esp32s2",
 		"esp32s3",
+		"esp32s3octo",
 	}
 }
 
