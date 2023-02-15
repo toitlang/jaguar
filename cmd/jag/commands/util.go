@@ -16,16 +16,16 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"github.com/xtgo/uuid"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v2"
 )
 
@@ -339,32 +339,7 @@ func ReadLine() (string, error) {
 }
 
 func ReadPassword() ([]byte, error) {
-	fd := int(os.Stdin.Fd())
-	oldState, err := terminal.MakeRaw(fd)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		terminal.Restore(fd, oldState)
-		fmt.Printf("******\n")
-	}()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	defer signal.Stop(c)
-	defer func() { close(c) }()
-	go func() {
-		select {
-		case _, ok := <-c:
-			if ok {
-				terminal.Restore(fd, oldState)
-				fmt.Printf("\n")
-				os.Exit(1)
-			}
-		}
-	}()
-
-	return terminal.ReadPassword(fd)
+	return term.ReadPassword(int(syscall.Stdin))
 }
 
 type encoder interface {
@@ -536,12 +511,21 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 		wifiPassword = cfg.GetString(WifiCfgKey + "." + WifiPasswordCfgKey)
 	} else {
 		fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
-		pw, err := ReadPassword()
-		if err != nil {
+		pw := ""
+		pw_bytes, err := ReadPassword()
+		if err == nil {
+			pw = string(pw_bytes)
 			fmt.Printf("\n")
-			return "", "", err
+		} else {
+			// Fall back to reading the password without hiding it.
+			// On Windows git-bash, ReadPassword() might not work.
+			pw, err = ReadLine()
+			if err != nil {
+				fmt.Printf("\n")
+				return "", "", err
+			}
 		}
-		wifiPassword = string(pw)
+		wifiPassword = pw
 	}
 	return wifiSSID, wifiPassword, nil
 }

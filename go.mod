@@ -43,6 +43,7 @@ require (
 	go.bug.st/serial v1.5.0
 	golang.org/x/crypto v0.5.0
 	golang.org/x/net v0.5.0
+	golang.org/x/term v0.4.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20230109162033-3c3c17ce83e6 // indirect
 	gopkg.in/yaml.v2 v2.4.0
