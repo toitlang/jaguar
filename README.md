@@ -82,7 +82,14 @@ credentials, but be aware that the tooling requires
 jag flash
 ```
 
-Now it is possible to monitor the serial output from the device:
+If you want to avoid typing the WiFi credentials every time you flash, you can store
+them in Jaguar's config file with:
+
+``` sh
+jag config wifi set --wifi-ssid SSID --wifi-password YOUR_PASSWORD
+```
+
+After flashing it is possible to monitor the serial output from the device:
 
 ``` sh
 jag monitor
