@@ -512,9 +512,9 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 	} else {
 		fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
 		pw := ""
-		pw_bytes, err := ReadPassword()
+		pwBytes, err := ReadPassword()
 		if err == nil {
-			pw = string(pw_bytes)
+			pw = string(pwBytes)
 			fmt.Printf("\n")
 		} else {
 			// Fall back to reading the password without hiding it.
