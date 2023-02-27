@@ -38,7 +38,8 @@ func GetFirmwareModels() []string {
 		"esp32c3",
 		"esp32s2",
 		"esp32s3",
-		"esp32s3octo",
+		// TODO(kasper): Disabled for now. Not part of release build yet.
+		// "esp32s3octo",
 	}
 }
 
