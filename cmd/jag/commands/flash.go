@@ -102,7 +102,7 @@ func FlashCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
-			if chip == "esp32s3octo" {
+			if chip == "esp32s3-spiram-octo" {
 				chip = "esp32s3"
 			}
 
