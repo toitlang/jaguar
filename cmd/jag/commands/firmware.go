@@ -261,7 +261,11 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			return nil, err
 		}
 
-		if err := runFirmwareTool(ctx, sdk, envelope.Path, "container", "install", "--assets", assetsFile.Name(), "-o", envelopeFile.Name(), "jaguar", jaguarSnapshot); err != nil {
+		if err := runFirmwareTool(ctx, sdk, envelope.Path,
+			"container", "install", "-o", envelopeFile.Name(),
+			"--assets", assetsFile.Name(),
+			"--run=boot", "--critical",
+			"jaguar", jaguarSnapshot); err != nil {
 			return nil, err
 		}
 	}

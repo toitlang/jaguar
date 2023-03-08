@@ -241,7 +241,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, as
 	}
 
 	arguments := []string{
-		"--binary", bits,
+		"--format=binary", bits,
 		"--output", image.Name(),
 		snapshotPath,
 	}
