@@ -190,7 +190,7 @@ run device/Device:
     network.close
 
 flash_image image_size/int reader/reader.Reader name/string? defines/Map -> uuid.Uuid:
-  with_timeout --ms=60_000: flash_mutex.do:
+  with_timeout --ms=120_000: flash_mutex.do:
     image := registry_.install name defines:
       logger.debug "installing container image with $image_size bytes"
       written_size := 0
@@ -288,7 +288,7 @@ run_code image_size/int reader/reader.Reader defines/Map -> none:
     if disabled: container_done.up
 
 install_firmware firmware_size/int reader/reader.Reader -> none:
-  with_timeout --ms=120_000: flash_mutex.do:
+  with_timeout --ms=300_000: flash_mutex.do:
     logger.info "installing firmware with $firmware_size bytes"
     written_size := 0
     writer := firmware.FirmwareWriter 0 firmware_size
