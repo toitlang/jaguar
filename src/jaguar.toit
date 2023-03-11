@@ -179,9 +179,9 @@ run device/Device:
 
     // We run two tasks concurrently: One broadcasts the device identity
     // via UDP and one serves incoming HTTP requests. We run the tasks
-    // in a group so if one of them fails, we take the other one down and
-    // clean up nicely.
-    Task.group [
+    // in a group so if one of them terminates, we take the other one down
+    // and clean up nicely.
+    Task.group --required=1 [
       :: broadcast_identity network device address,
       :: serve_incoming_requests socket device address,
     ]
