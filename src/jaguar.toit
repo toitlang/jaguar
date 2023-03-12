@@ -33,12 +33,14 @@ HEADER_CONTAINER_NAME    ::= "X-Jaguar-Container-Name"
 HEADER_CONTAINER_TIMEOUT ::= "X-Jaguar-Container-Timeout"
 
 // Defines recognized by Jaguar for /run and /install requests.
-JAG_DISABLED       ::= "jag.disabled"
-JAG_TIMEOUT        ::= "jag.timeout"
+JAG_DISABLED ::= "jag.disabled"
+JAG_TIMEOUT  ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
-validate_firmware / bool := firmware.is_validation_pending
 flash_mutex ::= monitor.Mutex
+
+firmware_is_validation_pending / bool := firmware.is_validation_pending
+firmware_is_upgrade_pending / bool := false
 
 /**
 Jaguar can run containers while Jaguar itself is disabled. You can
@@ -105,17 +107,25 @@ serve arguments:
     failures := 0
     while failures < attempts:
       exception := catch: run device
+      // If we have a pending firmware upgrade, we take care of
+      // it before trying to re-open the network.
+      if firmware_is_upgrade_pending: firmware.upgrade
+      // If Jaguar needs to be disabled, we stop here and wait until
+      // we can re-enable Jaguar.
       if disabled:
         network_free.up      // Signal to start running the container.
         container_done.down  // Wait until done running the container.
         disabled = false
-      if not exception: continue
-      failures++
-      logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
+        continue
+      // Log exceptions and count the failures so we can back off
+      // and avoid excessive attempts to re-open the network.
+      if exception:
+        failures++
+        logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
     // If we need to validate the firmware and we've failed to do so
     // in the first round of attempts, we roll back to the previous
     // firmware right away.
-    if validate_firmware:
+    if firmware_is_validation_pending:
       logger.error "firmware update was rejected after failing to connect or validate"
       firmware.rollback
     backoff := Duration --s=5
@@ -170,18 +180,18 @@ run device/Device:
     // We've successfully connected to the network, so we consider
     // the current firmware functional. Go ahead and validate the
     // firmware if requested to do so.
-    if validate_firmware:
+    if firmware_is_validation_pending:
       if firmware.validate:
         logger.info "firmware update validated after connecting to network"
-        validate_firmware = false
+        firmware_is_validation_pending = false
       else:
         logger.error "firmware update failed to validate"
 
     // We run two tasks concurrently: One broadcasts the device identity
     // via UDP and one serves incoming HTTP requests. We run the tasks
-    // in a group so if one of them fails, we take the other one down and
-    // clean up nicely.
-    Task.group [
+    // in a group so if one of them terminates, we take the other one down
+    // and clean up nicely.
+    Task.group --required=1 [
       :: broadcast_identity network device address,
       :: serve_incoming_requests socket device address,
     ]
@@ -302,7 +312,7 @@ install_firmware firmware_size/int reader/reader.Reader -> none:
           logger.info "installing firmware with $firmware_size bytes ($percent%)"
           last = percent
       writer.commit
-      logger.info "installed firmware; rebooting"
+      logger.info "installed firmware; ready to update on chip reset"
     finally:
       writer.close
 
@@ -510,12 +520,10 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
     else if path == "/firmware" and request.method == "PUT":
       install_firmware request.content_length request.body
       writer.write STATUS_OK
-      // TODO(kasper): Maybe we can share the way we try to close down
-      // the HTTP server nicely with the corresponding code where we
-      // handle /code requests?
-      writer.detach.close  // Close connection nicely before upgrading.
-      sleep --ms=500
-      firmware.upgrade
+      // Mark the firmware as having a pending upgrade and close
+      // the server socket to force the HTTP sever loop to stop.
+      firmware_is_upgrade_pending = true
+      socket.close
 
     // Validate SDK version before attempting to install containers or run code.
     else if sdk_version_header != vm_sdk_version:
@@ -534,14 +542,9 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
       defines ::= extract_defines headers
       run_code request.content_length request.body defines
       writer.write STATUS_OK
-      if disabled:
-        // TODO(kasper): There is no great way of closing down the HTTP server loop
-        // and make sure we get a response delivered to all clients. For now, we
-        // hope that sleeping for 0.5s is enough and then we simply cancel the task
-        // responsible for running the loop.
-        task::
-          sleep --ms=500
-          self.cancel
+      // If the code needs to run with Jaguar disabled, we close
+      // the server socket to force the HTTP sever loop to stop.
+      if disabled: socket.close
 
 extract_defines headers/http.Headers -> Map:
   defines := {:}
