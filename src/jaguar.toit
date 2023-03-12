@@ -118,7 +118,7 @@ serve arguments:
         disabled = false
         continue
       // Log exceptions and count the failures so we can back off
-      // and avoid getting
+      // and avoid excessive attempts to re-open the network.
       if exception:
         failures++
         logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
