@@ -105,6 +105,10 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release'
     steps:
+      - name: Clean workspace
+        run: |
+          rm -Recurse -Force ${{ github.workspace }}\*
+
       - uses: actions/checkout@v3
 
       - uses: actions/download-artifact@v3
