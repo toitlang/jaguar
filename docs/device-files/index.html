@@ -1,0 +1,29 @@
+<!-- This file is not used by the device.  The actual content of index.html is
+     in a string literal in jaguar.toit. -->
+<html>
+  <head>
+    <link rel="stylesheet" href="style.css">
+    <title>example-thing (Jaguar device)</title>
+  </head>
+  <body>
+    <div class="box">
+      <section class="text-center">
+        <img src="chip.svg" alt="Picture of an embedded device" width=200>
+      </section>
+      <h1 class="mt-40">example-thing</h1>
+      <p class="text-center">Jaguar device</p>
+      <p class="hr mt-40"></p>
+      <section class="grid grid-cols-2 mt-20">
+        <p>Uptime</p>
+        <p><b class="text-black">5 minutes</b></p>
+        <p>SDK</p>
+        <p><b class="text-black">1.0.0</b></p>
+      </section>
+      <p class="hr mt-20"></p>
+      <p class="mt-40">Run code on this device using</p>
+      <b><a href="https://github.com/toitlang/jaguar">&gt; jag run -d example-thing hello.toit</a></b>
+      <p class="mt-20">Monitor the serial port console using</p>
+      <p class="mb-20"><b><a href="https://github.com/toitlang/jaguar">&gt; jag monitor</a></b></p>
+    </div>
+  </body>
+</html>
