@@ -36,6 +36,10 @@ HEADER_CONTAINER_TIMEOUT ::= "X-Jaguar-Container-Timeout"
 JAG_DISABLED ::= "jag.disabled"
 JAG_TIMEOUT  ::= "jag.timeout"
 
+// Assets for the mini-webpage that the device serves up on $HTTP_PORT.
+CHIP_IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
+STYLE_CSS ::= "https://toitlang.github.io/jaguar/device-files/style.css"
+
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 flash_mutex ::= monitor.Mutex
 
@@ -349,8 +353,6 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
   path := request.path
   if path == "/": path = "index.html"
   if path.starts_with "/": path = path[1..]
-  CHIP_IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
-  STYLE_CSS ::= "https://toitlang.github.io/jaguar/device-files/style.css"
 
   if path == "index.html":
     uptime ::= Duration --s=Time.monotonic_us / Duration.MICROSECONDS_PER_SECOND
