@@ -36,6 +36,10 @@ HEADER_CONTAINER_TIMEOUT ::= "X-Jaguar-Container-Timeout"
 JAG_DISABLED ::= "jag.disabled"
 JAG_TIMEOUT  ::= "jag.timeout"
 
+// Assets for the mini-webpage that the device serves up on $HTTP_PORT.
+CHIP_IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
+STYLE_CSS ::= "https://toitlang.github.io/jaguar/device-files/style.css"
+
 logger ::= log.Logger log.INFO_LEVEL log.DefaultTarget --name="jaguar"
 flash_mutex ::= monitor.Mutex
 
@@ -349,7 +353,6 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
   path := request.path
   if path == "/": path = "index.html"
   if path.starts_with "/": path = path[1..]
-  CHIP_IMAGE ::= "https://toit.io/static/chip-e4ce030bdea3996fa7ad44ff63d88e52.svg"
 
   if path == "index.html":
     uptime ::= Duration --s=Time.monotonic_us / Duration.MICROSECONDS_PER_SECOND
@@ -358,7 +361,7 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
     writer.write """
         <html>
           <head>
-            <link rel="stylesheet" href="style.css">
+            <link rel="stylesheet" href="$STYLE_CSS">
             <title>$name (Jaguar device)</title>
           </head>
           <body>
@@ -383,92 +386,6 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
             </div>
           </body>
         </html>
-        """
-  else if path == "style.css":
-    writer.headers.set "Content-Type" "text/css"
-    writer.write """
-        body {
-          background-color: #F8FAFC;
-          color: #444;
-        }
-        h1 {
-          font-family: -apple-system, "Helvetica Neue", Arial;
-          text-align: center;
-          font-size: 40px;
-          margin-top: 0;
-          margin-bottom: 15px;
-          color: #444;
-        }
-        p {
-          margin: 0;
-        }
-        .box {
-          position: relative;
-          border: none;
-          background: #fff;
-          border-radius: 16px;
-          box-shadow: #FFF 0 0 0 0 inset, #00000019 0 0 0 1px inset,
-          #0000 0 0 0 0, #0000 0 0 0 0, #E2E8F0 0 20px 25px -5px, #E2E8F0 0 8px 10px -6px;
-          box-sizing: border-box;
-          display: block;
-          line-height: 24px;
-          padding: 12px;
-          width: max-content;
-          margin: auto;
-          margin-top: 60px;
-          padding-left: 20px;
-          min-width: 360px;
-        }
-        .icon {
-          padding-top: 20px;
-          color: #55A398;
-          position: relative;
-          width: 140px;
-        }
-        p, div {
-          -webkit-font-smoothing: antialiased;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-          font-size: 14px;
-          color: #64748B;
-          margin: 0;
-        }
-        .text-center {
-          text-align: center;
-        }
-        .hr {
-          -webkit-font-smoothing: antialiased;
-          background-image: linear-gradient(to right, #E2E8F000, #E2E8F0, #E3E8F000);
-          height: 1px;
-          width: 100%;
-        }
-        a {
-          color: #55A398;
-        }
-        a:link {
-          text-decoration: none;
-          color: #55A398;
-        }
-        a:hover {
-          text-decoration: underline;
-        }
-        .text-black {
-          color: #000;
-        }
-        .mt-40 {
-          margin-top: 40px;
-        }
-        .mt-20 {
-          margin-top: 20px;
-        }
-        .mb-20 {
-          margin-bottom: 20px;
-        }
-        .grid {
-          display: grid;
-        }
-        .grid-cols-2	 {
-          grid-template-columns: 1fr 3fr;
-        }
         """
   else if path == "favicon.ico":
     writer.headers.set "Location" CHIP_IMAGE
