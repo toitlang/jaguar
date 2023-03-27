@@ -19,12 +19,11 @@ import system.containers
 import system.firmware
 
 import .container_registry
-import .server
 
 HTTP_PORT        ::= 9000
 IDENTIFY_PORT    ::= 1990
 IDENTIFY_ADDRESS ::= net.IpAddress.parse "255.255.255.255"
-STATUS_OK        ::= """{ "status": "OK" }"""
+STATUS_OK_JSON   ::= """{ "status": "OK" }"""
 
 HEADER_DEVICE_ID         ::= "X-Jaguar-Device-ID"
 HEADER_SDK_VERSION       ::= "X-Jaguar-SDK-Version"
@@ -110,7 +109,7 @@ serve arguments:
     attempts ::= 3
     failures := 0
     while failures < attempts:
-      exception := catch: run device
+      exception := catch --trace: run device
       // If we have a pending firmware upgrade, we take care of
       // it before trying to re-open the network.
       if firmware_is_upgrade_pending: firmware.upgrade
@@ -388,17 +387,21 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
         </html>
         """
   else if path == "favicon.ico":
-    writer.headers.set "Location" CHIP_IMAGE
-    writer.write_headers 302
+    writer.redirect http.STATUS_FOUND CHIP_IMAGE
   else:
     writer.headers.set "Content-Type" "text/plain"
-    writer.write_headers 404
+    writer.write_headers http.STATUS_NOT_FOUND
     writer.write "Not found: $path"
 
 serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> none:
+  catch --trace=(: it != "NOT_CONNECTED"):
+    serve_incoming_requests_ socket device address
+
+serve_incoming_requests_ socket/tcp.ServerSocket device/Device address/string -> none:
   self := Task.current
 
-  server := JaguarServer --logger=logger
+  server := http.Server --logger=logger
+
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     headers ::= request.headers
     device_id := "$device.id"
@@ -407,9 +410,11 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
     path := request.path
 
     // Handle identification requests before validation, as the caller doesn't know that information yet.
-    if path == "/identify" and request.method == "GET":
-      writer.write
-          identity_payload device address
+    if path == "/identify" and request.method == http.GET:
+      writer.headers.set "Content-Type" "application/json"
+      result := identity_payload device address
+      writer.headers.set "Content-Length" result.size.stringify
+      writer.write result
 
     else if path == "/" or path.ends_with ".html" or path.ends_with ".css" or path.ends_with ".ico":
       handle_browser_request device.name request writer
@@ -417,26 +422,29 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
     // Validate device ID.
     else if device_id_header != device_id:
       logger.info "denied request, header: '$HEADER_DEVICE_ID' was '$device_id_header' not '$device_id'"
-      writer.write_headers 403 --message="Device has id '$device_id', jag is trying to talk to '$device_id_header'"
+      writer.write_headers http.STATUS_FORBIDDEN --message="Device has id '$device_id', jag is trying to talk to '$device_id_header'"
 
     // Handle pings.
-    else if path == "/ping" and request.method == "GET":
-      writer.write STATUS_OK
+    else if path == "/ping" and request.method == http.GET:
+      respond_ok writer
 
     // Handle listing containers.
-    else if path == "/list" and request.method == "GET":
-      writer.write (ubjson.encode registry_.entries)
+    else if path == "/list" and request.method == http.GET:
+      result := ubjson.encode registry_.entries
+      writer.headers.set "Content-Type" "application/ubjson"
+      writer.headers.set "Content-Length" result.size.stringify
+      writer.write result
 
     // Handle uninstalling containers.
-    else if path == "/uninstall" and request.method == "PUT":
+    else if path == "/uninstall" and request.method == http.PUT:
       container_name ::= headers.single HEADER_CONTAINER_NAME
       uninstall_image container_name
-      writer.write STATUS_OK
+      respond_ok writer
 
     // Handle firmware updates.
-    else if path == "/firmware" and request.method == "PUT":
+    else if path == "/firmware" and request.method == http.PUT:
       install_firmware request.content_length request.body
-      writer.write STATUS_OK
+      respond_ok writer
       // Mark the firmware as having a pending upgrade and close
       // the server socket to force the HTTP sever loop to stop.
       firmware_is_upgrade_pending = true
@@ -445,20 +453,20 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
     // Validate SDK version before attempting to install containers or run code.
     else if sdk_version_header != vm_sdk_version:
       logger.info "denied request, header: '$HEADER_SDK_VERSION' was '$sdk_version_header' not '$vm_sdk_version'"
-      writer.write_headers 406 --message="Device has $vm_sdk_version, jag has $sdk_version_header"
+      writer.write_headers http.STATUS_NOT_ACCEPTABLE --message="Device has $vm_sdk_version, jag has $sdk_version_header"
 
     // Handle installing containers.
     else if path == "/install" and request.method == "PUT":
       container_name ::= headers.single HEADER_CONTAINER_NAME
       defines ::= extract_defines headers
       install_image request.content_length request.body container_name defines
-      writer.write STATUS_OK
+      respond_ok writer
 
     // Handle code running.
     else if path == "/run" and request.method == "PUT":
       defines ::= extract_defines headers
       run_code request.content_length request.body defines
-      writer.write STATUS_OK
+      respond_ok writer
       // If the code needs to run with Jaguar disabled, we close
       // the server socket to force the HTTP sever loop to stop.
       if disabled: socket.close
@@ -471,3 +479,8 @@ extract_defines headers/http.Headers -> Map:
     timeout := int.parse header --on_error=: null
     if timeout: defines[JAG_TIMEOUT] = timeout
   return defines
+
+respond_ok writer/http.ResponseWriter -> none:
+  writer.headers.set "Content-Type" "application/json"
+  writer.headers.set "Content-Length" STATUS_OK_JSON.size.stringify
+  writer.write STATUS_OK_JSON
