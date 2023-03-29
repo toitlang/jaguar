@@ -9,8 +9,6 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230109192245-7efeeb08f296 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/alexflint/go-filemutex v1.2.0 // indirect
-	github.com/bketelsen/crypt v0.0.4 // indirect
-	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb
 	github.com/bradfitz/gomemcache v0.0.0-20220106215444-fb4bf637b56d
 	github.com/cheggaaa/pb/v3 v3.1.0
 	github.com/chzyer/readline v1.5.1 // indirect
@@ -41,10 +39,9 @@ require (
 	github.com/toitware/ubjson v0.0.0-20211207075236-aa4add2fcd1a
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.5.0
-	golang.org/x/crypto v0.5.0
-	golang.org/x/net v0.5.0
-	golang.org/x/term v0.4.0 // indirect
-	golang.org/x/tools v0.5.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/net v0.8.0
+	golang.org/x/term v0.6.0
 	google.golang.org/genproto v0.0.0-20230109162033-3c3c17ce83e6 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
