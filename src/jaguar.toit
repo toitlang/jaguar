@@ -109,7 +109,7 @@ serve arguments:
     attempts ::= 3
     failures := 0
     while failures < attempts:
-      exception := catch --trace: run device
+      exception := catch: run device
       // If we have a pending firmware upgrade, we take care of
       // it before trying to re-open the network.
       if firmware_is_upgrade_pending: firmware.upgrade
@@ -394,10 +394,6 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
     writer.write "Not found: $path"
 
 serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> none:
-  catch --trace=(: it != "NOT_CONNECTED"):
-    serve_incoming_requests_ socket device address
-
-serve_incoming_requests_ socket/tcp.ServerSocket device/Device address/string -> none:
   self := Task.current
 
   server := http.Server --logger=logger
