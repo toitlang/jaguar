@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	version    = "v1.9.17"
-	sdkVersion = "v2.0.0-alpha.74"
+	version    = "v1.9.18"
+	sdkVersion = "v2.0.0-alpha.76"
 )
 
 var buildDate = "unknown"
