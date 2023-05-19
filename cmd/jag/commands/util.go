@@ -284,6 +284,7 @@ func (r *gzipReader) Close() error {
 }
 
 func extractTarFile(fileReader io.Reader, destDir string, subDir string) error {
+	dotSlashSubDir := "./" + subDir
 	tarBallReader := tar.NewReader(fileReader)
 
 	// Extract the input tar file
@@ -296,11 +297,15 @@ func extractTarFile(fileReader io.Reader, destDir string, subDir string) error {
 			return err
 		}
 
-		if !strings.HasPrefix(header.Name, subDir) {
+		withoutPrefix := ""
+		if strings.HasPrefix(header.Name, subDir) {
+			withoutPrefix = strings.TrimPrefix(header.Name, subDir)
+		} else if strings.HasPrefix(header.Name, dotSlashSubDir) {
+			withoutPrefix = strings.TrimPrefix(header.Name, dotSlashSubDir)
+		} else {
 			continue
 		}
-
-		dirPath := filepath.Join(destDir, strings.TrimPrefix(header.Name, subDir))
+		dirPath := filepath.Join(destDir, withoutPrefix)
 
 		switch header.Typeflag {
 		case tar.TypeDir:
