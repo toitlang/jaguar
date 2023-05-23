@@ -333,6 +333,8 @@ jobs:
           pkgver: ${{ steps.version.outputs.version }}
           updpkgsums: true
           srcinfo: true
+          # Workaround for https://github.com/hapakaien/archlinux-package-action/issues/23.
+          aur: true
 
       - name: Update jaguar-bin package
         uses: hapakaien/archlinux-package-action@v2
