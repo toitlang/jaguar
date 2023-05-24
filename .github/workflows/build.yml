@@ -327,7 +327,9 @@ jobs:
           git config user.name "Leon Gungadin Mogensen"
 
       - name: Update jaguar package
-        uses: hapakaien/archlinux-package-action@v2
+        # We are using our own fork to work around
+        # https://github.com/hapakaien/archlinux-package-action/issues/32.
+        uses: toitlang/archlinux-package-action@main
         with:
           path: jaguar
           pkgver: ${{ steps.version.outputs.version }}
@@ -337,7 +339,7 @@ jobs:
           aur: true
 
       - name: Update jaguar-bin package
-        uses: hapakaien/archlinux-package-action@v2
+        uses: toitlang/archlinux-package-action@main
         with:
           path: jaguar-bin
           pkgver: ${{ steps.version.outputs.version }}
