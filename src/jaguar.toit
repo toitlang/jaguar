@@ -109,7 +109,7 @@ serve arguments:
     attempts ::= 3
     failures := 0
     while failures < attempts:
-      exception := catch: run device
+      exception := catch --trace: run device
       // If we have a pending firmware upgrade, we take care of
       // it before trying to re-open the network.
       if firmware_is_upgrade_pending: firmware.upgrade
