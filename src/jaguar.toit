@@ -396,7 +396,7 @@ handle_browser_request name/string request/http.Request writer/http.ResponseWrit
 serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> none:
   self := Task.current
 
-  server := http.Server --logger=logger
+  server := http.Server --logger=logger --read_timeout=(Duration --s=3)
 
   server.listen socket:: | request/http.Request writer/http.ResponseWriter |
     headers ::= request.headers
