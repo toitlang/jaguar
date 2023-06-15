@@ -48,10 +48,6 @@ jag: $(BUILD_DIR)/$(JAG_BINARY)
 $(BUILD_DIR)/$(JAG_BINARY): $(JAG_GO_SOURCES)
 	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
 
-.PHONY: jag-macos-sign
-jag-macos-sign:
-	gon -log-level=debug -log-json $(CURDIR)/tools/gon.json
-
 #############################
 # Rules for the Jaguar assets
 #############################
