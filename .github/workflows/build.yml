@@ -199,6 +199,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install dependencies
+        run: |
+          set -e
+          brew install create-dmg
+          brew install zip
+
       - uses: actions/download-artifact@v3
         with:
           name: jag-build-ubuntu-latest
@@ -208,23 +214,36 @@ jobs:
         run: |
           chmod +x build/macos/jag
 
-      - name: Import signing keychain
-        uses: apple-actions/import-codesign-certs@v2
+      - name: Sign and notarize
+        uses: toitlang/action-macos-sign-notarize@v1.0.0
         with:
-          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
-          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          certificate: ${{ secrets.MACOS_CERTIFICATE }}
+          certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          username: ${{ secrets.AC_USERNAME }}
+          password: ${{ secrets.AC_PASSWORD }}
+          apple-team-id: 33DS2ZRDST
+          app-path: build/macos/jag
 
-      - name: Install gon via HomeBrew for code signing and app notarization
+      - name: Create a DMG
         run: |
-          brew tap mitchellh/gon
-          brew install mitchellh/gon/gon
+          # Use an empty directory as source so we don't accidentally add other files than the
+          # jag binary.
+          set -e
+          mkdir empty
+          create-dmg \
+              --volname "jag" \
+              --add-file jag build/macos/jag 0 0 \
+              build/macos/jag.dmg \
+              empty
 
-      - name: Sign the mac binaries with Gon
-        env:
-          AC_USERNAME: ${{ secrets.AC_USERNAME }}
-          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+      - name: Create a ZIP
         run: |
-          make jag-macos-sign
+          zip -j build/macos/jag.zip build/macos/jag
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: jag-build-ubuntu-latest
+          path: build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
