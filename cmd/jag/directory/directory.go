@@ -7,7 +7,6 @@ package directory
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 
@@ -127,7 +126,7 @@ func GetAssetsPath() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		dir := path.Dir(execPath)
+		dir := filepath.Dir(execPath)
 		return filepath.Join(dir, "assets"), nil
 	}
 
