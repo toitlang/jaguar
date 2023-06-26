@@ -351,7 +351,7 @@ func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) er
 	}
 	defer os.Remove(listFile.Name())
 
-	if err := runFirmwareTool(ctx, sdk, envelope.Name(), "container", "list", "-o", listFile.Name()); err != nil {
+	if err := runFirmwareTool(ctx, sdk, envelope.Name(), "container", "list", "--output-format", "json", "-o", listFile.Name()); err != nil {
 		return err
 	}
 
