@@ -38,6 +38,7 @@ func GetFirmwareModels() []string {
 		"esp32s2",
 		"esp32s3",
 		"esp32s3-spiram-octo",
+		"esp32-eth-clk-out17",
 	}
 }
 

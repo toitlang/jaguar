@@ -104,6 +104,8 @@ func FlashCmd() *cobra.Command {
 
 			if chip == "esp32s3-spiram-octo" {
 				chip = "esp32s3"
+			} else if chip == "esp32-eth-clk-out17" {
+				chip = "esp32"
 			}
 
 			flashArguments := []string{
