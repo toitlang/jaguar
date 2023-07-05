@@ -172,7 +172,7 @@ func RunCmd() *cobra.Command {
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control run on device")
 	cmd.Flags().String("assets", "", "attach assets to the program")
-	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
+	cmd.Flags().IntP("optimization-level", "O", 1, "optimization level")
 	return cmd
 }
 
