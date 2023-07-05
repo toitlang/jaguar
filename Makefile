@@ -58,7 +58,7 @@ $(BUILD_DIR)/assets/jaguar.snapshot: install-dependencies
 $(BUILD_DIR)/assets/jaguar.snapshot: $(SDK_PATH)/bin/toit.compile
 $(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_SOURCES)
 	mkdir -p $(BUILD_DIR)/assets
-	$(SDK_PATH)/bin/toit.compile -w $@ $(JAG_ENTRY_POINT)
+	$(SDK_PATH)/bin/toit.compile -O2 -w $@ $(JAG_ENTRY_POINT)
 
 .PHONY: install-dependencies
 install-dependencies: $(SDK_PATH)/bin/toit.pkg
