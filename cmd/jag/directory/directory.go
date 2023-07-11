@@ -21,6 +21,8 @@ const (
 	SnapshotCachePathEnv = "JAG_SNAPSHOT_CACHE_PATH"
 	configFile           = ".jaguar"
 
+	ToitUserConfigPathEnv = "TOIT_CONFIG_FILE"
+
 	// ToitPathEnv: Path to the Toit SDK build.
 	ToitRepoPathEnv = "JAG_TOIT_REPO_PATH"
 	// WifiSSIDEnv if set will use this wifi ssid.
@@ -52,6 +54,18 @@ func GetUserConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(homedir, ".config", "jaguar", "config.yaml"), nil
+}
+
+func GetToitUserConfigPath() (string, error) {
+	if path, ok := os.LookupEnv(ToitUserConfigPathEnv); ok {
+		return path, nil
+	}
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homedir, ".config", "toit", "config.yaml"), nil
 }
 
 func GetDeviceConfigPath() (string, error) {

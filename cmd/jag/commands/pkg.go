@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 	"github.com/toitlang/tpkg/commands"
 	"github.com/toitlang/tpkg/config/store"
 	"github.com/toitlang/tpkg/pkg/tracking"
@@ -20,8 +21,13 @@ func PkgCmd(info Info) *cobra.Command {
 		return nil
 	}
 
-	s := store.NewViper("", info.SDKVersion, false, false)
-	pkg, err := commands.Pkg(commands.DefaultRunWrapper, track, s, nil)
+	configStore := store.NewViper("", info.SDKVersion, false, false)
+	cobra.OnInitialize(func() {
+		cfgFile, _ := directory.GetToitUserConfigPath()
+		configStore.Init(cfgFile)
+	})
+
+	pkg, err := commands.Pkg(commands.DefaultRunWrapper, track, configStore, nil)
 	if err != nil {
 		panic(err)
 	}
