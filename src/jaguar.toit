@@ -442,7 +442,7 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
       install_firmware request.content_length request.body
       respond_ok writer
       // Mark the firmware as having a pending upgrade and close
-      // the server socket to force the HTTP sever loop to stop.
+      // the server socket to force the HTTP server loop to stop.
       firmware_is_upgrade_pending = true
       socket.close
 
@@ -464,7 +464,7 @@ serve_incoming_requests socket/tcp.ServerSocket device/Device address/string -> 
       run_code request.content_length request.body defines
       respond_ok writer
       // If the code needs to run with Jaguar disabled, we close
-      // the server socket to force the HTTP sever loop to stop.
+      // the server socket to force the HTTP server loop to stop.
       if disabled: socket.close
 
 extract_defines headers/http.Headers -> Map:
