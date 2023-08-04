@@ -174,7 +174,7 @@ func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, force
 	if err == nil && isMissingSnapshot {
 		// Inform the user that they could get better output if they had the snapshot.
 		fmt.Fprintf(os.Stderr, "No such file: %s\n", snapshot)
-		return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
+		return fmt.Errorf("cannot decode stacktrace without snapshot for program: %s", programId.String())
 	}
 	return err
 }
