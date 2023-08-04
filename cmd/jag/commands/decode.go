@@ -154,19 +154,29 @@ func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, force
 	}
 
 	var decodeCommand *exec.Cmd
+	isMissingSnapshot := false
 	if programId != uuid.Nil {
 		if _, err := os.Stat(snapshot); errors.Is(err, os.ErrNotExist) {
-			fmt.Fprintf(os.Stderr, "No such file: %s\n", snapshot)
-			return fmt.Errorf("cannot find snapshot for program: %s", programId.String())
+			isMissingSnapshot = true
+			// Still run the decodeCommand for the exception, even though we won't get the stacktrace
+			decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
+		} else {
+			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
 		}
-		decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
 	} else {
 		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
 	}
 
 	decodeCommand.Stderr = os.Stderr
 	decodeCommand.Stdout = os.Stdout
-	return decodeCommand.Run()
+
+	err = decodeCommand.Run()
+	if err == nil && isMissingSnapshot {
+		// Inform the user that they could get better output if they had the snapshot.
+		fmt.Fprintf(os.Stderr, "No such file: %s\n", snapshot)
+		return fmt.Errorf("cannot decode stacktrace without snapshot for program: %s", programId.String())
+	}
+	return err
 }
 
 func crashDecode(cmd *cobra.Command, backtrace string) error {
