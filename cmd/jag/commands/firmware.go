@@ -97,8 +97,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			// TODO(kasper): Make 'auto' the default.
-			if chip == "auto" {
+			if chip == "auto" || chip == "" {
 				chip = device.Chip
 			}
 
@@ -169,7 +168,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("chip", "c", "esp32", "chip of the target device")
+	cmd.Flags().StringP("chip", "c", "", "chip of the target device")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
