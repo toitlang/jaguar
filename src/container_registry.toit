@@ -7,7 +7,7 @@ import system.containers
 import system.api.containers show ContainerService
 import system.storage
 
-JAGUAR_INSTALLED_MAGIC ::= 0xb16_ca7  // Magic is "big cat".
+JAGUAR-INSTALLED-MAGIC ::= 0xb16_ca7  // Magic is "big cat".
 
 flash_ / storage.Bucket ::= storage.Bucket.open --flash "toitlang.org/jag"
 jaguar_ / uuid.Uuid ::= containers.current
@@ -15,9 +15,9 @@ jaguar_ / uuid.Uuid ::= containers.current
 class ContainerRegistry:
   static KEY_ /string ::= "containers"
 
-  id_by_name_         / Map ::= {:}  // Map<string, uuid.Uuid>
-  name_by_id_         / Map ::= {:}  // Map<uuid.Uuid, string>
-  entry_by_id_string_ / Map ::= {:}  // Map<string, List>
+  id-by-name_         / Map ::= {:}  // Map<string, uuid.Uuid>
+  name-by-id_         / Map ::= {:}  // Map<uuid.Uuid, string>
+  entry-by-id-string_ / Map ::= {:}  // Map<string, List>
 
   constructor:
     entries/Map := {:}
@@ -31,28 +31,28 @@ class ContainerRegistry:
     images.do: | image/containers.ContainerImage |
       id ::= image.id
       // Skip transient images that aren't named and installed by Jaguar.
-      if id != jaguar_ and image.data != JAGUAR_INSTALLED_MAGIC:
+      if id != jaguar_ and image.data != JAGUAR-INSTALLED-MAGIC:
         continue.do
       // We are not sure that the entries loaded from flash is a map
       // with the correct structure, so we guard the access to the
       // individual entries and treat malformed ones as non-existing.
-      id_as_string ::= "$id"
-      entry ::= entries.get id_as_string
+      id-as-string ::= "$id"
+      entry ::= entries.get id-as-string
       name/string? := null
       catch: name = entry[0]
       name = name or image.name or "container-$(index++)"
       defines/Map := {:}
       catch: defines = entry[1]
       // Update the in-memory registry mappings.
-      id_by_name_[name] = id
-      name_by_id_[id] = name
-      entry_by_id_string_[id_as_string] = [name, defines, id]
+      id-by-name_[name] = id
+      name-by-id_[id] = name
+      entry-by-id-string_[id-as-string] = [name, defines, id]
 
   entries -> Map:
-    return entry_by_id_string_.map: | _ entry/List | entry[0]
+    return entry-by-id-string_.map: | _ entry/List | entry[0]
 
   do [block] -> none:
-    entry_by_id_string_.do: | _ entry/List |
+    entry-by-id-string_.do: | _ entry/List |
       id ::= entry[2]
       if id == jaguar_: continue.do
       block.call entry[0] id entry[1]
@@ -63,30 +63,30 @@ class ContainerRegistry:
     images/List ::= containers.images
     images.do: | image/containers.ContainerImage |
       id ::= image.id
-      if not name_by_id_.contains id: containers.uninstall id
+      if not name-by-id_.contains id: containers.uninstall id
     if name: uninstall name
     // Now actually create the image by invoking the block.
     id ::= block.call
     if not name: return id
     // Update the name mapping and make sure we do not have
     // an old name for the same image floating around.
-    old ::= name_by_id_.get id
-    if old: id_by_name_.remove old
-    id_by_name_[name] = id
-    name_by_id_[id] = name
-    entry_by_id_string_["$id"] = [name, defines, id]
+    old ::= name-by-id_.get id
+    if old: id-by-name_.remove old
+    id-by-name_[name] = id
+    name-by-id_[id] = name
+    entry-by-id-string_["$id"] = [name, defines, id]
     store_
     return id
 
   uninstall name/string -> uuid.Uuid?:
-    id := id_by_name_.get name --if_absent=: return null
+    id := id-by-name_.get name --if-absent=: return null
     containers.uninstall id
-    id_by_name_.remove name
-    name_by_id_.remove id
-    entry_by_id_string_.remove "$id"
+    id-by-name_.remove name
+    name-by-id_.remove id
+    entry-by-id-string_.remove "$id"
     store_
     return id
 
   store_ -> none:
-    entries := entry_by_id_string_.map: | _ entry/List | entry[0..2]
+    entries := entry-by-id-string_.map: | _ entry/List | entry[0..2]
     flash_[KEY_] = entries
