@@ -118,7 +118,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			if len(args) == 1 {
 				envelopePath = args[0]
 			} else {
-				envelopePath, err = directory.GetFirmwareEnvelopePath(chip)
+				envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, chip)
 				if err != nil {
 					return err
 				}

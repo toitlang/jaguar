@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
@@ -550,4 +552,24 @@ func isLikelyRunningOnBuildbot() bool {
 		}
 	}
 	return false
+}
+
+func download(ctx context.Context, url string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("failed downloading from %s: %v", url, resp.Status)
+	}
+
+	progress := pb.New64(resp.ContentLength)
+	return progress.Start().NewProxyReader(resp.Body), nil
 }

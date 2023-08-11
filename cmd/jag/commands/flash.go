@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func FlashCmd() *cobra.Command {
@@ -80,7 +79,7 @@ func FlashCmd() *cobra.Command {
 			if len(args) == 1 {
 				envelopePath = args[0]
 			} else {
-				envelopePath, err = directory.GetFirmwareEnvelopePath(chip)
+				envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, chip)
 				if err != nil {
 					return err
 				}

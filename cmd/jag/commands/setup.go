@@ -8,13 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 
-	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
@@ -35,10 +32,6 @@ func getToitSDKURL(version string) (string, error) {
 
 func getAssetsURL(version string) string {
 	return fmt.Sprintf("https://github.com/toitlang/jaguar/releases/download/%s/assets.tar.gz", version)
-}
-
-func getFirmwareURL(version string, model string) string {
-	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/firmware-%s.gz", version, model)
 }
 
 func SetupCmd(info Info) *cobra.Command {
@@ -64,13 +57,6 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				models := directory.GetFirmwareModels()
-				for _, model := range models {
-					if _, err := directory.GetFirmwareEnvelopePath(model); err != nil {
-						return err
-					}
-				}
-
 				fmt.Println("Jaguar setup is valid.")
 				return nil
 			}
@@ -87,10 +73,6 @@ func SetupCmd(info Info) *cobra.Command {
 			}
 
 			if err := downloadAssets(ctx, info.Version); err != nil {
-				return err
-			}
-
-			if err := downloadFirmwareAll(ctx, info.SDKVersion); err != nil {
 				return err
 			}
 
@@ -168,56 +150,6 @@ func downloadAssets(ctx context.Context, version string) error {
 	return nil
 }
 
-func downloadFirmwareAll(ctx context.Context, version string) error {
-	models := directory.GetFirmwareModels()
-	for _, model := range models {
-		if err := downloadFirmware(ctx, version, model); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func downloadFirmware(ctx context.Context, version string, model string) error {
-	assetsPath, err := directory.GetAssetsCachePath()
-	if err != nil {
-		return err
-	}
-
-	firmwareURL := getFirmwareURL(version, model)
-	fmt.Printf("Downloading %s firmware from %s ...\n", model, firmwareURL)
-	bundle, err := download(ctx, firmwareURL)
-	if err != nil {
-		return err
-	}
-
-	gzipReader, err := newGZipReader(bundle)
-	if err != nil {
-		bundle.Close()
-		return fmt.Errorf("failed to read %s firmware as gzip file: %w", model, err)
-	}
-	defer gzipReader.Close()
-
-	if err := os.MkdirAll(assetsPath, 0755); err != nil {
-		return err
-	}
-
-	envelopeFileName := directory.GetFirmwareEnvelopeFileName(model)
-	destination, err := os.Create(filepath.Join(assetsPath, envelopeFileName))
-	if err != nil {
-		return err
-	}
-	defer destination.Close()
-
-	_, err = io.Copy(destination, gzipReader)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Successfully installed %s firmware into %s\n", model, assetsPath)
-	return nil
-}
-
 func downloadSdk(ctx context.Context, version string) error {
 	sdkPath, err := directory.GetSDKCachePath()
 	if err != nil {
@@ -258,24 +190,4 @@ func downloadSdkTo(ctx context.Context, version string, sdkPath string) error {
 	gzipReader.Close()
 	fmt.Println("Successfully installed Toit SDK into", sdkPath)
 	return nil
-}
-
-func download(ctx context.Context, url string) (io.ReadCloser, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("failed downloading from %s: %v", url, resp.Status)
-	}
-
-	progress := pb.New64(resp.ContentLength)
-	return progress.Start().NewProxyReader(resp.Body), nil
 }
