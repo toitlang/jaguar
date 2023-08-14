@@ -33,17 +33,6 @@ const (
 // Hackishly set by main.go.
 var IsReleaseBuild = false
 
-func GetFirmwareModels() []string {
-	return []string{
-		"esp32",
-		"esp32c3",
-		"esp32s2",
-		"esp32s3",
-		"esp32s3-spiram-octo",
-		"esp32-eth-clk-out17",
-	}
-}
-
 func GetUserConfigPath() (string, error) {
 	if path, ok := os.LookupEnv(UserConfigPathEnv); ok {
 		return path, nil
@@ -94,7 +83,7 @@ func GetSnapshotsCachePath() (string, error) {
 	return ensureDirectory(filepath.Join(home, ".cache", "jaguar", "snapshots"), nil)
 }
 
-func getRepoPath() (string, bool) {
+func GetRepoPath() (string, bool) {
 	if IsReleaseBuild {
 		return "", false
 	}
@@ -102,7 +91,7 @@ func getRepoPath() (string, bool) {
 }
 
 func GetSDKPath() (string, error) {
-	repoPath, ok := getRepoPath()
+	repoPath, ok := GetRepoPath()
 	if ok {
 		return filepath.Join(repoPath, "build", "host", "sdk"), nil
 	}
@@ -133,7 +122,7 @@ func GetAssetsCachePath() (string, error) {
 }
 
 func GetAssetsPath() (string, error) {
-	_, ok := getRepoPath()
+	_, ok := GetRepoPath()
 	if ok {
 		// We assume that the jag executable is inside the build directory of
 		// the Jaguar repository.
@@ -155,12 +144,13 @@ func GetAssetsPath() (string, error) {
 	return assetsPath, nil
 }
 
-func getAssetPath(name string) (string, error) {
+func GetJaguarSnapshotPath() (string, error) {
 	assetsPath, err := GetAssetsPath()
 	if err != nil {
 		return "", nil
 	}
 
+	name := "jaguar.snapshot"
 	path := filepath.Join(assetsPath, name)
 	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
 		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", assetsPath, name)
@@ -168,24 +158,8 @@ func getAssetPath(name string) (string, error) {
 	return path, nil
 }
 
-func GetJaguarSnapshotPath() (string, error) {
-	return getAssetPath("jaguar.snapshot")
-}
-
-func GetFirmwareEnvelopeFileName(model string) string {
-	return fmt.Sprintf("firmware-%s.envelope", model)
-}
-
-func GetFirmwareEnvelopePath(model string) (string, error) {
-	repoPath, ok := getRepoPath()
-	if ok {
-		return filepath.Join(repoPath, "build", model, "firmware.envelope"), nil
-	}
-	return getAssetPath(GetFirmwareEnvelopeFileName(model))
-}
-
 func GetEsptoolPath() (string, error) {
-	repoPath, ok := getRepoPath()
+	repoPath, ok := GetRepoPath()
 	if ok {
 		return filepath.Join(repoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
 	}
