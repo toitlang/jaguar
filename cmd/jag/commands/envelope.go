@@ -14,7 +14,7 @@ import (
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
-// getCachedFirmwareEnvelopePath returns the path to the cached firmware envelope.
+// GetCachedFirmwareEnvelopePath returns the path to the cached firmware envelope.
 // If necessary, downloads the envelope from the server first.
 func GetCachedFirmwareEnvelopePath(ctx context.Context, version string, model string) (string, error) {
 	path, err := getFirmwareEnvelopePath(model)
@@ -78,7 +78,7 @@ func GetFirmwareEnvelopeFileName(model string) string {
 	return fmt.Sprintf("firmware-%s.envelope", model)
 }
 
-// GetFirmwareEnvelopePath returns the firmware envelope path for the given model.
+// getFirmwareEnvelopePath returns the firmware envelope path for the given model.
 // If the file doesn't exist returns the correct path but sets err to `os.ErrNotExist`.
 func getFirmwareEnvelopePath(model string) (string, error) {
 	repoPath, ok := directory.GetRepoPath()
