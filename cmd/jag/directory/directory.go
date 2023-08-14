@@ -113,6 +113,14 @@ func GetSDKCachePath() (string, error) {
 	return filepath.Join(home, ".cache", "jaguar", "sdk"), nil
 }
 
+func GetEnvelopesCachePath(version string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".cache", "jaguar", version, "envelopes"), nil
+}
+
 func GetAssetsCachePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
