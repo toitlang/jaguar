@@ -916,6 +916,8 @@ github.com/toitlang/tpkg v0.0.0-20220920162545-e854f904c531 h1:jXqOvTJXHLiuy2EhR
 github.com/toitlang/tpkg v0.0.0-20220920162545-e854f904c531/go.mod h1:8+mRIFIKJxHMEAu8H5MxkaY/fLALKSEguBBIm8D0lG8=
 github.com/toitlang/tpkg v0.0.0-20230409101239-65bc2a05cad1 h1:E2XF27shM0ZzIe2XmTvHwE0JXGqmY82c3JrOOjbySyI=
 github.com/toitlang/tpkg v0.0.0-20230409101239-65bc2a05cad1/go.mod h1:6Yf3ioRYccdtpfmCDKjAK0zFqqz5v64tgz66zAB0Txc=
+github.com/toitlang/tpkg v0.0.0-20230814090526-98c6923a4908 h1:YCVq61PJBMqiGmNNdhIOaHTom9xyO9EUMjiW/Z5XOOA=
+github.com/toitlang/tpkg v0.0.0-20230814090526-98c6923a4908/go.mod h1:6Yf3ioRYccdtpfmCDKjAK0zFqqz5v64tgz66zAB0Txc=
 github.com/toitware/ubjson v0.0.0-20211207075236-aa4add2fcd1a h1:hV6vHon9BfnzLr9XpRlv8UuB8E4SGKFXs9gOSg6akyM=
 github.com/toitware/ubjson v0.0.0-20211207075236-aa4add2fcd1a/go.mod h1:LodXJFCaPxCR6kxbtjumQpO85yzrRkFpseNkbd5nXjU=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
