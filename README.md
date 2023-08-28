@@ -1,5 +1,5 @@
 # Jaguar: Live reloading for your ESP32
-Jaguar enables live reloading of [Toit](https://toitlang.org) code when developing for the
+Jaguar enables live reloading of [Toit](https://toitlang.org/) code when developing for the
 [ESP32](https://en.wikipedia.org/wiki/ESP32), a popular microcontroller.
 
 Develop, update, and restart your code in less than two seconds via WiFi.
