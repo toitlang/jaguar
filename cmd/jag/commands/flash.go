@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -101,11 +102,8 @@ func FlashCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
-			if chip == "esp32s3-spiram-octo" {
-				chip = "esp32s3"
-			} else if chip == "esp32-eth-clk-out17" {
-				chip = "esp32"
-			}
+			// Split at first '-'.
+			chip = strings.SplitN(chip, "-", 2)[0]
 
 			flashArguments := []string{
 				"flash",
