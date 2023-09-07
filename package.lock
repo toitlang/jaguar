@@ -5,5 +5,5 @@ packages:
   pkg-http:
     url: github.com/toitlang/pkg-http
     name: http
-    version: 2.2.0
-    hash: c2acc29817b34085aad4b798c6dafdeef77c23ae
+    version: 2.3.4
+    hash: 39fe52083b4c745cc37420649a48277b45728fd2
