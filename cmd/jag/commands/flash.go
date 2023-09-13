@@ -112,6 +112,17 @@ func FlashCmd() *cobra.Command {
 				"--baud", strconv.Itoa(int(baud)),
 			}
 
+			// Use golang to check the port can be opened for writing first.
+			// This is to avoid the error message from esptool.py, which is
+			// confusing to users in the common case where the port is owned
+			// by the dialout or uucp group.
+			file, err := os.OpenFile(port, os.O_WRONLY, 0)
+			if err != nil {
+				return err
+			}
+			// Close the file again:
+			file.Close()
+
 			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
 			config := deviceOptions.GetConfig()
 			return runFirmwareToolWithConfig(ctx, sdk, envelopeFile.Name(), config, flashArguments...)
