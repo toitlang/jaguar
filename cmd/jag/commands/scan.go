@@ -31,7 +31,7 @@ const (
 
 func ScanCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "scan [device]",
+		Use:   "scan [device-name-or-IP]",
 		Short: "Scan for Jaguar devices",
 		Long: "Scan for Jaguar devices.\n" +
 			"Unless 'device' is an address, listen for UDP packets broadcasted by the devices.\n" +
@@ -165,7 +165,11 @@ func (s deviceAddressSelect) String() string {
 }
 
 func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
-	fmt.Println("Scanning ...")
+	if autoSelect == nil {
+		fmt.Println("Scanning ...")
+	} else {
+		fmt.Println("Scanning for ", autoSelect)
+	}
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := scan(scanCtx, autoSelect, port)
 	cancel()
@@ -174,7 +178,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	}
 
 	if len(devices) == 0 {
-		return nil, false, fmt.Errorf("didn't find any Jaguar devices")
+		return nil, false, fmt.Errorf("didn't find any Jaguar devices.\nPerhaps you need to be on the same wifi as the device.\nYou can also specify the IP address of the device.")
 	}
 	if autoSelect != nil {
 		for _, d := range devices {
