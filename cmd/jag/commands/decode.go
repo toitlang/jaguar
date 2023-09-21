@@ -43,6 +43,7 @@ func DecodeCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
 	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
+	cmd.Flags().String("envelope", "", "path to the firmware envelope")
 	return cmd
 }
 
@@ -186,9 +187,24 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 		return err
 	}
 
-	envelopePath, err := GetCachedFirmwareEnvelopePath(ctx, sdk.Version, "esp32")
+	envelope, err := cmd.Flags().GetString("envelope")
 	if err != nil {
 		return err
+	}
+
+	if envelope == "" {
+		envelope = "esp32"
+	}
+
+	// If the given envelope is a path, just use it.
+	var envelopePath string
+	if _, err := os.Stat(envelope); err == nil {
+		envelopePath = envelope
+	} else {
+		envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, envelope)
+		if err != nil {
+			return err
+		}
 	}
 
 	firmwareElf, err := ExtractFirmware(ctx, sdk, envelopePath, "elf")
