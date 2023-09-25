@@ -43,7 +43,7 @@ func DecodeCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
 	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
-	cmd.Flags().String("envelope", "", "path to the firmware envelope")
+	cmd.Flags().String("envelope", "", "name or path of the firmware envelope")
 	return cmd
 }
 
