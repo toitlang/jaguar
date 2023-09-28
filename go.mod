@@ -31,7 +31,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20150408091349-4742878d9c90
-	github.com/toitlang/tpkg v0.0.0-20230913092551-85991d7ca97d
+	github.com/toitlang/tpkg v0.0.0-20230928125532-1be02ac647ae
 	github.com/toitware/ubjson v0.0.0-20211207075236-aa4add2fcd1a
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.6.0
