@@ -34,8 +34,14 @@ func FlashCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if port, err = CheckPort(port); err != nil {
+			shouldSkipPortCheck, err := cmd.Flags().GetBool("skip-port-check")
+			if err != nil {
 				return err
+			}
+			if !shouldSkipPortCheck {
+				if port, err = CheckPort(port); err != nil {
+					return err
+				}
 			}
 
 			baud, err := cmd.Flags().GetUint("baud")
@@ -136,5 +142,6 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
+	cmd.Flags().Bool("skip-port-check", false, "accept the given port without checking")
 	return cmd
 }
