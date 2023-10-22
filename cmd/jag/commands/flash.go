@@ -123,7 +123,7 @@ func FlashCmd() *cobra.Command {
 			// Windows, but on the other hand Windows has strange
 			// escaping rules for COM ports over 10 (COM10, COM11),
 			// which we don't want to deal with.
-			if os.PathSeparator == '\\' {
+			if os.PathSeparator != '\\' && !shouldSkipPortCheck {
 				// Use golang to check the port can be opened for writing first.
 				// This is to avoid the error message from esptool.py, which is
 				// confusing to users in the common case where the port is owned
