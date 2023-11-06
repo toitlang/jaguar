@@ -1,3 +1,5 @@
+name: jaguar
+description: Live reloading for your ESP32.
 dependencies:
   http:
     url: github.com/toitlang/pkg-http
