@@ -1,0 +1,12 @@
+name: Publish package
+on:
+  push:
+    tags:
+    - 'v*'
+jobs:
+  create-release:
+    name: Create new release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish
+        uses: toitlang/pkg-publish@v1.0.2
