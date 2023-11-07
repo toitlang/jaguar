@@ -79,7 +79,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/linux/jag.tgz
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_linux.tgz
           overwrite: true
 
@@ -89,7 +89,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/linux-arm/jag-arm.tgz
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_linux_arm.tgz
           overwrite: true
 
@@ -99,7 +99,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/linux-arm64/jag-arm64.tgz
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_linux_arm64.tgz
           overwrite: true
 
@@ -151,7 +151,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag.zip
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_windows.zip
           overwrite: true
 
@@ -160,7 +160,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer_x64.exe
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_installer_x64.exe
           overwrite: true
 
@@ -169,7 +169,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/windows/jag_installer.exe
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_installer.exe
           overwrite: true
 
@@ -260,7 +260,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/macos/jag.zip
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag_macos.zip
           overwrite: true
 
@@ -270,7 +270,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/macos/jag.dmg
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           asset_name: jag.dmg
           overwrite: true
 
@@ -299,7 +299,7 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: build/assets.tar.gz
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.release.tag_name }}
           overwrite: true
           file_glob: true
 
