@@ -15,4 +15,4 @@ jobs:
           token: ${{ secrets.LEON_REPOSITORY_DISPATCH }}
           repository: toitlang/homebrew-toit
           event-type: new-release
-          client-payload: '{"ref": "${{ github.ref_name }}"}'
+          client-payload: '{"ref": "${{ github.event.release.tag_name }}"}'
