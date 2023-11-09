@@ -14,6 +14,7 @@ import monitor
 import encoding.ubjson
 import encoding.tison
 
+import system
 import system.assets
 import system.containers
 import system.firmware
@@ -144,7 +145,7 @@ class Device:
 
   static parse arguments -> Device:
     config := {:}
-    if platform == PLATFORM-FREERTOS:
+    if system.platform == system.PLATFORM-FREERTOS:
       assets.decode.get "config" --if-present=: | encoded |
         catch: config = tison.decode encoded
 
@@ -326,9 +327,9 @@ identity-payload device/Device address/string -> ByteArray:
         "name": "$device.name",
         "id": "$device.id",
         "chip": "$device.chip",
-        "sdkVersion": "$vm-sdk-version",
+        "sdkVersion": "$system.vm-sdk-version",
         "address": "$address",
-        "wordSize": $BYTES-PER-WORD
+        "wordSize": $system.BYTES-PER-WORD
       }
     }
   """
@@ -375,7 +376,7 @@ handle-browser-request name/string request/http.Request writer/http.ResponseWrit
                 <p>Uptime</p>
                 <p><b class="text-black">$uptime</b></p>
                 <p>SDK</p>
-                <p><b class="text-black">$vm-sdk-version</b></p>
+                <p><b class="text-black">$system.vm-sdk-version</b></p>
               </section>
               <p class="hr mt-20"></p>
               <p class="mt-40">Run code on this device using</p>
@@ -447,9 +448,9 @@ serve-incoming-requests socket/tcp.ServerSocket device/Device address/string -> 
       socket.close
 
     // Validate SDK version before attempting to install containers or run code.
-    else if sdk-version-header != vm-sdk-version:
-      logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$vm-sdk-version'"
-      writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $vm-sdk-version, jag has $sdk-version-header"
+    else if sdk-version-header != system.vm-sdk-version:
+      logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
+      writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $systen.vm-sdk-version, jag has $sdk-version-header"
 
     // Handle installing containers.
     else if path == "/install" and request.method == "PUT":
