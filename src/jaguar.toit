@@ -450,7 +450,7 @@ serve-incoming-requests socket/tcp.ServerSocket device/Device address/string -> 
     // Validate SDK version before attempting to install containers or run code.
     else if sdk-version-header != system.vm-sdk-version:
       logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
-      writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $systen.vm-sdk-version, jag has $sdk-version-header"
+      writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $system.vm-sdk-version, jag has $sdk-version-header"
 
     // Handle installing containers.
     else if path == "/install" and request.method == "PUT":
