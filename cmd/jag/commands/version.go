@@ -26,8 +26,12 @@ func VersionCmd(info Info, isReleaseBuild bool) *cobra.Command {
 				sdkVersion = info.SDKVersion
 			} else {
 				ctx := cmd.Context()
-				sdk, _ := GetSDK(ctx)
-				if sdk.Version != "" {
+				sdk, err := GetSDK(ctx)
+				if err != nil {
+					fmt.Println("Error:", err)
+					return
+				}
+				if sdk == nil || sdk.Version != "" {
 					sdkVersion = sdk.Version
 				}
 			}
