@@ -53,16 +53,19 @@ jobs:
             build/windows/
 
       - name: Create archive Linux
+        if: runner.os == 'Linux'
         working-directory: ./build/linux
         run: |
           tar -czf jag.tgz jag
 
       - name: Create archive Linux ARM
+        if: runner.os == 'Linux'
         working-directory: ./build/linux-arm
         run: |
           tar -czf jag-arm.tgz jag
 
       - name: Create archive Linux ARM64
+        if: runner.os == 'Linux'
         working-directory: ./build/linux-arm64
         run: |
           tar -czf jag-arm64.tgz jag
