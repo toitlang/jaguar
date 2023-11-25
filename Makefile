@@ -26,7 +26,7 @@ JAG_TOIT_SOURCES := $(shell find src -name '*.toit') package.lock package.yaml
 JAG_GO_SOURCES := $(shell find cmd -name '*.go')
 
 # Setup Go compilation flags.
-GO_BUILD_FLAGS := GODEBUG=netdns=go
+GO_BUILD_FLAGS :=
 GO_LINK_FLAGS += -X 'main.buildDate="$(BUILD_DATE)"'
 ifdef JAG_BUILD_RELEASE
 GO_LINK_FLAGS += -X 'main.buildMode=release'
@@ -46,7 +46,7 @@ clean:
 jag: $(BUILD_DIR)/$(JAG_BINARY)
 
 $(BUILD_DIR)/$(JAG_BINARY): $(JAG_GO_SOURCES)
-	$(GO_BUILD_FLAGS) go build -tags 'netgo osusergo' -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
+	$(GO_BUILD_FLAGS) go build -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
 
 #############################
 # Rules for the Jaguar assets

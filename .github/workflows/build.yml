@@ -16,7 +16,7 @@ jobs:
   build_jag:
     strategy:
       matrix:
-        container: [ ubuntu-latest, ubuntu-20.04 ]
+        container: [ ubuntu-latest, ubuntu-20.04, macos-latest, windows-latest ]
 
     runs-on: ${{ matrix.container }}
     steps:
@@ -33,11 +33,13 @@ jobs:
           if [[ "${{ github.event_name }}" = "release" ]]; then
             export JAG_BUILD_RELEASE=1
           fi
-          GOOS=linux make JAG_BINARY=linux/jag jag
-          GOOS=darwin make JAG_BINARY=macos/jag jag
-          GOOS=windows make JAG_BINARY=windows/jag.exe jag
-          GOOS=linux GOARCH=arm make JAG_BINARY=linux-arm/jag jag
-          GOOS=linux GOARCH=arm64 make JAG_BINARY=linux-arm64/jag jag
+          RUNNER_OS=$(echo ${{ runner.os }} | tr '[:upper:]' '[:lower:]')
+          make JAG_BINARY=$RUNNER_OS/jag jag
+
+          if [[ $RUNNER_OS = "linux" ]]; then
+            make JAG_BINARY=$RUNNER_OS-arm/jag jag
+            make JAG_BINARY=$RUNNER_OS-arm64/jag jag
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
