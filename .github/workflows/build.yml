@@ -71,7 +71,7 @@ jobs:
           tar -czf jag-arm64.tgz jag
 
       - name: Check version number
-        if: github.event_name == 'release'
+        if: (github.event_name == 'release') && (runner.os == 'Linux')
         working-directory: ./build/linux
         # Check that the version numbers match.
         # This is a sanity check to ensure that tools/prepare_release.sh was called.
