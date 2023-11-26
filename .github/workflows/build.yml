@@ -33,8 +33,14 @@ jobs:
           if [[ "${{ github.event_name }}" = "release" ]]; then
             export JAG_BUILD_RELEASE=1
           fi
+
           RUNNER_OS=$(echo ${{ runner.os }} | tr '[:upper:]' '[:lower:]')
-          make JAG_BINARY=$RUNNER_OS/jag jag
+
+          if [[ $RUNNER_OS = "windows" ]]; then
+            make JAG_BINARY=$RUNNER_OS/jag.exe jag
+          else
+            make JAG_BINARY=$RUNNER_OS/jag jag
+          fi
 
           if [[ $RUNNER_OS = "linux" ]]; then
             make JAG_BINARY=$RUNNER_OS-arm/jag jag
