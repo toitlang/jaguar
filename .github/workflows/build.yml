@@ -121,7 +121,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: jag-build-ubuntu-latest
+          name: jag-build-windows-latest
           path: build
 
       - name: Sign jag
@@ -215,7 +215,7 @@ jobs:
 
       - uses: actions/download-artifact@v3
         with:
-          name: jag-build-ubuntu-latest
+          name: jag-build-macos-latest
           path: build
 
       - name: Setup binary rights
@@ -247,11 +247,6 @@ jobs:
       - name: Create a ZIP
         run: |
           zip -j build/macos/jag.zip build/macos/jag
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: jag-build-ubuntu-latest
-          path: build
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
