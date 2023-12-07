@@ -11,6 +11,17 @@ on:
     # prerelease to a release.
     types: [ published, edited ]
   workflow_dispatch:
+    inputs:
+      sign_macos:
+        description: Sign the macOS binary
+        type: boolean
+        required: true
+        default: false
+      sign_windows:
+        description: Sign the Windows binary
+        type: boolean
+        required: true
+        default: false
 
 jobs:
   build_jag:
@@ -84,132 +95,106 @@ jobs:
         run: |
           ./jag --no-analytics version | head -n1 | grep --fixed-strings "${{ github.event.release.tag_name }}"
 
-      - name: Upload jag Linux (tgz)
-        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
-        uses: svenstaro/upload-release-action@v2
+      - name: Sign Windows binary
+        if: runner.os == 'Windows' && (github.event_name == 'release' || inputs.sign_windows)
+        uses: toitlang/action-code-sign@a4adedba46f2630ed60a1d6e6aa828ac7038c945 # v1.0.0
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/linux/jag.tgz
-          tag: ${{ github.event.release.tag_name }}
-          asset_name: jag_linux.tgz
-          overwrite: true
+          certificate: ${{ secrets.DIGICERT_CERTIFICATE }}
+          api-key: ${{ secrets.DIGICERT_API_KEY }}
+          certificate-password: ${{ secrets.DIGICERT_PASSWORD }}
+          certificate-fingerprint: ${{ secrets.DIGICERT_FINGERPRINT }}
+          keypair-alias: ${{ vars.DIGICERT_KEYPAIR_ALIAS }}
+          path: build/windows/jag.exe
 
-      - name: Upload jag Linux ARM (tgz)
-        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/linux-arm/jag-arm.tgz
-          tag: ${{ github.event.release.tag_name }}
-          asset_name: jag_linux_arm.tgz
-          overwrite: true
-
-      - name: Upload jag Linux ARM64 (tgz)
-        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/linux-arm64/jag-arm64.tgz
-          tag: ${{ github.event.release.tag_name }}
-          asset_name: jag_linux_arm64.tgz
-          overwrite: true
-
-  sign_jag_windows:
-    runs-on: windows-signing
-    needs: [build_jag]
-    if: github.event_name == 'release'
-    steps:
-      - name: Clean workspace
-        run: |
-          rm -Recurse -Force ${{ github.workspace }}\*
-
-      - uses: actions/checkout@v3
-
-      - uses: actions/download-artifact@v3
-        with:
-          name: jag-build-windows-latest
-          path: build
-
-      - name: Sign jag
+      - name: Build Windows Zip
+        if: runner.os == 'Windows'
         working-directory: ./build/windows
         run: |
-          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD/jag.exe
           powershell Compress-Archive -Force jag.exe jag.zip
 
       - name: Version number
+        if: github.event_name == 'release'
         id: version
-        shell: powershell
+        shell: bash
         run: |
-          $versionV = "${{ github.event.release.tag_name }}"
-          $version = $versionV.Substring(1)
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+          VERSION_V=${{ github.event.release.tag_name }}
+          VERSION=$(echo $VERSION_V | cut -c 2-)
+          echo "version_v=$VERSION_V" >> $env:GITHUB_OUTPUT
+          echo "version=$VERSION" >> $env:GITHUB_OUTPUT
 
-      - name: Build installer
+      - name: Build Windows installer
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
+        shell: powershell
         run: |
           & tools\windows_installer\build.bat ${{ steps.version.outputs.version }} $PWD\build\windows\jag.exe $PWD\jag_installer_x64.exe
-          signtool sign /debug /n "Toitware ApS" /t http://timestamp.digicert.com/ $PWD\jag_installer_x64.exe
           move $PWD\jag_installer_x64.exe build/windows/jag_installer_x64.exe
-          cp build/windows/jag_installer_x64.exe build/windows/jag_installer.exe
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+      - name: Sign Windows installer
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
+        uses: toitlang/action-code-sign@a4adedba46f2630ed60a1d6e6aa828ac7038c945 # v1.0.0
         with:
-          name: jag-signed-windows
-          path: build/windows
+          certificate: ${{ secrets.DIGICERT_CERTIFICATE }}
+          api-key: ${{ secrets.DIGICERT_API_KEY }}
+          certificate-password: ${{ secrets.DIGICERT_PASSWORD }}
+          certificate-fingerprint: ${{ secrets.DIGICERT_FINGERPRINT }}
+          keypair-alias: ${{ vars.DIGICERT_KEYPAIR_ALIAS }}
+          path: build/windows/jag_installer.exe
 
-      - name: Upload jag Windows (zip)
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/windows/jag.zip
-          tag: ${{ github.event.release.tag_name }}
-          asset_name: jag_windows.zip
-          overwrite: true
-
-      - name: Upload jag Windows (installer_x64)
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/windows/jag_installer_x64.exe
-          tag: ${{ github.event.release.tag_name }}
-          asset_name: jag_installer_x64.exe
-          overwrite: true
-
-      - name: Upload jag Windows (installer)
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/windows/jag_installer.exe
-          tag: ${{ github.event.release.tag_name }}
-          asset_name: jag_installer.exe
-          overwrite: true
-
-  winget:
-    name: Publish winget package
-    runs-on: windows-latest
-    needs: [sign_jag_windows]
-    if: github.event_name == 'release' && !github.event.release.prerelease
-    steps:
-      - name: Version number
-        id: version
-        shell: powershell
+      - name: Prepare Windows release upload
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
+        working-directory: ./build/windows
+        shell: bash
         run: |
-          $versionV = "${{ github.event.release.tag_name }}"
-          $version = $versionV.Substring(1)
-          echo "version=$version" >> $env:GITHUB_OUTPUT
+          mkdir release
+          cp jag_installer_x64.exe release
+          cp jag_installer_x64.exe release/jag_installer.exe
+          cp jag.zip release/jag.zip
+
+      - name: Upload Windows release files
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/windows/release/*
+          file_glob: true
+          tag: ${{ github.event.release.tag_name }}
+          overwrite: true
+
 
       - name: Download winget binary
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
         run: |
           iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
 
       - name: Update manifest
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
         run: |
           .\wingetcreate.exe update Toit.Jaguar -s -v ${{ steps.version.outputs.version }} -u https://github.com/toitlang/jaguar/releases/download/${{ github.event.release.tag_name }}/jag_installer_x64.exe -t ${{ secrets.WINGET_JAGUAR_PAT }}
+
+      - name: Prepare Linux release upload
+        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
+        working-directory: ./build
+        shell: bash
+        run: |
+          mkdir release
+          cp linux/jag.tgz release/jag_linux.tgz
+          cp linux-arm/jag-arm.tgz release/jag_linux_arm.tgz
+          cp linux-arm64/jag-arm64.tgz release/jag_linux_arm64.tgz
+
+      - name: Upload Linux release files
+        if: (github.event_name == 'release') && (matrix.container == 'ubuntu-20.04')
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: build/release/*
+          file_glob: true
+          tag: ${{ github.event.release.tag_name }}
+          overwrite: true
 
   sign_jag_macos:
     runs-on: macos-latest
     needs: [build_jag]
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || inputs.sign_macos
     steps:
       - uses: actions/checkout@v3
 
