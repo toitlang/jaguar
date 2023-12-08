@@ -113,14 +113,13 @@ jobs:
           powershell Compress-Archive -Force jag.exe jag.zip
 
       - name: Version number
-        if: github.event_name == 'release'
+        if: (github.event_name == 'release') && (runner.os == 'Windows')
         id: version
-        shell: bash
+        shell: powershell
         run: |
-          VERSION_V=${{ github.event.release.tag_name }}
-          VERSION=$(echo $VERSION_V | cut -c 2-)
-          echo "version_v=$VERSION_V" >> $env:GITHUB_OUTPUT
-          echo "version=$VERSION" >> $env:GITHUB_OUTPUT
+          $versionV = "${{ github.event.release.tag_name }}"
+          $version = $versionV.Substring(1)
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Build Windows installer
         if: (github.event_name == 'release') && (runner.os == 'Windows')
