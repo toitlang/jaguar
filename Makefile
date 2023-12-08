@@ -94,8 +94,6 @@ all-chips:
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c3 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s2 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s3 esp32
-	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s3-spiram-octo esp32
-	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32-eth-clk-out17 esp32
 
 .PHONY: force-rebuild-sdk
 force-rebuild-sdk:
