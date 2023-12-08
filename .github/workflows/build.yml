@@ -31,7 +31,7 @@ jobs:
 
     runs-on: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -195,7 +195,7 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release' || inputs.sign_macos
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
@@ -267,7 +267,7 @@ jobs:
   build_assets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -299,7 +299,7 @@ jobs:
     needs: [build_jag]
     if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Version number
         id: version
