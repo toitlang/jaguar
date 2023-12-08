@@ -137,7 +137,7 @@ jobs:
           certificate-password: ${{ secrets.DIGICERT_PASSWORD }}
           certificate-fingerprint: ${{ secrets.DIGICERT_FINGERPRINT }}
           keypair-alias: ${{ vars.DIGICERT_KEYPAIR_ALIAS }}
-          path: build/windows/jag_installer.exe
+          path: build/windows/jag_installer_x64.exe
 
       - name: Prepare Windows release upload
         if: (github.event_name == 'release') && (runner.os == 'Windows')
