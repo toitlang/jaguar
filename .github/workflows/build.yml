@@ -59,7 +59,7 @@ jobs:
           fi
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jag-build-${{ matrix.container }}
           path: |
@@ -239,7 +239,7 @@ jobs:
           zip -j build/macos/jag.zip build/macos/jag
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jag-macos
           path: build/macos/
