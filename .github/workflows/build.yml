@@ -203,7 +203,7 @@ jobs:
           brew install create-dmg
           brew install zip
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: jag-build-macos-latest
           path: build
