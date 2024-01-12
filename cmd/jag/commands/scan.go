@@ -157,6 +157,10 @@ func (s deviceAddressSelect) Match(d Device) bool {
 }
 
 func (s deviceAddressSelect) Address() string {
+	if strings.HasPrefix(string(s), "http://") {
+		// Trim the 'http://' prefix.
+		return string(s[7:])
+	}
 	return string(s)
 }
 

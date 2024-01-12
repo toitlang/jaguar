@@ -134,7 +134,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 				ExcludeJaguar: excludeJaguar,
 			}
 
-			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions)
+			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, nil)
 			if err != nil {
 				return err
 			}
@@ -198,7 +198,7 @@ func (d DeviceOptions) GetConfig() map[string]interface{} {
 	}
 }
 
-func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions) (*os.File, error) {
+func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions, uartEndpointOptions map[string]interface{}) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return nil, err
@@ -230,6 +230,9 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			"id":   device.Id,
 			"name": device.Name,
 			"chip": device.Chip,
+		}
+		if uartEndpointOptions != nil {
+			configAssetMap["uartEndpoint"] = uartEndpointOptions
 		}
 		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {

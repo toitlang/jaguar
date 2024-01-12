@@ -17,9 +17,11 @@ import system.firmware
 
 import .container-registry
 import .network
+import .uart
 
 interface Endpoint:
   run device/Device
+  name -> string
 
 // Defines recognized by Jaguar for /run and /install requests.
 JAG-DISABLED ::= "jag.disabled"
@@ -92,8 +94,11 @@ run-installed-containers -> none:
 serve arguments:
   device := Device.parse arguments
   endpoints := [
-    EndpointHttp
+    EndpointHttp logger,
   ]
+  print "contains uartEndpoint: $(device.config.contains "uartEndpoint")"
+  if device.config.contains "uartEndpoint":
+    endpoints.add (EndpointUart --config=device.config["uartEndpoint"] --logger=logger)
   lambdas := []
   for i := 0; i < endpoints.size; i++:
     endpoint/Endpoint := endpoints[i]
@@ -127,14 +132,19 @@ serve arguments:
         backoff := Duration --s=5
         logger.info "backing off for $backoff"
         sleep backoff
-  Task.group lambdas
+  if lambdas.size == 1:
+    lambdas[0].call
+  else:
+    Task.group lambdas
 
 class Device:
   id/uuid.Uuid
   name/string
   port/int
   chip/string
-  constructor --.id --.name --.port --.chip:
+  config/Map
+
+  constructor --.id --.name --.port --.chip --.config:
 
   static parse arguments -> Device:
     config := {:}
@@ -165,6 +175,7 @@ class Device:
         --name=name or "unknown"
         --port=port
         --chip=chip or "unknown"
+        --config=config
 
 flash-image image-size/int reader/reader.Reader name/string? defines/Map -> uuid.Uuid:
   with-timeout --ms=120_000: flash-mutex.do:
@@ -172,7 +183,9 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map -> uuid
       logger.debug "installing container image with $image-size bytes"
       written-size := 0
       writer := containers.ContainerImageWriter image-size
-      while data := reader.read:
+      while written-size < image-size:
+        data := reader.read
+        if not data: break
         // This is really subtle, but because the firmware writing crosses the RPC
         // boundary, the provided data might get neutered and handed over to another
         // process. In that case, the size after the call to writer.write is zero,

@@ -445,6 +445,16 @@ func parseDeviceSelection(d string) deviceSelect {
 	if _, err := uuid.Parse(d); err == nil {
 		return deviceIDSelect(d)
 	}
+	if strings.HasPrefix(d, "http://") {
+		return deviceAddressSelect(d)
+	}
+	colonIdx := strings.Index(d, ":")
+	if colonIdx > 0 {
+		// Test if the part before the colon is a valid IP address.
+		if ip := net.ParseIP(d[:colonIdx]); ip != nil {
+			return deviceAddressSelect(d)
+		}
+	}
 	if ip := net.ParseIP(d); ip != nil {
 		return deviceAddressSelect(d)
 	}
@@ -572,4 +582,20 @@ func download(ctx context.Context, url string) (io.ReadCloser, error) {
 
 	progress := pb.New64(resp.ContentLength)
 	return progress.Start().NewProxyReader(resp.Body), nil
+}
+
+func getLanIp() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, addr := range addrs {
+		if ipAddr, ok := addr.(*net.IPNet); ok && !ipAddr.IP.IsLoopback() {
+			if ipAddr.IP.To4() != nil {
+				return ipAddr.IP.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no lan ip found")
 }

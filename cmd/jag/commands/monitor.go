@@ -64,7 +64,20 @@ func MonitorCmd() *cobra.Command {
 				dev.Reboot()
 			}
 
-			scanner := bufio.NewScanner(dev)
+			var logReader io.Reader = dev
+
+			shouldServe, err := cmd.Flags().GetBool("serve")
+			if err != nil {
+				return err
+			}
+
+			if shouldServe {
+				ch1, ch2 := multiplexReader(dev)
+				logReader = ch1
+				go serveSerial(dev, ch2)
+			}
+
+			scanner := bufio.NewScanner(logReader)
 
 			decoder := Decoder{scanner, cmd}
 
@@ -79,6 +92,7 @@ func MonitorCmd() *cobra.Command {
 	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
 	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
 	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
+	cmd.Flags().Bool("serve", false, "start a server to communicate with the device through the UART")
 	return cmd
 }
 

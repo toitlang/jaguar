@@ -4,6 +4,7 @@
 
 import encoding.ubjson
 import http
+import log
 import net
 import net.udp
 import net.tcp
@@ -28,7 +29,13 @@ CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
 STYLE-CSS ::= "https://toitlang.github.io/jaguar/device-files/style.css"
 
 class EndpointHttp implements Endpoint:
+  logger/log.Logger
+
+  constructor logger/log.Logger:
+    this.logger = logger.with-name "http"
+
   run device/Device:
+    logger.debug "running HTTP endpoint"
     network ::= net.open
     socket/tcp.ServerSocket? := null
     try:
@@ -209,3 +216,6 @@ class EndpointHttp implements Endpoint:
     writer.headers.set "Content-Type" "application/json"
     writer.headers.set "Content-Length" STATUS-OK-JSON.size.stringify
     writer.write STATUS-OK-JSON
+
+  name -> string:
+    return "HTTP"
