@@ -103,7 +103,6 @@ serve arguments:
         failures := 0
         while failures < attempts:
           exception := catch: endpoint.run device
-
           // If we have a pending firmware upgrade, we take care of
           // it before trying to re-open the network.
           if firmware-is-upgrade-pending: firmware.upgrade
