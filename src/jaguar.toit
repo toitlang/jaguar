@@ -98,6 +98,7 @@ serve arguments:
   ]
   if device.config.contains "endpointUart":
     endpoints.add (EndpointUart --config=device.config["endpointUart"] --logger=logger)
+
   lambdas := []
   for i := 0; i < endpoints.size; i++:
     endpoint/Endpoint := endpoints[i]
@@ -106,7 +107,8 @@ serve arguments:
         attempts ::= 3
         failures := 0
         while failures < attempts:
-          exception := catch: endpoint.run device
+          exception := catch:
+            endpoint.run device
           // If we have a pending firmware upgrade, we take care of
           // it before trying to re-open the network.
           if firmware-is-upgrade-pending: firmware.upgrade
@@ -135,6 +137,14 @@ serve arguments:
     lambdas[0].call
   else:
     Task.group lambdas
+
+validate-firmware:
+  if firmware-is-validation-pending:
+    if firmware.validate:
+      logger.info "firmware update validated after connecting to network"
+      firmware-is-validation-pending = false
+    else:
+      logger.error "firmware update failed to validate"
 
 class Device:
   id/uuid.Uuid

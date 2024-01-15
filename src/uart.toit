@@ -93,6 +93,9 @@ class UartClient:
 
   run -> none:
     sync
+    // We are synchronized. This means that something is listening on the other end.
+    validate-firmware
+
     while true:
       size-bytes := reader.read-bytes 2
       size := LITTLE-ENDIAN.uint16 size-bytes 0
