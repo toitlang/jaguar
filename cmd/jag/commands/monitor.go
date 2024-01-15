@@ -74,7 +74,7 @@ func MonitorCmd() *cobra.Command {
 			if shouldProxy {
 				ch1, ch2 := multiplexReader(dev)
 				logReader = ch1
-				go proxyUart(dev, ch2)
+				go runUartProxy(dev, ch2)
 			}
 
 			scanner := bufio.NewScanner(logReader)
