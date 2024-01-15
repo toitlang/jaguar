@@ -225,7 +225,7 @@ func broadcastIdentity(identityPayload []byte) error {
 		return err
 	}
 
-	// Create a goroutine to send the payload every 200ms
+	// Create a goroutine to send the payload every 200ms.
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
@@ -233,8 +233,6 @@ func broadcastIdentity(identityPayload []byte) error {
 		for range ticker.C {
 			_, err := conn.Write(identityPayload)
 			if err != nil {
-				// Handle error, e.g., log it
-				// Note: You might want to add more error handling based on your specific use case
 				println("Error broadcasting payload:", err.Error())
 			}
 		}
