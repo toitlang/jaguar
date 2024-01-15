@@ -232,7 +232,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			"chip": device.Chip,
 		}
 		if uartEndpointOptions != nil {
-			configAssetMap["uartEndpoint"] = uartEndpointOptions
+			configAssetMap["endpointUart"] = uartEndpointOptions
 		}
 		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {

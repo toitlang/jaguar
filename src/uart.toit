@@ -22,15 +22,14 @@ class EndpointUart implements Endpoint:
     config_ = config
     this.logger = logger.with-name "uart"
 
-  run device/Device:
-    print "running uart endpoint"
-    logger.debug "running uart endpoint"
+  run device/Device -> none:
+    logger.debug "starting endpoint"
     rx := gpio.Pin config_["rx"]
     tx := gpio.Pin config_["tx"]
     port := uart.Port
         --rx=rx
         --tx=tx
-        --baud-rate=(config_.get "baud-rate") or 115200
+        --baud-rate=config_.get "baud-rate" --if-absent=: 115200
 
     try:
       client := UartClient --reader=port --writer=StdoutWriter --device=device
@@ -59,7 +58,7 @@ class StdoutWriter implements UartWriter:
     // As of 2024-01 we can't write binary data to stdout.
     // Encode it as base64 and end with a newline.
     encoded := base64.encode data
-    print "$MAGIC-TOKEN_$encoded"
+    print_ "$MAGIC-TOKEN_$encoded"
 
 class UartClient:
   /**
@@ -92,7 +91,7 @@ class UartClient:
   constructor --reader/Reader --.writer --.device:
     this.reader = BufferedReader reader
 
-  run:
+  run -> none:
     sync
     while true:
       size-bytes := reader.read-bytes 2
@@ -102,7 +101,7 @@ class UartClient:
       if trailer != '\n':
         logger.error "trailer is not '\\n'" --tags={"trailer": trailer}
         // Try to align again by reading up to the next '\n'.
-        reader.skip ((reader.index-of '\n') + 1)
+        reader.skip (reader.index-of '\n') + 1
         continue
       handle data
 
@@ -115,8 +114,8 @@ class UartClient:
   Does not respond to any sync packet and keeps it in the stream for normal
     packet handling.
   */
-  sync:
-    logger.info "syncing"
+  sync -> none:
+    logger.debug "syncing"
     sync-payload-size := 3  + SYNC-MAGIC_.size // One byte the command. 2 bytes the sync-id.
     needed-packet-size := FRAME-OVERHEAD_ + sync-payload-size
     while true:
@@ -142,7 +141,7 @@ class UartClient:
       // Found a sync packet.
       return
 
-  handle request/ByteArray:
+  handle request/ByteArray -> none:
     logger.debug "handling request" --tags={"request": request}
     command := request[0]
     data := request[1..]
@@ -173,17 +172,17 @@ class UartClient:
     send-response COMMAND-UNKNOWN_ #[]
     throw "Unknown command: $command"
 
-  handle-sync data/ByteArray:
+  handle-sync data/ByteArray -> none:
     logger.debug "handle sync request"
     sync-id := LITTLE-ENDIAN.uint16 data 0
     send-response COMMAND-SYNC_  #[sync-id & 0xff, sync-id >> 8]
 
-  handle-ping data/ByteArray:
+  handle-ping data/ByteArray -> none:
     logger.debug "handle ping request"
     send-response COMMAND-PING_ #[]
     return
 
-  handle-identify data/ByteArray:
+  handle-identify data/ByteArray -> none:
     logger.debug "handle identify request"
     identity := {
       "name": "$device.name",
@@ -195,18 +194,18 @@ class UartClient:
     send-response COMMAND-IDENTIFY_ encoded
     return
 
-  handle-list-containers data/ByteArray:
+  handle-list-containers data/ByteArray -> none:
     result := ubjson.encode registry_.entries
     send-response COMMAND-LIST-CONTAINERS_ result
 
-  handle-uninstall data/ByteArray:
+  handle-uninstall data/ByteArray -> none:
     logger.debug "handle uninstall request"
     id := data.to-string
     uninstall-image id
     send-response COMMAND-UNINSTALL_ #[]
     return
 
-  handle-firmware data/ByteArray:
+  handle-firmware data/ByteArray -> none:
     logger.debug "handle firmware request"
     firmware-size := LITTLE-ENDIAN.uint32 data 0
     acking-reader := AckingReader firmware-size reader --send-ack=(:: send-ack it)
@@ -214,7 +213,7 @@ class UartClient:
     send-response COMMAND-FIRMWARE_ #[]
     install-firmware firmware-size acking-reader
 
-  handle-install data/ByteArray:
+  handle-install data/ByteArray -> none:
     logger.debug "handle install request"
     pos := 0
     container-size := LITTLE-ENDIAN.uint32 data pos
@@ -230,7 +229,7 @@ class UartClient:
     send-response COMMAND-INSTALL_ #[]
     install-image container-size acking-reader container-id defines
 
-  handle-run data/ByteArray:
+  handle-run data/ByteArray -> none:
     image-size := LITTLE-ENDIAN.uint32 data 0
     encoded-defines := data[4..]
     defines := ubjson.decode encoded-defines
@@ -239,7 +238,7 @@ class UartClient:
     send-response COMMAND-RUN_ #[]
     run-code image-size acking-reader defines
 
-  send-response command/int response/ByteArray:
+  send-response command/int response/ByteArray -> none:
     data := #[command] + response
     if data.size > 65535:
       throw "response too large"
@@ -247,10 +246,10 @@ class UartClient:
     LITTLE-ENDIAN.put-uint16 size-bytes 0 data.size
     send size-bytes + data + #['\n']
 
-  send data/ByteArray:
+  send data/ByteArray -> none:
     writer.write-framed data
 
-  send-ack consumed/int:
+  send-ack consumed/int -> none:
     bytes := ByteArray 3
     bytes[0] = ACK-RESPONSE_
     LITTLE-ENDIAN.put-uint16 bytes 1 consumed

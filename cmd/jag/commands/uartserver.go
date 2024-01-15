@@ -65,7 +65,7 @@ func uartName(name string) string {
 	return name + "-uart"
 }
 
-func serveSerial(dev *serialPort, reader io.Reader) error {
+func proxyUart(dev *serialPort, reader io.Reader) error {
 	ud := newUartDevice(dev, reader)
 
 	err := ud.Sync()

@@ -20,7 +20,7 @@ import .network
 import .uart
 
 interface Endpoint:
-  run device/Device
+  run device/Device -> none
   name -> string
 
 // Defines recognized by Jaguar for /run and /install requests.
@@ -96,8 +96,7 @@ serve arguments:
   endpoints := [
     EndpointHttp logger,
   ]
-  print "contains uartEndpoint: $(device.config.contains "uartEndpoint")"
-  if device.config.contains "uartEndpoint":
+  if device.config.contains "endpointUart":
     endpoints.add (EndpointUart --config=device.config["uartEndpoint"] --logger=logger)
   lambdas := []
   for i := 0; i < endpoints.size; i++:

@@ -35,7 +35,7 @@ class EndpointHttp implements Endpoint:
     this.logger = logger.with-name "http"
 
   run device/Device:
-    logger.debug "running HTTP endpoint"
+    logger.debug "starting endpoint"
     network ::= net.open
     socket/tcp.ServerSocket? := null
     try:
