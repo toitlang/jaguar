@@ -54,13 +54,22 @@ container-done / monitor.Semaphore ::= monitor.Semaphore
 registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
+  device := Device.parse arguments
+  endpoints := [
+    EndpointHttp logger,
+  ]
+  if device.config.contains "endpointUart":
+    endpoints.add (EndpointUart --config=device.config["endpointUart"] --logger=logger)
+  main device endpoints
+
+main device/Device endpoints/List:
   try:
     // We try to start all installed containers, but we catch any
     // exceptions that might occur from that to avoid blocking
     // the Jaguar functionality in case something is off.
     catch --trace: run-installed-containers
     // We are now ready to start Jaguar.
-    serve arguments
+    serve device endpoints
   finally: | is-exception exception |
     // We shouldn't be able to get here without an exception having
     // been thrown, but we play it defensively and force an exception
@@ -91,14 +100,7 @@ run-installed-containers -> none:
         semaphore.up
   blockers.size.repeat: semaphore.down
 
-serve arguments:
-  device := Device.parse arguments
-  endpoints := [
-    EndpointHttp logger,
-  ]
-  if device.config.contains "endpointUart":
-    endpoints.add (EndpointUart --config=device.config["endpointUart"] --logger=logger)
-
+serve device endpoints:
   lambdas := []
   for i := 0; i < endpoints.size; i++:
     endpoint/Endpoint := endpoints[i]
