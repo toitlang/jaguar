@@ -22,7 +22,7 @@ class EndpointUart implements Endpoint:
     config_ = config
     this.logger = logger.with-name "uart"
 
-  run device/Device [--validate-firmware] -> none:
+  run device/Device -> none:
     logger.debug "starting endpoint"
     rx := gpio.Pin config_["rx"]
     tx := gpio.Pin config_["tx"]
@@ -33,7 +33,7 @@ class EndpointUart implements Endpoint:
 
     try:
       client := UartClient --reader=port --writer=StdoutWriter --device=device
-      client.run validate-firmware
+      client.run
     finally:
       port.close
       tx.close
@@ -91,10 +91,10 @@ class UartClient:
   constructor --reader/Reader --.writer --.device:
     this.reader = BufferedReader reader
 
-  run [validate-firmware] -> none:
+  run -> none:
     sync
     // We are synchronized. This means that something is listening on the other end.
-    validate-firmware.call
+    validate-firmware
 
     while true:
       size-bytes := reader.read-bytes 2

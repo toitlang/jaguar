@@ -20,7 +20,7 @@ import .network
 import .uart
 
 interface Endpoint:
-  run device/Device [--validate-firmware] -> none
+  run device/Device -> none
   name -> string
 
 // Defines recognized by Jaguar for /run and /install requests.
@@ -108,7 +108,7 @@ serve arguments:
         failures := 0
         while failures < attempts:
           exception := catch:
-            endpoint.run device --validate-firmware=(: validate-firmware)
+            endpoint.run device
           // If we have a pending firmware upgrade, we take care of
           // it before trying to re-open the network.
           if firmware-is-upgrade-pending: firmware.upgrade

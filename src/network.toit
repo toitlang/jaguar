@@ -34,7 +34,7 @@ class EndpointHttp implements Endpoint:
   constructor logger/log.Logger:
     this.logger = logger.with-name "http"
 
-  run device/Device [--validate-firmware]:
+  run device/Device:
     logger.debug "starting endpoint"
     network ::= net.open
     socket/tcp.ServerSocket? := null
@@ -46,7 +46,7 @@ class EndpointHttp implements Endpoint:
       // We've successfully connected to the network, so we consider
       // the current firmware functional. Go ahead and validate the
       // firmware if requested to do so.
-      validate-firmware.call
+      validate-firmware
 
       // We run two tasks concurrently: One broadcasts the device identity
       // via UDP and one serves incoming HTTP requests. We run the tasks
