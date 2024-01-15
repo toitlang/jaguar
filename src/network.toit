@@ -36,6 +36,16 @@ class EndpointHttp implements Endpoint:
       address := "http://$network.address:$socket.local-address.port"
       logger.info "running Jaguar device '$device.name' (id: '$device.id') on '$address'"
 
+      // We've successfully connected to the network, so we consider
+      // the current firmware functional. Go ahead and validate the
+      // firmware if requested to do so.
+      if firmware-is-validation-pending:
+        if firmware.validate:
+          logger.info "firmware update validated after connecting to network"
+          firmware-is-validation-pending = false
+        else:
+          logger.error "firmware update failed to validate"
+
       // We run two tasks concurrently: One broadcasts the device identity
       // via UDP and one serves incoming HTTP requests. We run the tasks
       // in a group so if one of them terminates, we take the other one down
