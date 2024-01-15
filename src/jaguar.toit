@@ -97,7 +97,7 @@ serve arguments:
     EndpointHttp logger,
   ]
   if device.config.contains "endpointUart":
-    endpoints.add (EndpointUart --config=device.config["uartEndpoint"] --logger=logger)
+    endpoints.add (EndpointUart --config=device.config["endpointUart"] --logger=logger)
   lambdas := []
   for i := 0; i < endpoints.size; i++:
     endpoint/Endpoint := endpoints[i]
