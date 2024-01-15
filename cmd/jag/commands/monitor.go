@@ -64,7 +64,20 @@ func MonitorCmd() *cobra.Command {
 				dev.Reboot()
 			}
 
-			scanner := bufio.NewScanner(dev)
+			var logReader io.Reader = dev
+
+			shouldProxy, err := cmd.Flags().GetBool("proxy")
+			if err != nil {
+				return err
+			}
+
+			if shouldProxy {
+				ch1, ch2 := multiplexReader(dev)
+				logReader = ch1
+				go proxyUart(dev, ch2)
+			}
+
+			scanner := bufio.NewScanner(logReader)
 
 			decoder := Decoder{scanner, cmd}
 
@@ -79,6 +92,7 @@ func MonitorCmd() *cobra.Command {
 	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
 	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
 	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
+	cmd.Flags().Bool("proxy", false, "proxy the connected device to the local network")
 	return cmd
 }
 

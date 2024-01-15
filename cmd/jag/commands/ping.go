@@ -42,7 +42,7 @@ func PingCmd() *cobra.Command {
 				return fmt.Errorf("couldn't ping the device")
 			}
 
-			fmt.Println("Got ping from the device")
+			fmt.Println("Got pong from the device")
 			return nil
 		},
 	}
