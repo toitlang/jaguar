@@ -33,9 +33,9 @@ func multiplexReader(input io.Reader) (reader1, reader2 io.Reader) {
 		for {
 			count, err := input.Read(chunk)
 			if err != nil {
+				errc <- err
 				ch1 <- nil
 				ch2 <- nil
-				errc <- err
 				return
 			}
 			acc = append(acc, chunk[:count]...)
