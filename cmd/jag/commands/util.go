@@ -547,6 +547,27 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 	return wifiSSID, wifiPassword, nil
 }
 
+func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) {
+	uartEndpointRx, err := cmd.Flags().GetInt("uart-endpoint-rx")
+	if err != nil {
+		return nil, err
+	}
+	if uartEndpointRx < 0 {
+		return nil, nil
+	}
+	uartEndpointOptions := map[string]interface{}{
+		"rx": uartEndpointRx,
+	}
+	uartBaud, err := cmd.Flags().GetUint("uart-endpoint-baud")
+	if err != nil {
+		return nil, err
+	}
+	if uartBaud != 0 {
+		uartEndpointOptions["baud"] = uartBaud
+	}
+	return uartEndpointOptions, nil
+}
+
 // isLikelyRunningOnBuildbot returns true if the current process is running on a buildbot.
 // It uses some heuristics to determine this, and may not be 100% accurate.
 func isLikelyRunningOnBuildbot() bool {
