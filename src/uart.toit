@@ -25,10 +25,9 @@ class EndpointUart implements Endpoint:
   run device/Device -> none:
     logger.debug "starting endpoint"
     rx := gpio.Pin config_["rx"]
-    tx := gpio.Pin config_["tx"]
     port := uart.Port
         --rx=rx
-        --tx=tx
+        --tx=null
         --baud-rate=config_.get "baud-rate" --if-absent=: 115200
 
     try:
@@ -36,7 +35,6 @@ class EndpointUart implements Endpoint:
       client.run
     finally:
       port.close
-      tx.close
       rx.close
 
   name -> string:
