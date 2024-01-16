@@ -110,9 +110,7 @@ func FlashCmd() *cobra.Command {
 			uartEndpointOptions = nil
 			if addUartEndpoint {
 				uartEndpointOptions = map[string]interface{}{
-					"tx":       32,
-					"rx":       33,
-					"baudRate": 115200,
+					"rx": 33,
 				}
 			}
 
