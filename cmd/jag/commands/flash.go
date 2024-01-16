@@ -102,16 +102,9 @@ func FlashCmd() *cobra.Command {
 				ExcludeJaguar: excludeJaguar,
 			}
 
-			addUartEndpoint, err := cmd.Flags().GetBool("add-uart-endpoint")
+			uartEndpointOptions, err := getUartEndpointOptions(cmd)
 			if err != nil {
 				return err
-			}
-			var uartEndpointOptions map[string]interface{}
-			uartEndpointOptions = nil
-			if addUartEndpoint {
-				uartEndpointOptions = map[string]interface{}{
-					"rx": 33,
-				}
 			}
 
 			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, uartEndpointOptions)
@@ -162,7 +155,9 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
 	cmd.Flags().Bool("skip-port-check", false, "accept the given port without checking")
-	cmd.Flags().Bool("add-uart-endpoint", false, "add a UART endpoint to the device")
-	cmd.Flags().MarkHidden("add-uart-endpoint")
+	cmd.Flags().Int("uart-endpoint-rx", -1, "add a UART endpoint to the device listening on the given pin")
+	cmd.Flags().MarkHidden("uart-endpoint-rx")
+	cmd.Flags().Uint("uart-endpoint-baud", 0, "set the baud rate for the UART endpoint")
+	cmd.Flags().MarkHidden("uart-endpoint-baud")
 	return cmd
 }
