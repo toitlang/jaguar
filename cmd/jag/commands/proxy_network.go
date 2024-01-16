@@ -201,7 +201,7 @@ func createIdentityPayload(identity *uartIdentity, localIP string, localPort int
 	jsonIdentity := map[string]interface{}{
 		"method": "jaguar.identify",
 		"payload": map[string]interface{}{
-			"name":       identity.Name + "-uart",
+			"name":       identity.Name + "^uart",
 			"id":         identity.Id,
 			"chip":       identity.Chip,
 			"sdkVersion": identity.SdkVersion,

@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -106,9 +107,14 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			name := device.Name
+			// Drop `^...` suffix from device-name. Typically this "^uart" as in "foo-bar^uart".
+			if hatIndex := strings.Index(name, "^"); hatIndex != -1 {
+				name = name[:hatIndex]
+			}
 			deviceOptions := DeviceOptions{
 				Id:           newID,
-				Name:         device.Name,
+				Name:         name,
 				Chip:         chip,
 				WifiSsid:     wifiSSID,
 				WifiPassword: wifiPassword,
