@@ -367,23 +367,29 @@ func parseDefineFlags(cmd *cobra.Command, flagName string) (map[string]interface
 	for _, element := range defineFlags {
 		indexOfAssign := strings.Index(element, "=")
 		var key string
+		var value interface{}
 		if indexOfAssign < 0 {
 			key = strings.TrimSpace(element)
-			definesMap[key] = true
+			value = true
 		} else {
 			key = strings.TrimSpace(element[0:indexOfAssign])
-			value := strings.TrimSpace(element[indexOfAssign+1:])
+			valueString := strings.TrimSpace(element[indexOfAssign+1:])
 
 			// Try to parse the value as a JSON value and avoid turning
 			// it into a string if it is valid.
 			var unmarshalled interface{}
-			err := json.Unmarshal([]byte(value), &unmarshalled)
+			err := json.Unmarshal([]byte(valueString), &unmarshalled)
 			if err == nil {
-				definesMap[key] = unmarshalled
+				value = unmarshalled
 			} else {
-				definesMap[key] = value
+				value = valueString
 			}
 		}
+		if key == "jag.disabled" {
+			fmt.Println("Warning: Using '-D jag.disabled' is deprecated. Use '-D jag.network-disabled' instead.")
+			key = "jag.network-disabled"
+		}
+		definesMap[key] = value
 		if key == "run.boot" {
 			fmt.Println()
 			fmt.Println("*********************************************")

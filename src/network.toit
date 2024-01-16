@@ -5,6 +5,7 @@
 import encoding.ubjson
 import http
 import log
+import monitor
 import net
 import net.udp
 import net.tcp
@@ -20,7 +21,7 @@ STATUS-OK-JSON   ::= """{ "status": "OK" }"""
 
 HEADER-DEVICE-ID         ::= "X-Jaguar-Device-ID"
 HEADER-SDK-VERSION       ::= "X-Jaguar-SDK-Version"
-HEADER-DISABLED          ::= "X-Jaguar-Disabled"
+HEADER-NETWORK-DISABLED  ::= "X-Jaguar-Network-Disabled"
 HEADER-CONTAINER-NAME    ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT ::= "X-Jaguar-Container-Timeout"
 
@@ -33,6 +34,9 @@ class EndpointHttp implements Endpoint:
 
   constructor logger/log.Logger:
     this.logger = logger.with-name "http"
+
+  uses-network -> bool:
+    return true
 
   run device/Device:
     logger.debug "starting endpoint"
@@ -48,13 +52,23 @@ class EndpointHttp implements Endpoint:
       // firmware if requested to do so.
       validate-firmware
 
+      request-mutex := monitor.Mutex
+
       // We run two tasks concurrently: One broadcasts the device identity
       // via UDP and one serves incoming HTTP requests. We run the tasks
       // in a group so if one of them terminates, we take the other one down
       // and clean up nicely.
       Task.group --required=1 [
         :: broadcast-identity network device address,
-        :: serve-incoming-requests socket device address,
+        :: serve-incoming-requests socket device address request-mutex,
+        // If the call to the network-manager monitor returns, it will terminate the
+        // task and thus shut down the whole group.
+        ::
+          network-manager.wait-for-request-to-disable-network
+          request-mutex.do:
+            // Get the lock so that we know that the last request has been handled.
+            socket.close
+            socket = null
       ]
     finally:
       if socket: socket.close
@@ -134,84 +148,82 @@ class EndpointHttp implements Endpoint:
       writer.write-headers http.STATUS-NOT-FOUND
       writer.write "Not found: $path"
 
-  serve-incoming-requests socket/tcp.ServerSocket device/Device address/string -> none:
+  serve-incoming-requests socket/tcp.ServerSocket device/Device address/string request-mutex/monitor.Mutex -> none:
     self := Task.current
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
 
     server.listen socket:: | request/http.Request writer/http.ResponseWriter |
-      headers ::= request.headers
-      device-id := "$device.id"
-      device-id-header := headers.single HEADER-DEVICE-ID
-      sdk-version-header := headers.single HEADER-SDK-VERSION
-      path := request.path
+      request-mutex.do:
+        headers ::= request.headers
+        device-id := "$device.id"
+        device-id-header := headers.single HEADER-DEVICE-ID
+        sdk-version-header := headers.single HEADER-SDK-VERSION
+        path := request.path
 
-      // Handle identification requests before validation, as the caller doesn't know that information yet.
-      if path == "/identify" and request.method == http.GET:
-        writer.headers.set "Content-Type" "application/json"
-        result := identity-payload device address
-        writer.headers.set "Content-Length" result.size.stringify
-        writer.write result
+        // Handle identification requests before validation, as the caller doesn't know that information yet.
+        if path == "/identify" and request.method == http.GET:
+          writer.headers.set "Content-Type" "application/json"
+          result := identity-payload device address
+          writer.headers.set "Content-Length" result.size.stringify
+          writer.write result
 
-      else if path == "/" or path.ends-with ".html" or path.ends-with ".css" or path.ends-with ".ico":
-        handle-browser-request device.name request writer
+        else if path == "/" or path.ends-with ".html" or path.ends-with ".css" or path.ends-with ".ico":
+          handle-browser-request device.name request writer
 
-      // Validate device ID.
-      else if device-id-header != device-id:
-        logger.info "denied request, header: '$HEADER-DEVICE-ID' was '$device-id-header' not '$device-id'"
-        writer.write-headers http.STATUS-FORBIDDEN --message="Device has id '$device-id', jag is trying to talk to '$device-id-header'"
+        // Validate device ID.
+        else if device-id-header != device-id:
+          logger.info "denied request, header: '$HEADER-DEVICE-ID' was '$device-id-header' not '$device-id'"
+          writer.write-headers http.STATUS-FORBIDDEN --message="Device has id '$device-id', jag is trying to talk to '$device-id-header'"
 
-      // Handle pings.
-      else if path == "/ping" and request.method == http.GET:
-        respond-ok writer
+        // Handle pings.
+        else if path == "/ping" and request.method == http.GET:
+          respond-ok writer
 
-      // Handle listing containers.
-      else if path == "/list" and request.method == http.GET:
-        result := ubjson.encode registry_.entries
-        writer.headers.set "Content-Type" "application/ubjson"
-        writer.headers.set "Content-Length" result.size.stringify
-        writer.write result
+        // Handle listing containers.
+        else if path == "/list" and request.method == http.GET:
+          result := ubjson.encode registry_.entries
+          writer.headers.set "Content-Type" "application/ubjson"
+          writer.headers.set "Content-Length" result.size.stringify
+          writer.write result
 
-      // Handle uninstalling containers.
-      else if path == "/uninstall" and request.method == http.PUT:
-        container-name ::= headers.single HEADER-CONTAINER-NAME
-        uninstall-image container-name
-        respond-ok writer
+        // Handle uninstalling containers.
+        else if path == "/uninstall" and request.method == http.PUT:
+          container-name ::= headers.single HEADER-CONTAINER-NAME
+          uninstall-image container-name
+          respond-ok writer
 
-      // Handle firmware updates.
-      else if path == "/firmware" and request.method == http.PUT:
-        install-firmware request.content-length request.body
-        respond-ok writer
-        // Mark the firmware as having a pending upgrade and close
-        // the server socket to force the HTTP server loop to stop.
-        firmware-is-upgrade-pending = true
-        socket.close
+        // Handle firmware updates.
+        else if path == "/firmware" and request.method == http.PUT:
+          install-firmware request.content-length request.body
+          respond-ok writer
+          // Mark the firmware as having a pending upgrade and close
+          // the server socket to force the HTTP server loop to stop.
+          firmware-is-upgrade-pending = true
+          socket.close
 
-      // Validate SDK version before attempting to install containers or run code.
-      else if sdk-version-header != system.vm-sdk-version:
-        logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
-        writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $system.vm-sdk-version, jag has $sdk-version-header"
+        // Validate SDK version before attempting to install containers or run code.
+        else if sdk-version-header != system.vm-sdk-version:
+          logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
+          writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $system.vm-sdk-version, jag has $sdk-version-header"
 
-      // Handle installing containers.
-      else if path == "/install" and request.method == "PUT":
-        container-name ::= headers.single HEADER-CONTAINER-NAME
-        defines ::= extract-defines headers
-        install-image request.content-length request.body container-name defines
-        respond-ok writer
+        // Handle installing containers.
+        else if path == "/install" and request.method == "PUT":
+          container-name ::= headers.single HEADER-CONTAINER-NAME
+          defines ::= extract-defines headers
+          install-image request.content-length request.body container-name defines
+          respond-ok writer
 
-      // Handle code running.
-      else if path == "/run" and request.method == "PUT":
-        defines ::= extract-defines headers
-        run-code request.content-length request.body defines
-        respond-ok writer
-        // If the code needs to run with Jaguar disabled, we close
-        // the server socket to force the HTTP server loop to stop.
-        if disabled: socket.close
+        // Handle code running.
+        else if path == "/run" and request.method == "PUT":
+          defines ::= extract-defines headers
+          run-code request.content-length request.body defines
+          respond-ok writer
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
-    if headers.single HEADER-DISABLED:
-      defines[JAG-DISABLED] = true
+    if headers.single HEADER-NETWORK-DISABLED:
+      defines[JAG-NETWORK-DISABLED] = true
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
       timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout

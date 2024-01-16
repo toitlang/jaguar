@@ -323,14 +323,17 @@ func sendCodeFromFile(
 	assetsMap := make(map[string]interface{})
 	for key, value := range defines {
 		if strings.HasPrefix(key, "jag.") {
-			if key == "jag.disabled" {
+			if key == "jag.disabled" || key == "jag.network-disabled" {
+				if key == "jag.disabled" {
+					fmt.Println("Warning: jag.disabled is deprecated, use jag.network-disabled instead")
+				}
 				switch converted := value.(type) {
 				case bool:
 					if converted {
-						headersMap[JaguarDisabledHeader] = "true"
+						headersMap[JaguarNetworkDisabledHeader] = "true"
 					}
 				default:
-					return fmt.Errorf("jag.disabled must be a bool")
+					return fmt.Errorf("jag.network-disabled must be a bool")
 				}
 			} else if key == "jag.timeout" {
 				switch converted := value.(type) {
