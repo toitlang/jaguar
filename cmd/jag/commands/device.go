@@ -57,7 +57,7 @@ func (d Device) Short() string {
 }
 
 const (
-	pingTimeout = 400 * time.Millisecond
+	pingTimeout = 3000 * time.Millisecond
 )
 
 func (d Device) Ping(ctx context.Context, sdk *SDK) bool {

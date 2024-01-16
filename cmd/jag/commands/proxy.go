@@ -6,7 +6,6 @@ package commands
 
 import (
 	"fmt"
-	"io"
 )
 
 // A small HTTP server that can be used to communicate with the device through
@@ -19,7 +18,7 @@ func uartName(name string) string {
 	return name + "-uart"
 }
 
-func runUartProxy(dev *serialPort, reader io.Reader) error {
+func runUartProxy(dev *serialPort, reader HasDataReader) error {
 	ud := newUartDevice(dev, reader)
 
 	err := ud.Sync()
