@@ -31,7 +31,11 @@ class EndpointUart implements Endpoint:
         --baud-rate=config_.get "baud-rate" --if-absent=: 115200
 
     try:
-      client := UartClient --reader=port --writer=StdoutWriter --device=device
+      client := UartClient
+          --reader=port
+          --writer=StdoutWriter
+          --device=device
+          --logger=logger
       client.run
     finally:
       port.close
@@ -85,14 +89,15 @@ class UartClient:
   reader/BufferedReader
   writer/UartWriter
   device/Device
+  logger/log.Logger
 
-  constructor --reader/Reader --.writer --.device:
+  constructor --reader/Reader --.writer --.device --.logger:
     this.reader = BufferedReader reader
 
   run -> none:
     sync
     // We are synchronized. This means that something is listening on the other end.
-    validate-firmware
+    validate-firmware --reason="synchronized with proxy"
 
     while true:
       size-bytes := reader.read-bytes 2
