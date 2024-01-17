@@ -28,7 +28,7 @@ class EndpointUart implements Endpoint:
     port := uart.Port
         --rx=rx
         --tx=null
-        --baud-rate=config_.get "baud-rate" --if-absent=: 115200
+        --baud-rate=config_.get "baud" --if-absent=: 115200
 
     try:
       client := UartClient
