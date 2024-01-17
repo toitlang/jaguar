@@ -30,18 +30,33 @@ const (
 	responseAck = 255
 )
 
-type uartDevice struct {
-	lock   sync.Mutex
-	writer io.Writer
-	reader *bufio.Reader
-	syncId int
+type HasDataReader interface {
+	io.Reader
+	HasData() bool
 }
 
-func newUartDevice(writer io.Writer, reader io.Reader) *uartDevice {
-	return &uartDevice{
-		writer: writer,
-		reader: bufio.NewReader(reader),
+type uartDevice struct {
+	lock             sync.Mutex
+	writer           io.Writer
+	underlyingReader HasDataReader
+	bufferedReader   *bufio.Reader
+	syncId           int
+}
+
+func newUartDevice(writer io.Writer, reader HasDataReader) *uartDevice {
+	result := &uartDevice{
+		writer:           writer,
+		underlyingReader: reader,
+		bufferedReader:   bufio.NewReader(reader),
 	}
+	go func() {
+		for {
+			// Synchronize every 5 seconds.
+			time.Sleep(5 * time.Second)
+			result.Sync()
+		}
+	}()
+	return result
 }
 
 // Sync synchronizes the device with the server.
@@ -50,8 +65,27 @@ func newUartDevice(writer io.Writer, reader io.Reader) *uartDevice {
 func (d *uartDevice) Sync() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
+	return d.sync()
+}
+
+func (d *uartDevice) hasIncomingData() bool {
+	return d.underlyingReader.HasData() || d.bufferedReader.Buffered() > 0
+}
+
+func (d *uartDevice) sync() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Drain any data that is buffered so far.
+	for d.underlyingReader.HasData() {
+		_, err := d.underlyingReader.Read(nil)
+		if err != nil {
+			return err
+		}
+	}
+	if d.bufferedReader.Buffered() > 0 {
+		d.bufferedReader.Reset(d.underlyingReader)
+	}
 
 	errc := make(chan error)
 	successc := make(chan struct{})
@@ -61,7 +95,7 @@ func (d *uartDevice) Sync() error {
 	go func() {
 		for !done {
 			// Use the '\n' of messages to align the reader.
-			data, err := d.reader.ReadBytes('\n')
+			data, err := d.bufferedReader.ReadBytes('\n')
 			if err != nil {
 				errc <- err
 				return
@@ -252,7 +286,7 @@ func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
 		for consumed < chunkSize {
 			// Read the Ack. 3 bytes.
 			buffer := make([]byte, 3)
-			_, err = io.ReadFull(d.reader, buffer)
+			_, err = io.ReadFull(d.bufferedReader, buffer)
 			if err != nil {
 				return err
 			}
@@ -269,6 +303,13 @@ func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
 }
 
 func (d *uartDevice) sendRequest(command byte, payload []byte) ([]byte, error) {
+	// There should be no data in the reader. If there is, we sync first.
+	if d.hasIncomingData() {
+		err := d.sync()
+		if err != nil {
+			return nil, err
+		}
+	}
 	err := d.WritePacket(append([]byte{command}, payload...))
 	if err != nil {
 		return nil, err
@@ -309,22 +350,22 @@ func (d *uartDevice) writeAll(data []byte) error {
 // ReceiveResponse receives a response to the given command.
 // The returned data is the payload of the response, without the command byte.
 func (d *uartDevice) ReceiveResponse(command byte) ([]byte, error) {
-	lengthLsb, err := d.reader.ReadByte()
+	lengthLsb, err := d.bufferedReader.ReadByte()
 	if err != nil {
 		return nil, err
 	}
-	lengthMsb, err := d.reader.ReadByte()
+	lengthMsb, err := d.bufferedReader.ReadByte()
 	if err != nil {
 		return nil, err
 	}
 	payloadLength := int(lengthLsb) | (int(lengthMsb) << 8)
 	payload := make([]byte, payloadLength)
-	_, err = io.ReadFull(d.reader, payload)
+	_, err = io.ReadFull(d.bufferedReader, payload)
 	if err != nil {
 		return nil, err
 	}
 	// Make sure the packet ends with a zero byte.
-	b, err := d.reader.ReadByte()
+	b, err := d.bufferedReader.ReadByte()
 	if err != nil {
 		return nil, err
 	}

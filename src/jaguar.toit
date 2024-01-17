@@ -140,13 +140,15 @@ serve device endpoints:
   else:
     Task.group lambdas
 
-validate-firmware:
-  if firmware-is-validation-pending:
-    if firmware.validate:
-      logger.info "firmware update validated after connecting to network"
-      firmware-is-validation-pending = false
-    else:
-      logger.error "firmware update failed to validate"
+validation-mutex ::= monitor.Mutex
+validate-firmware --reason/string -> none:
+  validation-mutex.do:
+    if firmware-is-validation-pending:
+      if firmware.validate:
+        logger.info "firmware update validated" --tags={"reason": reason}
+        firmware-is-validation-pending = false
+      else:
+        logger.error "firmware update failed to validate"
 
 class Device:
   id/uuid.Uuid

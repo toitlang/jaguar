@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -183,12 +182,12 @@ func onWatchChanges(
 
 	updateWatcher := func(runCtx context.Context) {
 		var paths []string
-		if tmpFile, err := ioutil.TempFile("", "*.txt"); err == nil {
+		if tmpFile, err := os.CreateTemp("", "*.txt"); err == nil {
 			defer os.Remove(tmpFile.Name())
 			tmpFile.Close()
 			cmd := sdk.ToitCompile(ctx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", "--analyze", entrypoint)
 			if err := cmd.Run(); err == nil {
-				if b, err := ioutil.ReadFile(tmpFile.Name()); err == nil {
+				if b, err := os.ReadFile(tmpFile.Name()); err == nil {
 					paths = parseDependeniesToDirs(b)
 				}
 			} else {
