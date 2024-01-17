@@ -95,7 +95,7 @@ func getFirmwareEnvelopePath(version string, model string) (string, error) {
 	path := filepath.Join(envelopesPath, name)
 	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
 		if stat != nil && stat.IsDir() {
-			return "", fmt.Errorf("the path '%s' holds a directory, not the firmware envelope for '%s'.", envelopesPath, model)
+			return "", fmt.Errorf("the path '%s' holds a directory, not the firmware envelope for '%s'", envelopesPath, model)
 		}
 		// File doesn't exist.
 		return path, os.ErrNotExist

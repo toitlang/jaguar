@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -152,7 +151,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			}
 			defer os.Remove(firmwareBin.Name())
 
-			bin, err := ioutil.ReadFile(firmwareBin.Name())
+			bin, err := os.ReadFile(firmwareBin.Name())
 			if err != nil {
 				return err
 			}
@@ -366,7 +365,7 @@ func copySnapshotsIntoCache(ctx context.Context, sdk *SDK, envelope *os.File) er
 		return err
 	}
 
-	listBytes, err := ioutil.ReadFile(listFile.Name())
+	listBytes, err := os.ReadFile(listFile.Name())
 	if err != nil {
 		return err
 	}

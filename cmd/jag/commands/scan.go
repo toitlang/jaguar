@@ -73,7 +73,7 @@ func ScanCmd() *cobra.Command {
 			cmd.SilenceUsage = true
 			if outputter != nil {
 				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-				devices := []Device{}
+				var devices []Device
 				var err error
 				devices, err = scan(scanCtx, autoSelect, port)
 				cancel()
@@ -182,7 +182,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	}
 
 	if len(devices) == 0 {
-		return nil, false, fmt.Errorf("didn't find any Jaguar devices.\nPerhaps you need to be on the same wifi as the device.\nYou can also specify the IP address of the device.")
+		return nil, false, fmt.Errorf("didn't find any Jaguar devices.\nPerhaps you need to be on the same wifi as the device.\nYou can also specify the IP address of the device")
 	}
 	if autoSelect != nil {
 		for _, d := range devices {
