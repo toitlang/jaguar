@@ -46,10 +46,15 @@ type Device struct {
 	Address    string `mapstructure:"address" yaml:"address" json:"address"`
 	SDKVersion string `mapstructure:"sdkVersion" yaml:"sdkVersion" json:"sdkVersion"`
 	WordSize   int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
+	Proxied    bool   `mapstructure:"proxied" yaml:"proxied" json:"proxied"`
 }
 
 func (d Device) String() string {
-	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name, d.Address, d.WordSize*8)
+	proxied := ""
+	if d.Proxied {
+		proxied = ", proxied"
+	}
+	return fmt.Sprintf("%s (address: %s, %d-bit%s)", d.Name, d.Address, d.WordSize*8, proxied)
 }
 
 func (d Device) Short() string {
