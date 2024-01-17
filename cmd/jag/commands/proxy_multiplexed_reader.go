@@ -17,10 +17,10 @@ const (
 // multiplexReader takes an io.Reader and returns two readers.
 // The first reader contains usual output and also gets any error.
 // The second reader contains the out-of-band messages, marked with the MagicToken.
-func multiplexReader(input io.Reader) (reader1, reader2 io.Reader) {
+func multiplexReader(input io.Reader) (reader1, reader2 *chanReader) {
 	// Create channels for communicating data to readers.
-	ch1 := make(chan []byte)
-	ch2 := make(chan []byte)
+	ch1 := make(chan []byte, 100)
+	ch2 := make(chan []byte, 100)
 	errc := make(chan error, 1)
 
 	go func() {
@@ -117,9 +117,17 @@ func (cr *chanReader) Read(p []byte) (n int, err error) {
 		if cr.errc == nil {
 			return 0, io.EOF
 		}
+		println("Error")
 		return 0, <-cr.errc
 	}
 
+	if p == nil {
+		return len(data), nil
+	}
 	copy(p, data)
 	return len(data), nil
+}
+
+func (cr *chanReader) HasData() bool {
+	return len(cr.ch) > 0
 }

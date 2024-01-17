@@ -90,6 +90,8 @@ class UartClient:
     this.reader = BufferedReader reader
 
   run -> none:
+    logger.info "announcing endpoint"
+    announce
     sync
     // We are synchronized. This means that something is listening on the other end.
     validate-firmware
@@ -105,6 +107,17 @@ class UartClient:
         reader.skip (reader.index-of '\n') + 1
         continue
       handle data
+
+  /**
+  Announces this endpoint.
+
+  This is the only place where the endpoint sends data without being asked.
+  For `jag monitor` without the `--proxy` option, this will print an encoded message in the logs.
+    However, this should only happen at the beginning, and by announcing the endpoint, the
+    proxy has a way to resynchronize with the endpoint.
+  */
+  announce -> none:
+    send "Jaguar endpoint: $device.name ($device.id)\n".to-byte-array
 
   /**
   Synchronizes with the server.
