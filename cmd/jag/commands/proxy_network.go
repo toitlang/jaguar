@@ -213,27 +213,36 @@ func createIdentityPayload(identity *uartIdentity, localIP string, localPort int
 }
 
 func broadcastIdentity(identityPayload []byte) error {
-	// Create a UDP address for broadcasting (use broadcast IP)
-	addr, err := net.ResolveUDPAddr("udp", udpIdentifyAddress+":"+strconv.Itoa(udpIdentifyPort))
-	if err != nil {
-		return err
-	}
-
-	// Create a UDP connection
-	conn, err := net.DialUDP("udp", nil, addr)
-	if err != nil {
-		return err
-	}
-
 	// Create a goroutine to send the payload every 200ms.
 	go func() {
-		ticker := time.NewTicker(200 * time.Millisecond)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			_, err := conn.Write(identityPayload)
+		for {
+			// Create a UDP address for broadcasting (use broadcast IP)
+			addr, err := net.ResolveUDPAddr("udp", udpIdentifyAddress+":"+strconv.Itoa(udpIdentifyPort))
 			if err != nil {
-				println("Error broadcasting payload:", err.Error())
+				// Sleep for a few seconds and try again.
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			// Create a UDP connection
+			conn, err := net.DialUDP("udp", nil, addr)
+			if err != nil {
+				// Sleep for a few seconds and try again.
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			ticker := time.NewTicker(200 * time.Millisecond)
+
+			for range ticker.C {
+				_, err := conn.Write(identityPayload)
+				if err != nil {
+					println("Error broadcasting payload:", err.Error())
+					ticker.Stop()
+					conn.Close()
+					// Try to reconnect.
+					break
+				}
 			}
 		}
 	}()
