@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import crypto.crc
 import http
 import log
 import reader
@@ -190,15 +191,20 @@ class Device:
         --chip=chip or "unknown"
         --config=config
 
-flash-image image-size/int reader/reader.Reader name/string? defines/Map -> uuid.Uuid:
+flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32/int -> uuid.Uuid:
   with-timeout --ms=120_000: flash-mutex.do:
     image := registry_.install name defines:
       logger.debug "installing container image with $image-size bytes"
+      summer := crc.Crc.little_endian 32
+          --polynomial=0xEDB88320
+          --initial_state=0xffff_ffff
+          --xor_result=0xffff_ffff
       written-size := 0
       writer := containers.ContainerImageWriter image-size
       while written-size < image-size:
         data := reader.read
         if not data: break
+        summer.add data
         // This is really subtle, but because the firmware writing crosses the RPC
         // boundary, the provided data might get neutered and handed over to another
         // process. In that case, the size after the call to writer.write is zero,
@@ -206,6 +212,11 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map -> uuid
         // before calling out to writer.write.
         written-size += data.size
         writer.write data
+      actual-crc32 := summer.get-as-int
+      if actual-crc32 != crc32:
+        logger.error "CRC32 mismatch."
+        writer.close
+        throw "CRC32 mismatch"
       logger.debug "installing container image with $image-size bytes -> wrote $written-size bytes"
       writer.commit --data=(name != null ? JAGUAR-INSTALLED-MAGIC : 0)
     return image
@@ -217,8 +228,8 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
   logger.info "$nick $cause$suffix"
   return containers.start image
 
-install-image image-size/int reader/reader.Reader name/string defines/Map -> none:
-  image := flash-image image-size reader name defines
+install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
+  image := flash-image image-size reader name defines --crc32=crc32
   if defines.get JAG-DISABLED:
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with Jaguar disabled"
@@ -263,13 +274,13 @@ run-to-completion name/string? container/containers.Container start/int timeout/
   else:
     logger.error "$nick stopped - exit code $code"
 
-run-code image-size/int reader/reader.Reader defines/Map -> none:
+run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
   jag-disabled := defines.get JAG-DISABLED
   if jag-disabled: disabled = true
   timeout/Duration? := compute-timeout defines --disabled=disabled
 
   // Write the image into flash.
-  image := flash-image image-size reader null defines
+  image := flash-image image-size reader null defines --crc32=crc32
 
   // We start the container from a separate task to allow the HTTP server
   // to continue operating. This also means that the container running
