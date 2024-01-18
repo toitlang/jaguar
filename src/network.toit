@@ -23,6 +23,7 @@ HEADER-SDK-VERSION       ::= "X-Jaguar-SDK-Version"
 HEADER-DISABLED          ::= "X-Jaguar-Disabled"
 HEADER-CONTAINER-NAME    ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT ::= "X-Jaguar-Container-Timeout"
+HEADER_CRC32             ::= "X-Jaguar-CRC32"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -195,14 +196,16 @@ class EndpointHttp implements Endpoint:
       // Handle installing containers.
       else if path == "/install" and request.method == "PUT":
         container-name ::= headers.single HEADER-CONTAINER-NAME
+        crc32 := int.parse (headers.single HEADER_CRC32)
         defines ::= extract-defines headers
-        install-image request.content-length request.body container-name defines
+        install-image request.content-length request.body container-name defines --crc32=crc32
         respond-ok writer
 
       // Handle code running.
       else if path == "/run" and request.method == "PUT":
+        crc32 := int.parse (headers.single HEADER_CRC32)
         defines ::= extract-defines headers
-        run-code request.content-length request.body defines
+        run-code request.content-length request.body defines --crc32=crc32
         respond-ok writer
         // If the code needs to run with Jaguar disabled, we close
         // the server socket to force the HTTP server loop to stop.

@@ -7,6 +7,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -91,6 +92,15 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		return true
 	}
 
+	readBody := func(body io.Reader, length int64) ([]byte, error) {
+		result := make([]byte, length)
+		_, err := io.ReadFull(body, result)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/identify", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
@@ -140,7 +150,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		if !checkValidDeviceId(w, r) || !checkIsPut(w, r) {
 			return
 		}
-		err := ud.Firmware(r.ContentLength, r.Body)
+		firmwareImage, err := readBody(r.Body, r.ContentLength)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = ud.Firmware(firmwareImage)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -157,7 +172,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 			return
 		}
 		defines := extractDefines(r)
-		err := ud.Install(containerName, defines, r.ContentLength, r.Body)
+		containerImage, err := readBody(r.Body, r.ContentLength)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = ud.Install(containerName, defines, containerImage)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -169,7 +189,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 			return
 		}
 		defines := extractDefines(r)
-		err := ud.Run(defines, r.ContentLength, r.Body)
+		image, err := readBody(r.Body, r.ContentLength)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = ud.Run(defines, image)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

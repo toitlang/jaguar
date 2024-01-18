@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"sync"
 	"time"
@@ -202,19 +203,19 @@ func (d *uartDevice) Uninstall(containerName string) error {
 	return err
 }
 
-func (d *uartDevice) Firmware(length int64, newFirmware io.Reader) error {
+func (d *uartDevice) Firmware(newFirmware []byte) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	payload := []byte{}
-	payload = appendUint32Le(payload, uint32(length))
+	payload = appendUint32Le(payload, uint32(len(newFirmware)))
 	_, err := d.sendRequest(commandFirmware, payload)
 	if err != nil {
 		return err
 	}
-	return d.streamChunked(length, newFirmware)
+	return d.streamChunked(newFirmware)
 }
 
-func (d *uartDevice) Install(containerName string, defines map[string]interface{}, length int64, imageReader io.Reader) error {
+func (d *uartDevice) Install(containerName string, defines map[string]interface{}, containerImage []byte) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	encodedDefines, err := ubjson.Marshal(defines)
@@ -222,7 +223,8 @@ func (d *uartDevice) Install(containerName string, defines map[string]interface{
 		return err
 	}
 	payload := []byte{}
-	payload = appendUint32Le(payload, uint32(length))
+	payload = appendUint32Le(payload, uint32(len(containerImage)))
+	payload = appendUint32Le(payload, crc32.ChecksumIEEE(containerImage))
 	payload = appendUint16Le(payload, uint16(len(containerName)))
 	payload = append(payload, containerName...)
 	payload = append(payload, encodedDefines...)
@@ -231,10 +233,10 @@ func (d *uartDevice) Install(containerName string, defines map[string]interface{
 	if err != nil {
 		return err
 	}
-	return d.streamChunked(length, imageReader)
+	return d.streamChunked(containerImage)
 }
 
-func (d *uartDevice) Run(defines map[string]interface{}, length int64, imageReader io.Reader) error {
+func (d *uartDevice) Run(defines map[string]interface{}, image []byte) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	encodedDefines, err := ubjson.Marshal(defines)
@@ -242,14 +244,15 @@ func (d *uartDevice) Run(defines map[string]interface{}, length int64, imageRead
 		return err
 	}
 	payload := []byte{}
-	payload = appendUint32Le(payload, uint32(length))
+	payload = appendUint32Le(payload, uint32(len(image)))
+	payload = appendUint32Le(payload, crc32.ChecksumIEEE(image))
 	payload = append(payload, encodedDefines...)
 
 	_, err = d.sendRequest(commandRun, payload)
 	if err != nil {
 		return err
 	}
-	return d.streamChunked(length, imageReader)
+	return d.streamChunked(image)
 }
 
 func appendUint16Le(data []byte, value uint16) []byte {
@@ -266,7 +269,8 @@ func appendUint32Le(data []byte, value uint32) []byte {
 	return data
 }
 
-func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
+func (d *uartDevice) streamChunked(data []byte) error {
+	length := len(data)
 	// Start sending the image in chunks of 512 bytes.
 	// Expect a response for each chunk.
 	written := 0
@@ -275,18 +279,14 @@ func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
 		if written+chunkSize > int(length) {
 			chunkSize = int(length) - written
 		}
-		chunk := make([]byte, chunkSize)
-		_, err := io.ReadFull(dataReader, chunk)
-		if err != nil {
-			return err
-		}
+		chunk := data[written : written+chunkSize]
 		d.writeAll(chunk)
 		written += chunkSize
 		consumed := 0
 		for consumed < chunkSize {
 			// Read the Ack. 3 bytes.
 			buffer := make([]byte, 3)
-			_, err = io.ReadFull(d.bufferedReader, buffer)
+			_, err := io.ReadFull(d.bufferedReader, buffer)
 			if err != nil {
 				return err
 			}

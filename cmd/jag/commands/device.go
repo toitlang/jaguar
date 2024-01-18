@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net/http"
 	"os"
@@ -25,6 +26,7 @@ const (
 	JaguarDisabledHeader         = "X-Jaguar-Disabled"
 	JaguarContainerNameHeader    = "X-Jaguar-Container-Name"
 	JaguarContainerTimeoutHeader = "X-Jaguar-Container-Timeout"
+	JaguarCRC32Header            = "X-Jaguar-CRC32"
 )
 
 type Devices struct {
@@ -93,6 +95,9 @@ func (d Device) SendCode(ctx context.Context, sdk *SDK, request string, b []byte
 	for key, value := range headersMap {
 		req.Header.Set(key, value)
 	}
+	// Set a crc32 header of the bytes.
+	req.Header.Set(JaguarCRC32Header, fmt.Sprintf("%d", crc32.ChecksumIEEE(b)))
+
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

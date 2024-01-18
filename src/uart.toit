@@ -237,6 +237,8 @@ class UartClient:
     pos := 0
     container-size := LITTLE-ENDIAN.uint32 data pos
     pos += 4
+    crc32 := LITTLE-ENDIAN.uint32 data pos
+    pos += 4
     container-id-size := LITTLE-ENDIAN.uint16 data pos
     pos += 2
     container-id := data[pos..pos + container-id-size].to-string
@@ -246,16 +248,20 @@ class UartClient:
     acking-reader := AckingReader container-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the container.
     send-response COMMAND-INSTALL_ #[]
-    install-image container-size acking-reader container-id defines
+    install-image container-size acking-reader container-id defines --crc32=crc32
 
   handle-run data/ByteArray -> none:
-    image-size := LITTLE-ENDIAN.uint32 data 0
-    encoded-defines := data[4..]
+    pos := 0
+    image-size := LITTLE-ENDIAN.uint32 data pos
+    pos += 4
+    crc32 := LITTLE-ENDIAN.uint32 data pos
+    pos += 4
+    encoded-defines := data[pos..]
     defines := ubjson.decode encoded-defines
     acking-reader := AckingReader image-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the image.
     send-response COMMAND-RUN_ #[]
-    run-code image-size acking-reader defines
+    run-code image-size acking-reader defines --crc32=crc32
 
   send-response command/int response/ByteArray -> none:
     data := #[command] + response
