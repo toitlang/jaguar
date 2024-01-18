@@ -195,7 +195,7 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
   with-timeout --ms=120_000: flash-mutex.do:
     image := registry_.install name defines:
       logger.debug "installing container image with $image-size bytes"
-      summer := crc.Crc.little_endian 32
+      summer := crc.Crc.little-endian 32
           --polynomial=0xEDB88320
           --initial_state=0xffff_ffff
           --xor_result=0xffff_ffff
