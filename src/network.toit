@@ -47,7 +47,7 @@ class EndpointHttp implements Endpoint:
       // We've successfully connected to the network, so we consider
       // the current firmware functional. Go ahead and validate the
       // firmware if requested to do so.
-      validate-firmware --reason="connecting to network"
+      validate-firmware --reason="connected to network"
 
       // We run two tasks concurrently: One broadcasts the device identity
       // via UDP and one serves incoming HTTP requests. We run the tasks
