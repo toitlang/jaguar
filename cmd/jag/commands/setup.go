@@ -22,9 +22,10 @@ func getToitSDKURL(version string) (string, error) {
 		currOS = "macos"
 	} else {
 		currARCH := runtime.GOARCH
-		if currARCH == "arm" || currARCH == "arm64" {
-			fmt.Printf("Enter the URL of the ARM SDK (version %v): ", version)
-			return ReadLine()
+		if currARCH == "arm" {
+			currOS = "rpi"
+		} else if currARCH == "arm64" {
+			currOS = "aarch64"
 		}
 	}
 	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, currOS), nil
