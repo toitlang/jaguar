@@ -95,7 +95,6 @@ class UartClient:
     this.reader = BufferedReader reader
 
   run -> none:
-    logger.info "announcing endpoint"
     announce
     sync
     // We are synchronized. This means that something is listening on the other end.
@@ -122,6 +121,7 @@ class UartClient:
     proxy has a way to resynchronize with the endpoint.
   */
   announce -> none:
+    logger.debug "announcing endpoint"
     send "Jaguar endpoint: $device.name ($device.id)\n".to-byte-array
 
   /**
