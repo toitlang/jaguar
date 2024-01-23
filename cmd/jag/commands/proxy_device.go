@@ -29,6 +29,8 @@ const (
 	commandRun            = 7
 
 	responseAck = 255
+
+	syncTimeoutSeconds = 600
 )
 
 type HasDataReader interface {
@@ -74,7 +76,7 @@ func (d *uartDevice) hasIncomingData() bool {
 }
 
 func (d *uartDevice) sync() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), syncTimeoutSeconds*time.Second)
 	defer cancel()
 
 	// Drain any data that is buffered so far.
