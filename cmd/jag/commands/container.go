@@ -80,7 +80,16 @@ func ContainerListCmd() *cobra.Command {
 
 func ContainerInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "install <name> <file>",
+		Use: "install <name> <file>",
+		Long: "Install a container on a device.\n" +
+			"Installed containers run when they are installed, and on boot.\n" +
+			"\n" +
+			"The following define flags have a special meaning:\n" +
+			"	'-D jag.disabled': Disable Jaguar for this program.\n" +
+			"     Disables the HTTP server on the device.\n" +
+			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
+			"     finish. The value can be a number of seconds or a duration string.\n" +
+			"     If jag.disabled is enabled, then the default is 10 seconds.",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
