@@ -92,7 +92,17 @@ func RunCmd() *cobra.Command {
 			"device is already executing another program, that program is stopped before\n" +
 			"the new program is started.\n" +
 			"If you specify the device to be 'host' with the option '-d host', then the\n" +
-			"program runs on the current computer instead.",
+			"program runs on the current computer instead.\n" +
+			"\n" +
+			"The following define flags have a special meaning:\n" +
+			"	'-D jag.disabled': Disable Jaguar for this program.\n" +
+			"     Disables the HTTP server on the device.\n" +
+			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
+			"     finish. The value can be a number of seconds or a duration string.\n" +
+			"     If jag.disabled is enabled, then the default is 10 seconds.\n" +
+			"\n" +
+			"For example 'jag run -D jag.disabled wifi-scan.toit' will run the wifi-scan\n" +
+			"program on the device without Jaguar using the network.",
 		Args:         cobra.MinimumNArgs(0),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
