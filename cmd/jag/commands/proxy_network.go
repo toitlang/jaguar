@@ -213,8 +213,8 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		}
 	})
 
-	// TODO(florian): this print should be a log.
-	fmt.Printf("Proxying device %s through 'http://%s:%d'.\n", identity.Name, localIP, localPort)
+	// Simulate a log print from the device.
+	fmt.Printf("[jaguar.uart] INFO: running Jaguar device '%s' (id: '%s'), proxied through 'http://%s:%d'.\n", identity.Name, identity.Id, localIP, localPort)
 	err = broadcastIdentity(identityPayload)
 	if err != nil {
 		return err
