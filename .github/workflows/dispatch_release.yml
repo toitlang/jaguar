@@ -10,7 +10,7 @@ jobs:
     if: github.event_name == 'release' && !github.event.release.prerelease
     steps:
       - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.LEON_REPOSITORY_DISPATCH }}
           repository: toitlang/homebrew-toit
