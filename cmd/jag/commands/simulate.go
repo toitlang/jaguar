@@ -68,7 +68,7 @@ func SimulateCmd() *cobra.Command {
 			go func() {
 				scanner := bufio.NewScanner(outReader)
 
-				decoder := Decoder{scanner, cmd}
+				decoder := NewDecoder(scanner, cmd.Context(), "")
 
 				decoder.decode(pretty, plain)
 			}()
