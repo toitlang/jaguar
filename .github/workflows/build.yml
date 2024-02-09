@@ -97,7 +97,7 @@ jobs:
 
       - name: Sign Windows binary
         if: runner.os == 'Windows' && (github.event_name == 'release' || inputs.sign_windows)
-        uses: toitlang/action-code-sign@a4adedba46f2630ed60a1d6e6aa828ac7038c945 # v1.0.0
+        uses: toitlang/action-code-sign@183910d365454c8d753ef19451b4fc73737b73bf # v1.1.0
         with:
           certificate: ${{ secrets.DIGICERT_CERTIFICATE }}
           api-key: ${{ secrets.DIGICERT_API_KEY }}
@@ -130,7 +130,7 @@ jobs:
 
       - name: Sign Windows installer
         if: (github.event_name == 'release') && (runner.os == 'Windows')
-        uses: toitlang/action-code-sign@a4adedba46f2630ed60a1d6e6aa828ac7038c945 # v1.0.0
+        uses: toitlang/action-code-sign@183910d365454c8d753ef19451b4fc73737b73bf # v1.1.0
         with:
           certificate: ${{ secrets.DIGICERT_CERTIFICATE }}
           api-key: ${{ secrets.DIGICERT_API_KEY }}
