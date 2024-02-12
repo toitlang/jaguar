@@ -69,15 +69,15 @@ const (
 )
 
 func (d Device) newRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
-	localIP, err := getLanIp()
+	lanIp, err := getLanIp()
 	if err != nil {
 		return nil, err
 	}
 	// If the device is on the same machine (proxied) use "localhost" instead of the
 	// public IP. This is more stable on Windows machines.
 	address := d.Address
-	if strings.HasPrefix(address, "http://"+localIP+":") {
-		address = "http://localhost:" + strings.TrimPrefix(address, "http://"+localIP+":")
+	if strings.HasPrefix(address, "http://"+lanIp+":") {
+		address = "http://localhost:" + strings.TrimPrefix(address, "http://"+lanIp+":")
 	}
 	return http.NewRequestWithContext(ctx, method, address+path, body)
 }
