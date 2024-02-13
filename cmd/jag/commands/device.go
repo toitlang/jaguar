@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -67,10 +68,24 @@ const (
 	pingTimeout = 3000 * time.Millisecond
 )
 
+func (d Device) newRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
+	lanIp, err := getLanIp()
+	if err != nil {
+		return nil, err
+	}
+	// If the device is on the same machine (proxied) use "localhost" instead of the
+	// public IP. This is more stable on Windows machines.
+	address := d.Address
+	if strings.HasPrefix(address, "http://"+lanIp+":") {
+		address = "http://localhost:" + strings.TrimPrefix(address, "http://"+lanIp+":")
+	}
+	return http.NewRequestWithContext(ctx, method, address+path, body)
+}
+
 func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, "GET", d.Address+"/ping", nil)
+	req, err := d.newRequest(ctx, "GET", "/ping", nil)
 	if err != nil {
 		return false
 	}
@@ -86,7 +101,7 @@ func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
 }
 
 func (d Device) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error {
-	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+request, bytes.NewReader(b))
+	req, err := d.newRequest(ctx, "PUT", request, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -112,7 +127,7 @@ func (d Device) SendCode(ctx context.Context, sdk *SDK, request string, b []byte
 }
 
 func (d Device) ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", d.Address+"/list", nil)
+	req, err := d.newRequest(ctx, "GET", "/list", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +157,7 @@ func (d Device) ContainerList(ctx context.Context, sdk *SDK) (map[string]string,
 }
 
 func (d Device) ContainerUninstall(ctx context.Context, sdk *SDK, name string) error {
-	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/uninstall", nil)
+	req, err := d.newRequest(ctx, "PUT", "/uninstall", nil)
 	if err != nil {
 		return err
 	}
@@ -219,7 +234,7 @@ func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
 
 func (d Device) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
 	var reader = NewProgressReader(b)
-	req, err := http.NewRequestWithContext(ctx, "PUT", d.Address+"/firmware", reader)
+	req, err := d.newRequest(ctx, "PUT", "/firmware", reader)
 	if err != nil {
 		return err
 	}
