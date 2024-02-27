@@ -54,8 +54,8 @@ jobs:
           fi
 
           if [[ $RUNNER_OS = "linux" ]]; then
-            make JAG_BINARY=$RUNNER_OS-arm/jag jag
-            make JAG_BINARY=$RUNNER_OS-arm64/jag jag
+            GOOS=linux GOARCH=arm make JAG_BINARY=$RUNNER_OS-arm/jag jag
+            GOOS=linux GOARCH=arm64 make JAG_BINARY=$RUNNER_OS-arm64/jag jag
           fi
 
       - name: Upload artifacts
