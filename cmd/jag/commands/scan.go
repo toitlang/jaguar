@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/libp2p/go-reuseport"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
@@ -240,7 +241,7 @@ func scan(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
 		return []Device{*dev}, nil
 	}
 
-	pc, err := net.ListenPacket("udp4", fmt.Sprintf(":%d", port))
+	pc, err := reuseport.ListenPacket("udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
 	}
