@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import crypto.crc
 import http
 import log
 import reader
@@ -121,7 +122,7 @@ run-installed-containers -> none:
         semaphore.up
   blockers.size.repeat: semaphore.down
 
-serve device endpoints:
+serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
     while true:
       attempts ::= 3
@@ -154,18 +155,17 @@ serve device endpoints:
       backoff := Duration --s=5
       logger.info "backing off for $backoff"
       sleep backoff
-  if lambdas.size == 1:
-    lambdas[0].call
-  else:
-    Task.group lambdas
+  Task.group lambdas
 
-validate-firmware:
-  if firmware-is-validation-pending:
-    if firmware.validate:
-      logger.info "firmware update validated after connecting to network"
-      firmware-is-validation-pending = false
-    else:
-      logger.error "firmware update failed to validate"
+validation-mutex ::= monitor.Mutex
+validate-firmware --reason/string -> none:
+  validation-mutex.do:
+    if firmware-is-validation-pending:
+      if firmware.validate:
+        logger.info "firmware update validated" --tags={"reason": reason}
+        firmware-is-validation-pending = false
+      else:
+        logger.error "firmware update failed to validate"
 
 class Device:
   id/uuid.Uuid
@@ -207,15 +207,20 @@ class Device:
         --chip=chip or "unknown"
         --config=config
 
-flash-image image-size/int reader/reader.Reader name/string? defines/Map -> uuid.Uuid:
+flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32/int -> uuid.Uuid:
   with-timeout --ms=120_000: flash-mutex.do:
     image := registry_.install name defines:
       logger.debug "installing container image with $image-size bytes"
+      summer := crc.Crc.little-endian 32
+          --polynomial=0xEDB88320
+          --initial_state=0xffff_ffff
+          --xor_result=0xffff_ffff
       written-size := 0
       writer := containers.ContainerImageWriter image-size
       while written-size < image-size:
         data := reader.read
         if not data: break
+        summer.add data
         // This is really subtle, but because the firmware writing crosses the RPC
         // boundary, the provided data might get neutered and handed over to another
         // process. In that case, the size after the call to writer.write is zero,
@@ -223,6 +228,11 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map -> uuid
         // before calling out to writer.write.
         written-size += data.size
         writer.write data
+      actual-crc32 := summer.get-as-int
+      if actual-crc32 != crc32:
+        logger.error "CRC32 mismatch."
+        writer.close
+        throw "CRC32 mismatch"
       logger.debug "installing container image with $image-size bytes -> wrote $written-size bytes"
       writer.commit --data=(name != null ? JAGUAR-INSTALLED-MAGIC : 0)
     return image
@@ -234,8 +244,8 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
   logger.info "$nick $cause$suffix"
   return containers.start image
 
-install-image image-size/int reader/reader.Reader name/string defines/Map -> none:
-  image := flash-image image-size reader name defines
+install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
+  image := flash-image image-size reader name defines --crc32=crc32
   if defines.get JAG-NETWORK-DISABLED:
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with Jaguar disabled"
@@ -280,11 +290,11 @@ run-to-completion name/string? container/containers.Container start/int timeout/
   else:
     logger.error "$nick stopped - exit code $code"
 
-run-code image-size/int reader/reader.Reader defines/Map -> none:
+run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
   network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
 
   // Write the image into flash.
-  image := flash-image image-size reader null defines
+  image := flash-image image-size reader null defines --crc32=crc32
 
   if network-disabled: network-manager.disable-network
   timeout/Duration? := compute-timeout defines --disabled=network-disabled

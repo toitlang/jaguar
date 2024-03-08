@@ -79,7 +79,12 @@ func MonitorCmd() *cobra.Command {
 
 			scanner := bufio.NewScanner(logReader)
 
-			decoder := Decoder{scanner, cmd}
+			envelope, err := cmd.Flags().GetString("envelope")
+			if err != nil {
+				return err
+			}
+
+			decoder := NewDecoder(scanner, cmd.Context(), envelope)
 
 			decoder.decode(pretty, plain)
 
@@ -93,6 +98,7 @@ func MonitorCmd() *cobra.Command {
 	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
 	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
 	cmd.Flags().Bool("proxy", false, "proxy the connected device to the local network")
+	cmd.Flags().String("envelope", "", "name or path of the firmware envelope")
 	return cmd
 }
 

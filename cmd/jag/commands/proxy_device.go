@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"sync"
 	"time"
@@ -28,20 +29,37 @@ const (
 	commandRun            = 7
 
 	responseAck = 255
+
+	syncTimeoutSeconds = 600
 )
 
-type uartDevice struct {
-	lock   sync.Mutex
-	writer io.Writer
-	reader *bufio.Reader
-	syncId int
+type HasDataReader interface {
+	io.Reader
+	HasData() bool
 }
 
-func newUartDevice(writer io.Writer, reader io.Reader) *uartDevice {
-	return &uartDevice{
-		writer: writer,
-		reader: bufio.NewReader(reader),
+type uartDevice struct {
+	lock             sync.Mutex
+	writer           io.Writer
+	underlyingReader HasDataReader
+	bufferedReader   *bufio.Reader
+	syncId           int
+}
+
+func newUartDevice(writer io.Writer, reader HasDataReader) *uartDevice {
+	result := &uartDevice{
+		writer:           writer,
+		underlyingReader: reader,
+		bufferedReader:   bufio.NewReader(reader),
 	}
+	go func() {
+		for {
+			// Synchronize every 5 seconds.
+			time.Sleep(5 * time.Second)
+			result.Sync()
+		}
+	}()
+	return result
 }
 
 // Sync synchronizes the device with the server.
@@ -50,8 +68,27 @@ func newUartDevice(writer io.Writer, reader io.Reader) *uartDevice {
 func (d *uartDevice) Sync() error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	return d.sync()
+}
+
+func (d *uartDevice) hasIncomingData() bool {
+	return d.underlyingReader.HasData() || d.bufferedReader.Buffered() > 0
+}
+
+func (d *uartDevice) sync() error {
+	ctx, cancel := context.WithTimeout(context.Background(), syncTimeoutSeconds*time.Second)
 	defer cancel()
+
+	// Drain any data that is buffered so far.
+	for d.underlyingReader.HasData() {
+		_, err := d.underlyingReader.Read(nil)
+		if err != nil {
+			return err
+		}
+	}
+	if d.bufferedReader.Buffered() > 0 {
+		d.bufferedReader.Reset(d.underlyingReader)
+	}
 
 	errc := make(chan error)
 	successc := make(chan struct{})
@@ -61,7 +98,7 @@ func (d *uartDevice) Sync() error {
 	go func() {
 		for !done {
 			// Use the '\n' of messages to align the reader.
-			data, err := d.reader.ReadBytes('\n')
+			data, err := d.bufferedReader.ReadBytes('\n')
 			if err != nil {
 				errc <- err
 				return
@@ -168,19 +205,19 @@ func (d *uartDevice) Uninstall(containerName string) error {
 	return err
 }
 
-func (d *uartDevice) Firmware(length int64, newFirmware io.Reader) error {
+func (d *uartDevice) Firmware(newFirmware []byte) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	payload := []byte{}
-	payload = appendUint32Le(payload, uint32(length))
+	payload = appendUint32Le(payload, uint32(len(newFirmware)))
 	_, err := d.sendRequest(commandFirmware, payload)
 	if err != nil {
 		return err
 	}
-	return d.streamChunked(length, newFirmware)
+	return d.streamChunked(newFirmware)
 }
 
-func (d *uartDevice) Install(containerName string, defines map[string]interface{}, length int64, imageReader io.Reader) error {
+func (d *uartDevice) Install(containerName string, defines map[string]interface{}, containerImage []byte) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	encodedDefines, err := ubjson.Marshal(defines)
@@ -188,7 +225,8 @@ func (d *uartDevice) Install(containerName string, defines map[string]interface{
 		return err
 	}
 	payload := []byte{}
-	payload = appendUint32Le(payload, uint32(length))
+	payload = appendUint32Le(payload, uint32(len(containerImage)))
+	payload = appendUint32Le(payload, crc32.ChecksumIEEE(containerImage))
 	payload = appendUint16Le(payload, uint16(len(containerName)))
 	payload = append(payload, containerName...)
 	payload = append(payload, encodedDefines...)
@@ -197,10 +235,10 @@ func (d *uartDevice) Install(containerName string, defines map[string]interface{
 	if err != nil {
 		return err
 	}
-	return d.streamChunked(length, imageReader)
+	return d.streamChunked(containerImage)
 }
 
-func (d *uartDevice) Run(defines map[string]interface{}, length int64, imageReader io.Reader) error {
+func (d *uartDevice) Run(defines map[string]interface{}, image []byte) error {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	encodedDefines, err := ubjson.Marshal(defines)
@@ -208,14 +246,15 @@ func (d *uartDevice) Run(defines map[string]interface{}, length int64, imageRead
 		return err
 	}
 	payload := []byte{}
-	payload = appendUint32Le(payload, uint32(length))
+	payload = appendUint32Le(payload, uint32(len(image)))
+	payload = appendUint32Le(payload, crc32.ChecksumIEEE(image))
 	payload = append(payload, encodedDefines...)
 
 	_, err = d.sendRequest(commandRun, payload)
 	if err != nil {
 		return err
 	}
-	return d.streamChunked(length, imageReader)
+	return d.streamChunked(image)
 }
 
 func appendUint16Le(data []byte, value uint16) []byte {
@@ -232,7 +271,8 @@ func appendUint32Le(data []byte, value uint32) []byte {
 	return data
 }
 
-func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
+func (d *uartDevice) streamChunked(data []byte) error {
+	length := len(data)
 	// Start sending the image in chunks of 512 bytes.
 	// Expect a response for each chunk.
 	written := 0
@@ -241,18 +281,14 @@ func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
 		if written+chunkSize > int(length) {
 			chunkSize = int(length) - written
 		}
-		chunk := make([]byte, chunkSize)
-		_, err := io.ReadFull(dataReader, chunk)
-		if err != nil {
-			return err
-		}
+		chunk := data[written : written+chunkSize]
 		d.writeAll(chunk)
 		written += chunkSize
 		consumed := 0
 		for consumed < chunkSize {
 			// Read the Ack. 3 bytes.
 			buffer := make([]byte, 3)
-			_, err = io.ReadFull(d.reader, buffer)
+			_, err := io.ReadFull(d.bufferedReader, buffer)
 			if err != nil {
 				return err
 			}
@@ -269,6 +305,13 @@ func (d *uartDevice) streamChunked(length int64, dataReader io.Reader) error {
 }
 
 func (d *uartDevice) sendRequest(command byte, payload []byte) ([]byte, error) {
+	// There should be no data in the reader. If there is, we sync first.
+	if d.hasIncomingData() {
+		err := d.sync()
+		if err != nil {
+			return nil, err
+		}
+	}
 	err := d.WritePacket(append([]byte{command}, payload...))
 	if err != nil {
 		return nil, err
@@ -309,22 +352,22 @@ func (d *uartDevice) writeAll(data []byte) error {
 // ReceiveResponse receives a response to the given command.
 // The returned data is the payload of the response, without the command byte.
 func (d *uartDevice) ReceiveResponse(command byte) ([]byte, error) {
-	lengthLsb, err := d.reader.ReadByte()
+	lengthLsb, err := d.bufferedReader.ReadByte()
 	if err != nil {
 		return nil, err
 	}
-	lengthMsb, err := d.reader.ReadByte()
+	lengthMsb, err := d.bufferedReader.ReadByte()
 	if err != nil {
 		return nil, err
 	}
 	payloadLength := int(lengthLsb) | (int(lengthMsb) << 8)
 	payload := make([]byte, payloadLength)
-	_, err = io.ReadFull(d.reader, payload)
+	_, err = io.ReadFull(d.bufferedReader, payload)
 	if err != nil {
 		return nil, err
 	}
 	// Make sure the packet ends with a zero byte.
-	b, err := d.reader.ReadByte()
+	b, err := d.bufferedReader.ReadByte()
 	if err != nil {
 		return nil, err
 	}

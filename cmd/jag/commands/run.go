@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -38,7 +37,7 @@ func IsSnapshot(filename string) bool {
 	if err != nil {
 		return false
 	}
-	if bytes.Compare(magic_sequence, []byte("!<arch>\n")) != 0 {
+	if !bytes.Equal(magic_sequence, []byte("!<arch>\n")) {
 		return false
 	}
 
@@ -93,7 +92,17 @@ func RunCmd() *cobra.Command {
 			"device is already executing another program, that program is stopped before\n" +
 			"the new program is started.\n" +
 			"If you specify the device to be 'host' with the option '-d host', then the\n" +
-			"program runs on the current computer instead.",
+			"program runs on the current computer instead.\n" +
+			"\n" +
+			"The following define flags have a special meaning:\n" +
+			"	'-D jag.disabled': Disable Jaguar for this program.\n" +
+			"     Disables the HTTP server on the device.\n" +
+			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
+			"     finish. The value can be a number of seconds or a duration string.\n" +
+			"     If jag.disabled is enabled, then the default is 10 seconds.\n" +
+			"\n" +
+			"For example 'jag run -D jag.disabled wifi-scan.toit' will run the wifi-scan\n" +
+			"program on the device without Jaguar using the network.",
 		Args:         cobra.MinimumNArgs(0),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -129,9 +138,9 @@ func RunCmd() *cobra.Command {
 			}
 
 			if len(args) == 0 {
-				return fmt.Errorf("No input file provided")
+				return fmt.Errorf("no input file provided")
 			} else if len(args) > 1 {
-				return fmt.Errorf("Passing arguments is only supported with 'jag run -d host'")
+				return fmt.Errorf("passing arguments is only supported with 'jag run -d host'")
 			}
 
 			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
@@ -187,6 +196,9 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string, optimizat
 	}
 
 	expression, err := cmd.Flags().GetString("expression")
+	if err != nil {
+		return err
+	}
 
 	var runCmd *exec.Cmd
 
@@ -252,13 +264,13 @@ func sendCodeFromFile(
 	} else {
 		// We are running a toit file, so we need to compile it to a
 		// snapshot first.
-		tempdir, err := ioutil.TempDir("", "jag_run")
+		tempdir, err := os.MkdirTemp("", "jag_run")
 		if err != nil {
 			return err
 		}
 		defer os.RemoveAll(tempdir)
 
-		snapshotFile, err := ioutil.TempFile(tempdir, "jag_run_*.snapshot")
+		snapshotFile, err := os.CreateTemp(tempdir, "jag_run_*.snapshot")
 		if err != nil {
 			return err
 		}
@@ -286,7 +298,7 @@ func sendCodeFromFile(
 	// first copying to a temp file in the cache dir, then renaming
 	// in that directory.
 	if cacheDestination != snapshot {
-		tempFileInCacheDirectory, err := ioutil.TempFile(snapshotsCache, "jag_run_*.snapshot")
+		tempFileInCacheDirectory, err := os.CreateTemp(snapshotsCache, "jag_run_*.snapshot")
 		if err != nil {
 			fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
 			return err
@@ -357,7 +369,7 @@ func sendCodeFromFile(
 	}
 
 	if len(assetsMap) > 0 {
-		temporaryAssetsFile, err := ioutil.TempFile("", "jag_run_*.assets")
+		temporaryAssetsFile, err := os.CreateTemp("", "jag_run_*.assets")
 		if err != nil {
 			return err
 		}
@@ -388,7 +400,7 @@ func sendCodeFromFile(
 
 func buildAssets(ctx context.Context, sdk *SDK, output *os.File, inputPath string, assetsMap map[string]interface{}) error {
 	// Write the defines into a temporary file as JSON.
-	definesJsonFile, err := ioutil.TempFile("", "jag_run_*.defines")
+	definesJsonFile, err := os.CreateTemp("", "jag_run_*.defines")
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -38,7 +39,11 @@ func DecodeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return serialDecode(cmd, args[0], pretty, plain)
+			envelope, err := cmd.Flags().GetString("envelope")
+			if err != nil {
+				return err
+			}
+			return serialDecode(cmd.Context(), envelope, args[0], pretty, plain)
 		},
 	}
 	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
@@ -47,18 +52,17 @@ func DecodeCmd() *cobra.Command {
 	return cmd
 }
 
-func serialDecode(cmd *cobra.Command, message string, forcePretty bool, forcePlain bool) error {
+func serialDecode(ctx context.Context, envelope string, message string, forcePretty bool, forcePlain bool) error {
 	if strings.HasPrefix(message, "jag decode ") {
-		return jagDecode(cmd, message[11:], forcePretty, forcePlain)
+		return jagDecode(ctx, message[11:], forcePretty, forcePlain)
 	} else if strings.HasPrefix(message, "Backtrace:") {
-		return crashDecode(cmd, message)
+		return crashDecode(ctx, envelope, message)
 	} else {
-		return jagDecode(cmd, message, forcePretty, forcePlain)
+		return jagDecode(ctx, message, forcePretty, forcePlain)
 	}
 }
 
-func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, forcePlain bool) error {
-	ctx := cmd.Context()
+func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forcePlain bool) error {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return err
@@ -180,14 +184,8 @@ func jagDecode(cmd *cobra.Command, base64Message string, forcePretty bool, force
 	return err
 }
 
-func crashDecode(cmd *cobra.Command, backtrace string) error {
-	ctx := cmd.Context()
+func crashDecode(ctx context.Context, envelope string, backtrace string) error {
 	sdk, err := GetSDK(ctx)
-	if err != nil {
-		return err
-	}
-
-	envelope, err := cmd.Flags().GetString("envelope")
 	if err != nil {
 		return err
 	}
@@ -229,8 +227,13 @@ func crashDecode(cmd *cobra.Command, backtrace string) error {
 }
 
 type Decoder struct {
-	scanner *bufio.Scanner
-	cmd     *cobra.Command
+	scanner  *bufio.Scanner
+	context  context.Context
+	envelope string
+}
+
+func NewDecoder(scanner *bufio.Scanner, ctx context.Context, envelope string) *Decoder {
+	return &Decoder{scanner, ctx, envelope}
 }
 
 func (d *Decoder) decode(forcePretty bool, forcePlain bool) {
@@ -261,7 +264,7 @@ func (d *Decoder) decode(forcePretty bool, forcePlain bool) {
 					fmt.Printf("Decoding by `jag`, device has version <%s>\n", Version)
 					fmt.Printf(separator + "\n")
 				}
-				if err := serialDecode(d.cmd, line, forcePretty, forcePlain); err != nil {
+				if err := serialDecode(d.context, d.envelope, line, forcePretty, forcePlain); err != nil {
 					if len(postponed) != 0 {
 						fmt.Println(strings.Join(postponed, "\n"))
 						postponed = []string{}

@@ -54,8 +54,8 @@ jobs:
           fi
 
           if [[ $RUNNER_OS = "linux" ]]; then
-            make JAG_BINARY=$RUNNER_OS-arm/jag jag
-            make JAG_BINARY=$RUNNER_OS-arm64/jag jag
+            GOOS=linux GOARCH=arm make JAG_BINARY=$RUNNER_OS-arm/jag jag
+            GOOS=linux GOARCH=arm64 make JAG_BINARY=$RUNNER_OS-arm64/jag jag
           fi
 
       - name: Upload artifacts
@@ -97,7 +97,7 @@ jobs:
 
       - name: Sign Windows binary
         if: runner.os == 'Windows' && (github.event_name == 'release' || inputs.sign_windows)
-        uses: toitlang/action-code-sign@a4adedba46f2630ed60a1d6e6aa828ac7038c945 # v1.0.0
+        uses: toitlang/action-code-sign@5da128f4fb4f719c1b667867815f6c31e743b111 # v1.1.0
         with:
           certificate: ${{ secrets.DIGICERT_CERTIFICATE }}
           api-key: ${{ secrets.DIGICERT_API_KEY }}
@@ -130,7 +130,7 @@ jobs:
 
       - name: Sign Windows installer
         if: (github.event_name == 'release') && (runner.os == 'Windows')
-        uses: toitlang/action-code-sign@a4adedba46f2630ed60a1d6e6aa828ac7038c945 # v1.0.0
+        uses: toitlang/action-code-sign@5da128f4fb4f719c1b667867815f6c31e743b111 # v1.1.0
         with:
           certificate: ${{ secrets.DIGICERT_CERTIFICATE }}
           api-key: ${{ secrets.DIGICERT_API_KEY }}
@@ -213,7 +213,7 @@ jobs:
           chmod +x build/macos/jag
 
       - name: Sign and notarize
-        uses: toitlang/action-macos-sign-notarize@v1.0.0
+        uses: toitlang/action-macos-sign-notarize@v1.1.2
         with:
           certificate: ${{ secrets.MACOS_CERTIFICATE }}
           certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}

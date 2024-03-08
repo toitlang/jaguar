@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -45,7 +44,7 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 	versionPath := filepath.Join(toit, "VERSION")
 
 	version := ""
-	versionBytes, err := ioutil.ReadFile(versionPath)
+	versionBytes, err := os.ReadFile(versionPath)
 	if err == nil {
 		version = strings.TrimSpace(string(versionBytes))
 	}
@@ -129,24 +128,24 @@ func (s *SDK) StacktracePath() string {
 func (s *SDK) validate(info Info, skipSdkVersionCheck bool) error {
 	if !skipSdkVersionCheck {
 		if s.Version == "" {
-			return fmt.Errorf("SDK in '%s' is too old. Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, info.Version, info.SDKVersion)
+			return fmt.Errorf("the SDK in '%s' is too old. Jaguar %s needs version %s.\nRun 'jag setup' to fix this", s.Path, info.Version, info.SDKVersion)
 		} else if info.SDKVersion != s.Version {
-			return fmt.Errorf("SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this.", s.Path, s.Version, info.Version, info.SDKVersion)
+			return fmt.Errorf("the SDK in '%s' is version %s, but Jaguar %s needs version %s.\nRun 'jag setup' to fix this", s.Path, s.Version, info.Version, info.SDKVersion)
 		}
 
-		downloaderInfoBytes, err := ioutil.ReadFile(s.DownloaderInfoPath())
+		downloaderInfoBytes, err := os.ReadFile(s.DownloaderInfoPath())
 		if err != nil {
-			return fmt.Errorf("SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this.", s.Path)
+			return fmt.Errorf("the SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this", s.Path)
 		}
 
 		downloaderInfo := Info{}
 		err = json.Unmarshal(downloaderInfoBytes, &downloaderInfo)
 		if err != nil {
-			return fmt.Errorf("SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this.", s.Path)
+			return fmt.Errorf("the SDK in '%s' was not downloaded by Jaguar.\nRun 'jag setup' to fix this", s.Path)
 		}
 
 		if downloaderInfo != info {
-			return fmt.Errorf("SDK in '%s' was not downloaded by this version of Jaguar.\nRun 'jag setup' to fix this.", s.Path)
+			return fmt.Errorf("the SDK in '%s' was not downloaded by this version of Jaguar.\nRun 'jag setup' to fix this", s.Path)
 		}
 	}
 
@@ -163,7 +162,7 @@ func (s *SDK) validate(info Info, skipSdkVersionCheck bool) error {
 	}
 	for _, p := range paths {
 		if err := checkFilepath(p, "invalid Toit SDK"); err != nil {
-			return fmt.Errorf("%w.\nRun 'jag setup' to fix this.", err)
+			return fmt.Errorf("%w.\nRun 'jag setup' to fix this", err)
 		}
 	}
 
@@ -257,7 +256,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, as
 		return nil, err
 	}
 
-	return ioutil.ReadFile(image.Name())
+	return os.ReadFile(image.Name())
 }
 
 type gzipReader struct {
@@ -431,7 +430,7 @@ func parseOutputFlag(cmd *cobra.Command) (encoder, error) {
 	case "short":
 		return newShortEncoder(os.Stdout), nil
 	default:
-		return nil, fmt.Errorf("--output flag '%s' was not recognized. Must be either json, yaml or short.", output)
+		return nil, fmt.Errorf("--output flag '%s' was not recognized. Must be either json, yaml or short", output)
 	}
 }
 
@@ -551,6 +550,27 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 		wifiPassword = pw
 	}
 	return wifiSSID, wifiPassword, nil
+}
+
+func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) {
+	uartEndpointRx, err := cmd.Flags().GetInt("uart-endpoint-rx")
+	if err != nil {
+		return nil, err
+	}
+	if uartEndpointRx < 0 {
+		return nil, nil
+	}
+	uartEndpointOptions := map[string]interface{}{
+		"rx": uartEndpointRx,
+	}
+	uartBaud, err := cmd.Flags().GetUint("uart-endpoint-baud")
+	if err != nil {
+		return nil, err
+	}
+	if uartBaud != 0 {
+		uartEndpointOptions["baud"] = uartBaud
+	}
+	return uartEndpointOptions, nil
 }
 
 // isLikelyRunningOnBuildbot returns true if the current process is running on a buildbot.

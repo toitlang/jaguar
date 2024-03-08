@@ -25,18 +25,20 @@ class EndpointUart implements Endpoint:
   run device/Device -> none:
     logger.debug "starting endpoint"
     rx := gpio.Pin config_["rx"]
-    tx := gpio.Pin config_["tx"]
     port := uart.Port
         --rx=rx
-        --tx=tx
-        --baud-rate=config_.get "baud-rate" --if-absent=: 115200
+        --tx=null
+        --baud-rate=config_.get "baud" --if-absent=: 115200
 
     try:
-      client := UartClient --reader=port --writer=StdoutWriter --device=device
+      client := UartClient
+          --reader=port
+          --writer=StdoutWriter
+          --device=device
+          --logger=logger
       client.run
     finally:
       port.close
-      tx.close
       rx.close
 
   name -> string:
@@ -90,14 +92,16 @@ class UartClient:
   reader/BufferedReader
   writer/UartWriter
   device/Device
+  logger/log.Logger
 
-  constructor --reader/Reader --.writer --.device:
+  constructor --reader/Reader --.writer --.device --.logger:
     this.reader = BufferedReader reader
 
   run -> none:
+    announce
     sync
     // We are synchronized. This means that something is listening on the other end.
-    validate-firmware
+    validate-firmware --reason="synchronized with proxy"
 
     while true:
       size-bytes := reader.read-bytes 2
@@ -110,6 +114,18 @@ class UartClient:
         reader.skip (reader.index-of '\n') + 1
         continue
       handle data
+
+  /**
+  Announces this endpoint.
+
+  This is the only place where the endpoint sends data without being asked.
+  For `jag monitor` without the `--proxy` option, this will print an encoded message in the logs.
+    However, this should only happen at the beginning, and by announcing the endpoint, the
+    proxy has a way to resynchronize with the endpoint.
+  */
+  announce -> none:
+    logger.debug "announcing endpoint"
+    send "Jaguar endpoint: $device.name ($device.id)\n".to-byte-array
 
   /**
   Synchronizes with the server.
@@ -224,6 +240,8 @@ class UartClient:
     pos := 0
     container-size := LITTLE-ENDIAN.uint32 data pos
     pos += 4
+    crc32 := LITTLE-ENDIAN.uint32 data pos
+    pos += 4
     container-id-size := LITTLE-ENDIAN.uint16 data pos
     pos += 2
     container-id := data[pos..pos + container-id-size].to-string
@@ -233,16 +251,20 @@ class UartClient:
     acking-reader := AckingReader container-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the container.
     send-response COMMAND-INSTALL_ #[]
-    install-image container-size acking-reader container-id defines
+    install-image container-size acking-reader container-id defines --crc32=crc32
 
   handle-run data/ByteArray -> none:
-    image-size := LITTLE-ENDIAN.uint32 data 0
-    encoded-defines := data[4..]
+    pos := 0
+    image-size := LITTLE-ENDIAN.uint32 data pos
+    pos += 4
+    crc32 := LITTLE-ENDIAN.uint32 data pos
+    pos += 4
+    encoded-defines := data[pos..]
     defines := ubjson.decode encoded-defines
     acking-reader := AckingReader image-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the image.
     send-response COMMAND-RUN_ #[]
-    run-code image-size acking-reader defines
+    run-code image-size acking-reader defines --crc32=crc32
 
   send-response command/int response/ByteArray -> none:
     data := #[command] + response

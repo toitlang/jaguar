@@ -7,6 +7,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -92,6 +93,15 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		return true
 	}
 
+	readBody := func(body io.Reader, length int64) ([]byte, error) {
+		result := make([]byte, length)
+		_, err := io.ReadFull(body, result)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/identify", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
@@ -141,7 +151,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		if !checkValidDeviceId(w, r) || !checkIsPut(w, r) {
 			return
 		}
-		err := ud.Firmware(r.ContentLength, r.Body)
+		firmwareImage, err := readBody(r.Body, r.ContentLength)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = ud.Firmware(firmwareImage)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -158,7 +173,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 			return
 		}
 		defines := extractDefines(r)
-		err := ud.Install(containerName, defines, r.ContentLength, r.Body)
+		containerImage, err := readBody(r.Body, r.ContentLength)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = ud.Install(containerName, defines, containerImage)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -170,7 +190,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 			return
 		}
 		defines := extractDefines(r)
-		err := ud.Run(defines, r.ContentLength, r.Body)
+		image, err := readBody(r.Body, r.ContentLength)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = ud.Run(defines, image)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -189,8 +214,8 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		}
 	})
 
-	// TODO(florian): this print should be a log.
-	fmt.Printf("Proxying device through 'http://%s:%d'.\n", localIP, localPort)
+	// Simulate a log print from the device.
+	fmt.Printf("[jaguar.uart] INFO: running Jaguar device '%s' (id: '%s'), proxied through 'http://%s:%d'.\n", identity.Name, identity.Id, localIP, localPort)
 	err = broadcastIdentity(identityPayload)
 	if err != nil {
 		return err
@@ -202,39 +227,49 @@ func createIdentityPayload(identity *uartIdentity, localIP string, localPort int
 	jsonIdentity := map[string]interface{}{
 		"method": "jaguar.identify",
 		"payload": map[string]interface{}{
-			"name":       identity.Name + "-uart",
+			"name":       identity.Name,
 			"id":         identity.Id,
 			"chip":       identity.Chip,
 			"sdkVersion": identity.SdkVersion,
 			"address":    "http://" + localIP + ":" + strconv.Itoa(localPort),
 			"wordSize":   4,
+			"proxied":    true,
 		},
 	}
 	return json.Marshal(jsonIdentity)
 }
 
 func broadcastIdentity(identityPayload []byte) error {
-	// Create a UDP address for broadcasting (use broadcast IP)
-	addr, err := net.ResolveUDPAddr("udp", udpIdentifyAddress+":"+strconv.Itoa(udpIdentifyPort))
-	if err != nil {
-		return err
-	}
-
-	// Create a UDP connection
-	conn, err := net.DialUDP("udp", nil, addr)
-	if err != nil {
-		return err
-	}
-
 	// Create a goroutine to send the payload every 200ms.
 	go func() {
-		ticker := time.NewTicker(200 * time.Millisecond)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			_, err := conn.Write(identityPayload)
+		for {
+			// Create a UDP address for broadcasting (use broadcast IP)
+			addr, err := net.ResolveUDPAddr("udp", udpIdentifyAddress+":"+strconv.Itoa(udpIdentifyPort))
 			if err != nil {
-				println("Error broadcasting payload:", err.Error())
+				// Sleep for a few seconds and try again.
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			// Create a UDP connection
+			conn, err := net.DialUDP("udp", nil, addr)
+			if err != nil {
+				// Sleep for a few seconds and try again.
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			ticker := time.NewTicker(200 * time.Millisecond)
+
+			for range ticker.C {
+				_, err := conn.Write(identityPayload)
+				if err != nil {
+					println("Error broadcasting payload:", err.Error())
+					ticker.Stop()
+					conn.Close()
+					// Try to reconnect.
+					break
+				}
 			}
 		}
 	}()
