@@ -102,28 +102,12 @@ main device/Device endpoints/List:
     logger.error "rebooting due to $exception.value"
 
 run-installed-containers -> none:
-  blockers ::= []
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
-    start ::= Time.monotonic-us
-    container := run-image image "started" name defines
-    if defines.get JAG-NETWORK-DISABLED:
-      timeout/Duration ::= compute-timeout defines --disabled
-      blockers.add:: run-to-completion name container start timeout
-  if blockers.is-empty: return
-  // We have a number of containers that we need to allow
-  // to run to completion before we return and let Jaguar
-  // start serving requests.
-  semaphore := monitor.Semaphore
-  blockers.do: | lambda/Lambda |
-    task::
-      try:
-        lambda.call
-      finally:
-        semaphore.up
-  blockers.size.repeat: semaphore.down
+    run-image image "started" name defines
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
+    uses-network := endpoint.uses-network
     while true:
       attempts ::= 3
       failures := 0
@@ -132,20 +116,26 @@ serve device/Device endpoints/List -> none:
         try:
           // Calling into the network-manager might block until we are allowed
           // to use the network.
-          if endpoint.uses-network: network-manager.start-network-endpoint
+          if uses-network: network-manager.start-network-endpoint
           exception = catch:
             endpoint.run device
           // If we have a pending firmware upgrade, we take care of
           // it before trying to re-open the network.
           if firmware-is-upgrade-pending: firmware.upgrade
         finally:
-          if endpoint.uses-network: network-manager.stop-network-endpoint
+          if uses-network: network-manager.stop-network-endpoint
+
+        if uses-network and network-manager.network-is-disabled:
+          // If we were asked to shut down because the network was
+          // disabled we may got an exception. Ignore it.
+          exception = null
 
         // Log exceptions and count the failures so we can back off
         // and avoid excessive attempts to re-open the network.
         if exception:
           failures++
           logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
+
       // If we need to validate the firmware and we've failed to do so
       // in the first round of attempts, we roll back to the previous
       // firmware right away.
@@ -238,21 +228,57 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
     return image
   unreachable
 
-run-image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Container:
-  nick := name ? "container '$name'" : "program $image"
-  suffix := defines.is-empty ? "" : " with $defines"
-  logger.info "$nick $cause$suffix"
-  return containers.start image
+run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
+  // We start the container from a separate task to allow the server
+  // to continue operating. This also means that the container running
+  // isn't covered by the flashing mutex or associated timeout.
+  task::
+    catch:
+      network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
+
+      // First, we wait until we're ready to run the container. Usually,
+      // we are ready right away, but if we've been asked to disable
+      // Jaguar while running the container, we wait until the HTTP server
+      // has been shut down and the network to be free.
+      if network-disabled:
+        if cause != "started":
+          // In case this image was started by a network server give it time
+          // to respond with an OK.
+          sleep --ms=100
+        network-manager.disable-network
+        network-manager.wait-for-network-down
+
+      timeout := compute-timeout defines --disabled=network-disabled
+      start ::= Time.monotonic-us
+      nick := name ? "container '$name'" : "program $image"
+      suffix := defines.is-empty ? "" : " with $defines"
+      logger.info "$nick $cause$suffix"
+      container := containers.start image
+      // We're only interested in handling the timeout errors, so we
+      // unwind and produce a stack trace in all other cases.
+      filter ::= : it != DEADLINE-EXCEEDED-ERROR
+
+      // Wait until the container is done or until we time out.
+      code/int? := null
+      catch --unwind=filter --trace=filter:
+        with-timeout timeout: code = container.wait
+      if not code:
+        elapsed ::= Duration --us=Time.monotonic-us - start
+        code = container.stop
+        logger.info "$nick timed out after $elapsed"
+
+      if code == 0:
+        logger.info "$nick stopped"
+      else:
+        logger.error "$nick stopped - exit code $code"
+
+      // If Jaguar was disabled while running the container, now is the
+      // time to restart the HTTP server.
+      if network-disabled: network-manager.enable-network
 
 install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
   image := flash-image image-size reader name defines --crc32=crc32
-  if defines.get JAG-NETWORK-DISABLED:
-    logger.info "container '$name' installed with $defines"
-    logger.warn "container '$name' needs reboot to start with Jaguar disabled"
-  else:
-    timeout := compute-timeout defines --no-disabled
-    if timeout: logger.warn "container '$name' needs 'jag.disabled' for 'jag.timeout' to take effect"
-    run-image image "installed and started" name defines
+  run-image image "installed and started" name defines
 
 uninstall-image name/string -> none:
   with-timeout --ms=60_000: flash-mutex.do:
@@ -269,54 +295,11 @@ compute-timeout defines/Map --disabled/bool -> Duration?:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
   return disabled ? (Duration --s=10) : null
 
-run-to-completion name/string? container/containers.Container start/int timeout/Duration?:
-  nick := name ? "container '$name'" : "program $container.id"
-
-  // We're only interested in handling the timeout errors, so we
-  // unwind and produce a stack trace in all other cases.
-  filter ::= : it != DEADLINE-EXCEEDED-ERROR
-
-  // Wait until the container is done or until we time out.
-  code/int? := null
-  catch --unwind=filter --trace=filter:
-    with-timeout timeout: code = container.wait
-  if not code:
-    elapsed ::= Duration --us=Time.monotonic-us - start
-    code = container.stop
-    logger.info "$nick timed out after $elapsed"
-
-  if code == 0:
-    logger.info "$nick stopped"
-  else:
-    logger.error "$nick stopped - exit code $code"
-
 run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
-
   // Write the image into flash.
   image := flash-image image-size reader null defines --crc32=crc32
-
-  if network-disabled: network-manager.disable-network
-  timeout/Duration? := compute-timeout defines --disabled=network-disabled
-
-  // We start the container from a separate task to allow the HTTP server
-  // to continue operating. This also means that the container running
-  // isn't covered by the flashing mutex or associated timeout.
-  task::
-    // First, we wait until we're ready to run the container. Usually,
-    // we are ready right away, but if we've been asked to disable
-    // Jaguar while running the container, we wait until the HTTP server
-    // has been shut down and the network to be free.
-    if network-disabled: network-manager.wait-for-network-down
-
-    // Start the image and wait for it to complete.
-    start ::= Time.monotonic-us
-    container ::= run-image image "started" null defines
-    run-to-completion null container start timeout
-
-    // If Jaguar was disabled while running the container, now is the
-    // time to restart the HTTP server.
-    if network-disabled: network-manager.enable-network
+  // Start the image and wait for it to complete.
+  run-image image "started" null defines
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
