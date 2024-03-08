@@ -122,43 +122,38 @@ run-installed-containers -> none:
   blockers.size.repeat: semaphore.down
 
 serve device endpoints:
-  network-user-count := 0
-  lambdas := []
-  for i := 0; i < endpoints.size; i++:
-    endpoint/Endpoint := endpoints[i]
-    if endpoint.uses-network: network-user-count++
-    lambdas.add ::
-      while true:
-        attempts ::= 3
-        failures := 0
-        while failures < attempts:
-          exception := null
-          try:
-            // Calling into the network-manager might block until we are allowed
-            // to use the network.
-            if endpoint.uses-network: network-manager.start-network-endpoint
-            exception = catch:
-              endpoint.run device
-            // If we have a pending firmware upgrade, we take care of
-            // it before trying to re-open the network.
-            if firmware-is-upgrade-pending: firmware.upgrade
-          finally:
-            if endpoint.uses-network: network-manager.stop-network-endpoint
+  lambdas := endpoints.map: | endpoint/Endpoint | ::
+    while true:
+      attempts ::= 3
+      failures := 0
+      while failures < attempts:
+        exception := null
+        try:
+          // Calling into the network-manager might block until we are allowed
+          // to use the network.
+          if endpoint.uses-network: network-manager.start-network-endpoint
+          exception = catch:
+            endpoint.run device
+          // If we have a pending firmware upgrade, we take care of
+          // it before trying to re-open the network.
+          if firmware-is-upgrade-pending: firmware.upgrade
+        finally:
+          if endpoint.uses-network: network-manager.stop-network-endpoint
 
-          // Log exceptions and count the failures so we can back off
-          // and avoid excessive attempts to re-open the network.
-          if exception:
-            failures++
-            logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
-        // If we need to validate the firmware and we've failed to do so
-        // in the first round of attempts, we roll back to the previous
-        // firmware right away.
-        if firmware-is-validation-pending:
-          logger.error "firmware update was rejected after failing to connect or validate"
-          firmware.rollback
-        backoff := Duration --s=5
-        logger.info "backing off for $backoff"
-        sleep backoff
+        // Log exceptions and count the failures so we can back off
+        // and avoid excessive attempts to re-open the network.
+        if exception:
+          failures++
+          logger.warn "running Jaguar failed due to '$exception' ($failures/$attempts)"
+      // If we need to validate the firmware and we've failed to do so
+      // in the first round of attempts, we roll back to the previous
+      // firmware right away.
+      if firmware-is-validation-pending:
+        logger.error "firmware update was rejected after failing to connect or validate"
+        firmware.rollback
+      backoff := Duration --s=5
+      logger.info "backing off for $backoff"
+      sleep backoff
   if lambdas.size == 1:
     lambdas[0].call
   else:
