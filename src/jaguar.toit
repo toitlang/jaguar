@@ -43,31 +43,40 @@ Jaguar can run containers while the network for Jaguar is disabled. You can
 
 We keep track of the state through the global $network-manager variable.
 */
-monitor NetworkManager:
+class NetworkManager:
+  signal_/monitor.Signal ::= monitor.Signal
   network-endpoints_/int := 0
   network-is-disabled_/bool := false
+
+  serve device/Device endpoint/Endpoint -> none:
+    uses-network := endpoint.uses-network
+    if uses-network:
+      signal_.wait: not network-is-disabled_
+      network-endpoints_++
+      signal_.raise
+    try:
+      endpoint.run device
+    finally:
+      if uses-network:
+        network-endpoints_--
+        signal_.raise
 
   network-is-disabled -> bool:
     return network-is-disabled_
 
-  start-network-endpoint -> none:
-    await: not network-is-disabled_
-    network-endpoints_++
-
-  stop-network-endpoint -> none:
-    network-endpoints_--
-
   disable-network -> none:
     network-is-disabled_ = true
+    signal_.raise
 
   wait-for-network-down -> none:
-    await: network-endpoints_ == 0
+    signal_.wait: network-endpoints_ == 0
 
   enable-network -> none:
     network-is-disabled_ = false
+    signal_.raise
 
   wait-for-request-to-disable-network -> none:
-    await: network-is-disabled_
+    signal_.wait: network-is-disabled_
 
 network-manager / NetworkManager ::= NetworkManager
 
@@ -112,20 +121,13 @@ serve device/Device endpoints/List -> none:
       attempts ::= 3
       failures := 0
       while failures < attempts:
-        exception := null
-        try:
-          // Calling into the network-manager might block until we are allowed
-          // to use the network.
-          if uses-network: network-manager.start-network-endpoint
-          exception = catch:
-            endpoint.run device
-          // If we have a pending firmware upgrade, we take care of
-          // it before trying to re-open the network.
+        exception := catch:
+          // If the endpoint needs network it might be blocked by the network
+          // manager until the endpoint is allowed to use the network.
+          network-manager.serve device endpoint
           if firmware-is-upgrade-pending: firmware.upgrade
-        finally:
-          if uses-network: network-manager.stop-network-endpoint
 
-        if uses-network and network-manager.network-is-disabled:
+        if endpoint.uses-network and network-manager.network-is-disabled:
           // If we were asked to shut down because the network was
           // disabled we may have gotten an exception. Ignore it.
           exception = null
@@ -147,7 +149,7 @@ serve device/Device endpoints/List -> none:
       sleep backoff
   Task.group lambdas
 
-validation-mutex ::= monitor.Mutex
+validation-mutex/monitor.Mutex ::= monitor.Mutex
 validate-firmware --reason/string -> none:
   validation-mutex.do:
     if firmware-is-validation-pending:
