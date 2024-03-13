@@ -11,6 +11,7 @@ import net.udp
 import net.tcp
 import system
 import system.firmware
+import uuid
 
 import .jaguar
 
@@ -154,48 +155,50 @@ class EndpointHttp implements Endpoint:
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
 
+    server-task := Task.current
     server.listen socket:: | request/http.Request writer/http.ResponseWriter |
-      request-mutex.do:
-        headers ::= request.headers
-        device-id := "$device.id"
-        device-id-header := headers.single HEADER-DEVICE-ID
-        sdk-version-header := headers.single HEADER-SDK-VERSION
-        path := request.path
+      headers ::= request.headers
+      device-id := "$device.id"
+      device-id-header := headers.single HEADER-DEVICE-ID
+      sdk-version-header := headers.single HEADER-SDK-VERSION
+      path := request.path
 
-        // Handle identification requests before validation, as the caller doesn't know that information yet.
-        if path == "/identify" and request.method == http.GET:
-          writer.headers.set "Content-Type" "application/json"
-          result := identity-payload device address
-          writer.headers.set "Content-Length" result.size.stringify
-          writer.write result
+      // Handle identification requests before validation, as the caller doesn't know that information yet.
+      if path == "/identify" and request.method == http.GET:
+        writer.headers.set "Content-Type" "application/json"
+        result := identity-payload device address
+        writer.headers.set "Content-Length" result.size.stringify
+        writer.write result
 
-        else if path == "/" or path.ends-with ".html" or path.ends-with ".css" or path.ends-with ".ico":
-          handle-browser-request device.name request writer
+      else if path == "/" or path.ends-with ".html" or path.ends-with ".css" or path.ends-with ".ico":
+        handle-browser-request device.name request writer
 
-        // Validate device ID.
-        else if device-id-header != device-id:
-          logger.info "denied request, header: '$HEADER-DEVICE-ID' was '$device-id-header' not '$device-id'"
-          writer.write-headers http.STATUS-FORBIDDEN --message="Device has id '$device-id', jag is trying to talk to '$device-id-header'"
+      // Validate device ID.
+      else if device-id-header != device-id:
+        logger.info "denied request, header: '$HEADER-DEVICE-ID' was '$device-id-header' not '$device-id'"
+        writer.write-headers http.STATUS-FORBIDDEN --message="Device has id '$device-id', jag is trying to talk to '$device-id-header'"
 
-        // Handle pings.
-        else if path == "/ping" and request.method == http.GET:
-          respond-ok writer
+      // Handle pings.
+      else if path == "/ping" and request.method == http.GET:
+        respond-ok writer
 
-        // Handle listing containers.
-        else if path == "/list" and request.method == http.GET:
-          result := ubjson.encode registry_.entries
-          writer.headers.set "Content-Type" "application/ubjson"
-          writer.headers.set "Content-Length" result.size.stringify
-          writer.write result
+      // Handle listing containers.
+      else if path == "/list" and request.method == http.GET:
+        result := ubjson.encode registry_.entries
+        writer.headers.set "Content-Type" "application/ubjson"
+        writer.headers.set "Content-Length" result.size.stringify
+        writer.write result
 
-        // Handle uninstalling containers.
-        else if path == "/uninstall" and request.method == http.PUT:
+      // Handle uninstalling containers.
+      else if path == "/uninstall" and request.method == http.PUT:
+        request-mutex.do:
           container-name ::= headers.single HEADER-CONTAINER-NAME
           uninstall-image container-name
           respond-ok writer
 
-        // Handle firmware updates.
-        else if path == "/firmware" and request.method == http.PUT:
+      // Handle firmware updates.
+      else if path == "/firmware" and request.method == http.PUT:
+        request-mutex.do:
           install-firmware request.content-length request.body
           respond-ok writer
           // Mark the firmware as having a pending upgrade and close
@@ -203,25 +206,32 @@ class EndpointHttp implements Endpoint:
           firmware-is-upgrade-pending = true
           socket.close
 
-        // Validate SDK version before attempting to install containers or run code.
-        else if sdk-version-header != system.vm-sdk-version:
-          logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
-          writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $system.vm-sdk-version, jag has $sdk-version-header"
+      // Validate SDK version before attempting to install containers or run code.
+      else if sdk-version-header != system.vm-sdk-version:
+        logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
+        writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $system.vm-sdk-version, jag has $sdk-version-header"
 
-        // Handle installing containers.
-        else if path == "/install" and request.method == "PUT":
-          container-name ::= headers.single HEADER-CONTAINER-NAME
+      // Handle installing containers and code running.
+      else if (path == "/install" or path == "/run") and request.method == "PUT":
+        image/uuid.Uuid? := null
+        defines/Map? := null
+        request-mutex.do:
+          container-name := path == "/install"
+              ? headers.single HEADER-CONTAINER-NAME
+              : null
           crc32 := int.parse (headers.single HEADER-CRC32)
-          defines ::= extract-defines headers
-          install-image request.content-length request.body container-name defines --crc32=crc32
+          defines = extract-defines headers
+          image = flash-image request.content-length request.body name defines --crc32=crc32
           respond-ok writer
-
-        // Handle code running.
-        else if path == "/run" and request.method == "PUT":
-          crc32 := int.parse (headers.single HEADER-CRC32)
-          defines ::= extract-defines headers
-          run-code request.content-length request.body defines --crc32=crc32
-          respond-ok writer
+        run-message := path == "/install" ? "installed and started" : "started"
+        // We don't run the image from within the request-mutex, as we need to be able to
+        // shut down the server while trying to run the image.
+        // For the same reason we must make sure that the task that runs the image isn't
+        // the server task.
+        if Task.current == server-task:
+          task:: run-image image run-message name defines
+        else:
+          run-image image run-message name defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}

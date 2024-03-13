@@ -186,10 +186,10 @@ class UartClient:
       handle-firmware data
       return
     if command == COMMAND-INSTALL_:
-      handle-install data
+      handle-install-run data --install
       return
     if command == COMMAND-RUN_:
-      handle-run data
+      handle-install-run data --run
       return
     send-response COMMAND-UNKNOWN_ #[]
     throw "Unknown command: $command"
@@ -235,36 +235,30 @@ class UartClient:
     send-response COMMAND-FIRMWARE_ #[]
     install-firmware firmware-size acking-reader
 
-  handle-install data/ByteArray -> none:
-    logger.debug "handle install request"
+  handle-install-run data/ByteArray --run/bool=false --install/bool=false -> none:
+    action := run ? "run" : "install"
+    response-code := run ? COMMAND-RUN_ : COMMAND-INSTALL_
+    run-message := run ? "started" : "installed and started"
+
+    logger.debug "handle $action request"
     pos := 0
     container-size := LITTLE-ENDIAN.uint32 data pos
     pos += 4
     crc32 := LITTLE-ENDIAN.uint32 data pos
     pos += 4
-    container-id-size := LITTLE-ENDIAN.uint16 data pos
-    pos += 2
-    container-id := data[pos..pos + container-id-size].to-string
-    pos += container-id-size
+    container-id/string? := null
+    if install:
+      container-id-size := LITTLE-ENDIAN.uint16 data pos
+      pos += 2
+      container-id = data[pos..pos + container-id-size].to-string
+      pos += container-id-size
     encoded-defines := data[pos..]
     defines := ubjson.decode encoded-defines
     acking-reader := AckingReader container-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the container.
-    send-response COMMAND-INSTALL_ #[]
-    install-image container-size acking-reader container-id defines --crc32=crc32
-
-  handle-run data/ByteArray -> none:
-    pos := 0
-    image-size := LITTLE-ENDIAN.uint32 data pos
-    pos += 4
-    crc32 := LITTLE-ENDIAN.uint32 data pos
-    pos += 4
-    encoded-defines := data[pos..]
-    defines := ubjson.decode encoded-defines
-    acking-reader := AckingReader image-size reader --send-ack=(:: send-ack it)
-    // Signal that we are ready to receive the image.
-    send-response COMMAND-RUN_ #[]
-    run-code image-size acking-reader defines --crc32=crc32
+    send-response response-code #[]
+    image := flash-image container-size acking-reader container-id defines --crc32=crc32
+    run-image image run-message container-id defines
 
   send-response command/int response/ByteArray -> none:
     data := #[command] + response

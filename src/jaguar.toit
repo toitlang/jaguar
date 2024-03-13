@@ -18,6 +18,7 @@ import system.firmware
 
 import .container-registry
 import .network
+import .scheduled-callbacks
 import .uart
 
 interface Endpoint:
@@ -125,7 +126,8 @@ serve device/Device endpoints/List -> none:
           // If the endpoint needs network it might be blocked by the network
           // manager until the endpoint is allowed to use the network.
           network-manager.serve device endpoint
-          if firmware-is-upgrade-pending: firmware.upgrade
+
+        if firmware-is-upgrade-pending: firmware.upgrade
 
         if endpoint.uses-network and network-manager.network-is-disabled:
           // If we were asked to shut down because the network was
@@ -230,57 +232,58 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
     return image
   unreachable
 
+/**
+Callbacks that are scheduled to run at a specific time.
+This is used to kill containers that have deadlines.
+*/
+scheduled-callbacks := ScheduledCallbacks
+
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
-  // We start the container from a separate task to allow the server
-  // to continue operating. This also means that the container running
-  // isn't covered by the flashing mutex or associated timeout.
-  task::
-    catch:
-      network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
+  network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
 
-      // First, we wait until we're ready to run the container. Usually,
-      // we are ready right away, but if we've been asked to disable
-      // Jaguar while running the container, we wait until the HTTP server
-      // has been shut down and the network to be free.
-      if network-disabled:
-        if cause != "started":
-          // In case this image was started by a network server give it time
-          // to respond with an OK.
-          sleep --ms=100
-        network-manager.disable-network
-        network-manager.wait-for-network-down
+  // First, we wait until we're ready to run the container. Usually,
+  // we are ready right away, but if we've been asked to disable
+  // Jaguar while running the container, we wait until the HTTP server
+  // has been shut down and the network to be free.
+  if network-disabled:
+    if cause != "started":
+      // In case this image was started by a network server give it time
+      // to respond with an OK.
+      sleep --ms=100
+    network-manager.disable-network
+    network-manager.wait-for-network-down
 
-      timeout := compute-timeout defines --disabled=network-disabled
-      start ::= Time.monotonic-us
-      nick := name ? "container '$name'" : "program $image"
-      suffix := defines.is-empty ? "" : " with $defines"
-      logger.info "$nick $cause$suffix"
-      container := containers.start image
-      // We're only interested in handling the timeout errors, so we
-      // unwind and produce a stack trace in all other cases.
-      filter ::= : it != DEADLINE-EXCEEDED-ERROR
+  timeout := compute-timeout defines --disabled=network-disabled
+  start ::= Time.monotonic-us
+  nick := name ? "container '$name'" : "program $image"
+  suffix := defines.is-empty ? "" : " with $defines"
+  logger.info "$nick $cause$suffix"
 
-      // Wait until the container is done or until we time out.
-      code/int? := null
-      catch --unwind=filter --trace=filter:
-        with-timeout timeout: code = container.wait
-      if not code:
-        elapsed ::= Duration --us=Time.monotonic-us - start
-        code = container.stop
-        logger.info "$nick timed out after $elapsed"
+  container/containers.Container? := null
 
-      if code == 0:
-        logger.info "$nick stopped"
-      else:
-        logger.error "$nick stopped - exit code $code"
+  // The token we get when registering a timeout callback.
+  // Once the program has terminated we need to cancel the callback.
+  cancelation-token := null
 
-      // If Jaguar was disabled while running the container, now is the
-      // time to restart the HTTP server.
-      if network-disabled: network-manager.enable-network
+  container = containers.start image --on-stopped=:: | code/int |
+    if cancelation-token:
+      scheduled-callbacks.cancel cancelation-token
 
-install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
-  image := flash-image image-size reader name defines --crc32=crc32
-  run-image image "installed and started" name defines
+    if code == 0:
+      logger.info "$nick stopped"
+    else:
+      logger.error "$nick stopped - exit code $code"
+
+    // If Jaguar was disabled while running the container, now is the
+    // time to restart the HTTP server.
+    if network-disabled: network-manager.enable-network
+
+  if timeout:
+    // We schedule a callback to kill the container if it doesn't
+    // stop on its own within the timeout.
+    cancelation-token = scheduled-callbacks.schedule timeout::
+      logger.error "$nick timed out after $timeout"
+      container.stop
 
 uninstall-image name/string -> none:
   with-timeout --ms=60_000: flash-mutex.do:
@@ -296,12 +299,6 @@ compute-timeout defines/Map --disabled/bool -> Duration?:
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
   return disabled ? (Duration --s=10) : null
-
-run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  // Write the image into flash.
-  image := flash-image image-size reader null defines --crc32=crc32
-  // Start the image and wait for it to complete.
-  run-image image "started" null defines
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
