@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
@@ -23,7 +24,7 @@ func GetCachedFirmwareEnvelopePath(ctx context.Context, version string, model st
 	}
 	if err == os.ErrNotExist {
 		// Download the envelope from the server.
-		if err := downloadFirmware(ctx, version, model); err != nil {
+		if err := downloadPublishedFirmware(ctx, version, model); err != nil {
 			return "", err
 		}
 	}
@@ -34,7 +35,67 @@ func getFirmwareURL(version string, model string) string {
 	return fmt.Sprintf("https://github.com/toitlang/envelopes/releases/download/%s/firmware-%s.envelope.gz", version, model)
 }
 
-func downloadFirmware(ctx context.Context, version string, model string) error {
+func isURL(path string) bool {
+	return strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://")
+}
+
+func storeGzippedInDirDir(fileReader io.ReadCloser, dir string) (string, error) {
+	// If the path is a zip file, unzip it into the tmpDir.
+	gzipReader, err := newGZipReader(fileReader)
+	if err != nil {
+		// Assume it is not a gzip file and return the path.
+		return "", err
+	}
+	defer gzipReader.Close()
+
+	// Create a file in the tmpDir to store the envelope.
+	destination, err := os.Create(filepath.Join(dir, "firmware.envelope"))
+	if err != nil {
+		return "", err
+	}
+	defer destination.Close()
+
+	// Copy the envelope to the file.
+	_, err = io.Copy(destination, gzipReader)
+	if err != nil {
+		return "", err
+	}
+
+	return destination.Name(), nil
+}
+
+func DownloadEnvelope(ctx context.Context, path string, version string, tmpDir string) (string, error) {
+	// Check if the envelopes file exists. If yes, then we already have the envelope.
+	if _, err := os.Stat(path); err == nil {
+		fileReader, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+
+		result, err := storeGzippedInDirDir(fileReader, tmpDir)
+		if err != nil {
+			// Assume it is not a gzip file and return the path.
+			return path, nil
+		}
+		return result, nil
+	}
+
+	// If the path is a URL, download the envelope from there and store it in the tmpDir.
+	if isURL(path) {
+		fmt.Printf("Downloading firmware from %s ...\n", path)
+		bundle, err := download(ctx, path)
+		if err != nil {
+			return "", err
+		}
+
+		return storeGzippedInDirDir(bundle, tmpDir)
+	}
+
+	// Try to read it as if it was a published envelope.
+	return GetCachedFirmwareEnvelopePath(ctx, version, path)
+}
+
+func downloadPublishedFirmware(ctx context.Context, version string, model string) error {
 	envelopesPath, err := directory.GetEnvelopesCachePath(version)
 	if err != nil {
 		return err

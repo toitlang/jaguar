@@ -115,7 +115,13 @@ func FirmwareUpdateCmd() *cobra.Command {
 
 			var envelopePath string
 			if len(args) == 1 {
-				envelopePath = args[0]
+				// Make a temporary directory for the downloaded envelope.
+				tmpDir, err := os.MkdirTemp("", "*-envelope")
+				if err != nil {
+					return err
+				}
+				defer os.RemoveAll(tmpDir)
+				envelopePath, err = DownloadEnvelope(ctx, args[0], sdk.Version, tmpDir)
 			} else {
 				envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, chip)
 				if err != nil {
