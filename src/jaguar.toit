@@ -127,7 +127,7 @@ serve device/Device endpoints/List -> none:
 
         if uses-network and network-manager.network-is-disabled:
           // If we were asked to shut down because the network was
-          // disabled we may got an exception. Ignore it.
+          // disabled we may have gotten an exception. Ignore it.
           exception = null
 
         // Log exceptions and count the failures so we can back off

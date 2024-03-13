@@ -99,7 +99,7 @@ func RunCmd() *cobra.Command {
 			"     Disables the WiFi-based HTTP server on the device.\n" +
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
-			"     If jag.disabled is enabled, then the default is 10 seconds.\n" +
+			"     If jag.network-disabled is enabled, then the default is 10 seconds.\n" +
 			"\n" +
 			"For example 'jag run -D jag.network-disabled wifi-scan.toit' will run the wifi-scan\n" +
 			"program on the device without Jaguar using the network.",
