@@ -138,7 +138,7 @@ func downloadPublishedFirmware(ctx context.Context, version string, model string
 		return err
 	}
 
-	// Rename the tmp file to the final file.
+	// Rename the temporary file to the final file.
 	err = os.Rename(tmpEnvelopePath, envelopePath)
 	if err != nil {
 		return err
