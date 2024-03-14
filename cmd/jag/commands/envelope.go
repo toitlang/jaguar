@@ -131,7 +131,15 @@ func downloadPublishedFirmware(ctx context.Context, version string, model string
 
 	envelopeFileName := GetFirmwareEnvelopeFileName(model)
 	envelopePath := filepath.Join(envelopesDir, envelopeFileName)
-	err = downloadGzipped(ctx, firmwareURL, envelopePath)
+	// First download to a temporary file, in case the download doesn't complete.
+	tmpEnvelopePath := envelopePath + ".tmp"
+	err = downloadGzipped(ctx, firmwareURL, tmpEnvelopePath)
+	if err != nil {
+		return err
+	}
+
+	// Rename the tmp file to the final file.
+	err = os.Rename(tmpEnvelopePath, envelopePath)
 	if err != nil {
 		return err
 	}
