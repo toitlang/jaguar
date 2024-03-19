@@ -94,6 +94,7 @@ type watcher struct {
 	sync.Mutex
 	watcher *fsnotify.Watcher
 
+	dirs  map[string]struct{}
 	paths map[string]struct{}
 }
 
@@ -125,29 +126,37 @@ func (w *watcher) CountPaths() int {
 }
 
 func (w *watcher) Watch(paths ...string) (err error) {
+	w.Mutex.Lock()
+	defer w.Mutex.Unlock()
+
 	for i, p := range paths {
 		if paths[i], err = filepath.EvalSymlinks(p); err != nil {
 			return err
 		}
 	}
 
+	candidateDirs := map[string]struct{}{}
 	candidates := map[string]struct{}{}
 	for _, p := range paths {
-		if _, ok := w.paths[p]; !ok {
-			w.Mutex.Lock()
-			w.watcher.Add(p)
-			w.paths[p] = struct{}{}
-			w.Mutex.Unlock()
+		dir := filepath.Dir(p)
+		w.paths[p] = struct{}{}
+		if _, ok := w.dirs[dir]; !ok {
+			w.watcher.Add(dir)
 		}
+		candidateDirs[dir] = struct{}{}
 		candidates[p] = struct{}{}
 	}
 
+	// Remove the files/watchers we don't need anymore.
 	for p := range w.paths {
 		if _, ok := candidates[p]; !ok {
-			w.Mutex.Lock()
-			w.watcher.Remove(p)
 			delete(w.paths, p)
-			w.Mutex.Unlock()
+		}
+	}
+	for d := range w.dirs {
+		if _, ok := candidateDirs[d]; !ok {
+			delete(w.dirs, d)
+			w.watcher.Remove(d)
 		}
 	}
 	return nil
@@ -228,6 +237,10 @@ func onWatchChanges(
 			case event, ok := <-watcher.Events():
 				if !ok {
 					return
+				}
+				if _, ok = watcher.paths[event.Name]; !ok {
+					// Not a file we are watching.
+					continue
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					if !fired {
