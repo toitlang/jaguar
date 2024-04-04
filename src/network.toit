@@ -99,7 +99,7 @@ class EndpointHttp implements Endpoint:
       uptime ::= Duration --s=Time.monotonic-us / Duration.MICROSECONDS-PER-SECOND
 
       writer.headers.set "Content-Type" "text/html"
-      writer.write """
+      writer.out.write """
           <html>
             <head>
               <link rel="stylesheet" href="$STYLE-CSS">
@@ -133,7 +133,7 @@ class EndpointHttp implements Endpoint:
     else:
       writer.headers.set "Content-Type" "text/plain"
       writer.write-headers http.STATUS-NOT-FOUND
-      writer.write "Not found: $path"
+      writer.out.write "Not found: $path"
 
   serve-incoming-requests socket/tcp.ServerSocket device/Device address/string -> none:
     self := Task.current
@@ -152,7 +152,7 @@ class EndpointHttp implements Endpoint:
         writer.headers.set "Content-Type" "application/json"
         result := identity-payload device address
         writer.headers.set "Content-Length" result.size.stringify
-        writer.write result
+        writer.out.write result
 
       else if path == "/" or path.ends-with ".html" or path.ends-with ".css" or path.ends-with ".ico":
         handle-browser-request device.name request writer
@@ -171,7 +171,7 @@ class EndpointHttp implements Endpoint:
         result := ubjson.encode registry_.entries
         writer.headers.set "Content-Type" "application/ubjson"
         writer.headers.set "Content-Length" result.size.stringify
-        writer.write result
+        writer.out.write result
 
       // Handle uninstalling containers.
       else if path == "/uninstall" and request.method == http.PUT:
@@ -223,7 +223,7 @@ class EndpointHttp implements Endpoint:
   respond-ok writer/http.ResponseWriter -> none:
     writer.headers.set "Content-Type" "application/json"
     writer.headers.set "Content-Length" STATUS-OK-JSON.size.stringify
-    writer.write STATUS-OK-JSON
+    writer.out.write STATUS-OK-JSON
 
   name -> string:
     return "HTTP"
