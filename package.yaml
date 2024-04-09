@@ -1,7 +1,6 @@
+environment:
+  sdk: ^2.0.0-alpha.144
 dependencies:
   http:
     url: github.com/toitlang/pkg-http
-    version: ^2.7.0
-
-environment:
-  sdk: ^2.0.0-alpha.144
+    version: ^2.7.1
