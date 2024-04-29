@@ -147,7 +147,9 @@ jobs:
           mkdir release
           cp jag_installer_x64.exe release
           cp jag_installer_x64.exe release/jag_installer.exe
-          cp jag.zip release/jag.zip
+          # The filename 'jag_windows.zip' is used by the esp-idf installer.
+          # See https://github.com/espressif/idf-env/blob/681ec4a5056336e3a4573ceda3d7b27976ba3951/src/toit.rs#L18
+          cp jag.zip release/jag_windows.zip
 
       - name: Upload Windows release files
         if: (github.event_name == 'release') && (runner.os == 'Windows')
