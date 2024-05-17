@@ -347,6 +347,7 @@ jobs:
         with:
           path: jaguar
           pkgver: ${{ steps.version.outputs.version }}
+          pkgrel: 1
           updpkgsums: true
           srcinfo: true
           # Workaround for https://github.com/hapakaien/archlinux-package-action/issues/23.
@@ -357,6 +358,7 @@ jobs:
         with:
           path: jaguar-bin
           pkgver: ${{ steps.version.outputs.version }}
+          pkgrel: 1
           updpkgsums: true
           srcinfo: true
 
