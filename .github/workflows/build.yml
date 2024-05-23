@@ -28,6 +28,8 @@ jobs:
     strategy:
       matrix:
         # Use macos-13, since it's still intel based.
+        # When changing to a different macos-version, also update the
+        # signing job below.
         container: [ ubuntu-latest, ubuntu-20.04, macos-13, windows-latest ]
 
     runs-on: ${{ matrix.container }}
@@ -208,7 +210,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: jag-build-macos-latest
+          name: jag-build-macos-13
           path: build
 
       - name: Setup binary rights
