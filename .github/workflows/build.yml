@@ -27,7 +27,8 @@ jobs:
   build_jag:
     strategy:
       matrix:
-        container: [ ubuntu-latest, ubuntu-20.04, macos-latest, windows-latest ]
+        # Use macos-13, since it's still intel based.
+        container: [ ubuntu-latest, ubuntu-20.04, macos-13, windows-latest ]
 
     runs-on: ${{ matrix.container }}
     steps:
