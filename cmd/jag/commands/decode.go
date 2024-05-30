@@ -143,11 +143,18 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 		return fmt.Errorf("failed to parse program id: %v", err)
 	}
 
-	snapshotsCache, err := directory.GetSnapshotsCachePath()
+	snapshotsPaths, err := directory.GetSnapshotsPaths()
 	if err != nil {
 		return err
 	}
-	snapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+	snapshot := ""
+	for _, path := range snapshotsPaths {
+		snapshot = filepath.Join(path, programId.String()+".snapshot")
+		_, err := os.Stat(snapshot)
+		if err == nil || !errors.Is(err, os.ErrNotExist) {
+			break
+		}
+	}
 
 	pretty := "--no-force-pretty"
 	if forcePretty {

@@ -252,7 +252,7 @@ func sendCodeFromFile(
 	optimizationLevel int) error {
 
 	ctx := cmd.Context()
-	snapshotsCache, err := directory.GetSnapshotsCachePath()
+	snapshotsStateDir, err := directory.GetSnapshotsStatePath()
 	if err != nil {
 		return err
 	}
@@ -289,7 +289,7 @@ func sendCodeFromFile(
 		return err
 	}
 
-	cacheDestination := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+	cacheDestination := filepath.Join(snapshotsStateDir, programId.String()+".snapshot")
 
 	// Copy the snapshot into the cache dir so it is available for
 	// decoding stack traces etc.  We want to add it to the cache in
@@ -298,9 +298,9 @@ func sendCodeFromFile(
 	// first copying to a temp file in the cache dir, then renaming
 	// in that directory.
 	if cacheDestination != snapshot {
-		tempFileInCacheDirectory, err := os.CreateTemp(snapshotsCache, "jag_run_*.snapshot")
+		tempFileInCacheDirectory, err := os.CreateTemp(snapshotsStateDir, "jag_run_*.snapshot")
 		if err != nil {
-			fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
+			fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsStateDir)
 			return err
 		}
 		defer tempFileInCacheDirectory.Close()
