@@ -416,7 +416,7 @@ func copySnapshotIntoCache(path string) error {
 		return err
 	}
 
-	cacheDirectory, err := directory.GetSnapshotsCachePath()
+	stateDirectory, err := directory.GetSnapshotsStatePath()
 	if err != nil {
 		return err
 	}
@@ -427,7 +427,7 @@ func copySnapshotIntoCache(path string) error {
 	}
 	defer source.Close()
 
-	destination, err := os.Create(filepath.Join(cacheDirectory, uuid.String()+".snapshot"))
+	destination, err := os.Create(filepath.Join(stateDirectory, uuid.String()+".snapshot"))
 	if err != nil {
 		return err
 	}
