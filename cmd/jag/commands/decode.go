@@ -149,9 +149,15 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 	}
 	snapshot := ""
 	for _, path := range snapshotsPaths {
-		snapshot = filepath.Join(path, programId.String()+".snapshot")
-		_, err := os.Stat(snapshot)
+		candidate := filepath.Join(path, programId.String()+".snapshot")
+		if snapshot == "" {
+			// Remember the first candidate so we use it in the error message if
+			// we don't find any snapshot.
+			snapshot = candidate
+		}
+		_, err := os.Stat(candidate)
 		if err == nil || !errors.Is(err, os.ErrNotExist) {
+			snapshot = candidate
 			break
 		}
 	}
