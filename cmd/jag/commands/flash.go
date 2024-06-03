@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -91,6 +90,9 @@ func FlashCmd() *cobra.Command {
 				}
 				defer os.RemoveAll(tmpDir)
 				envelopePath, err = DownloadEnvelope(ctx, args[0], sdk.Version, tmpDir)
+				if err != nil {
+					return err
+				}
 			} else {
 				envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, chip)
 				if err != nil {
@@ -119,12 +121,8 @@ func FlashCmd() *cobra.Command {
 			}
 			defer os.Remove(envelopeFile.Name())
 
-			// Split at first '-'.
-			chip = strings.SplitN(chip, "-", 2)[0]
-
 			flashArguments := []string{
 				"flash",
-				"--chip", chip,
 				"--port", port,
 				"--baud", strconv.Itoa(int(baud)),
 			}
