@@ -96,7 +96,7 @@ class EndpointHttp implements Endpoint:
     if path.starts-with "/": path = path[1..]
 
     if path == "index.html":
-      uptime ::= Duration --s=Time.monotonic-us / Duration.MICROSECONDS-PER-SECOND
+      uptime ::= Duration --s=(Time.monotonic-us --since-wakeup) / Duration.MICROSECONDS-PER-SECOND
 
       writer.headers.set "Content-Type" "text/html"
       writer.out.write """
