@@ -171,18 +171,16 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 		plain = "--force-plain"
 	}
 
-	var decodeCommand *exec.Cmd
+	var decodeCommand *exec.Cmd = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
 	isMissingSnapshot := false
 	if programId != uuid.Nil {
 		if _, err := os.Stat(snapshot); errors.Is(err, os.ErrNotExist) {
 			isMissingSnapshot = true
-			// Still run the decodeCommand for the exception, even though we won't get the stacktrace
-			decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
 		} else {
-			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
+			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, pretty, plain)
 		}
 	} else {
-		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
+
 	}
 
 	decodeCommand.Stderr = os.Stderr
