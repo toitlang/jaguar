@@ -54,6 +54,12 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 			"serial, reboot your device, or wait for it to reconnect to your network.",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Avoid running the up-to-date check code when
+			// we're most likely running on a build bot.
+			if isLikelyRunningOnBuildbot() {
+				return
+			}
+
+			// Avoid running the up-to-date check code when
 			// the command is a subcommand of 'config'.
 			current := cmd
 			for current.HasParent() {
