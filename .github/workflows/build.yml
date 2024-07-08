@@ -239,6 +239,16 @@ jobs:
               build/macos/jag.dmg \
               empty
 
+      - name: Sign DMG
+        uses: toitlang/action-macos-sign-notarize@v1.2.0
+        with:
+          certificate: ${{ secrets.MACOS_CERTIFICATE }}
+          certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          username: ${{ secrets.AC_USERNAME }}
+          password: ${{ secrets.AC_PASSWORD }}
+          apple-team-id: 33DS2ZRDST
+          app-path: build/macos/jag.dmg
+
       - name: Create a ZIP
         run: |
           zip -j build/macos/jag.zip build/macos/jag
