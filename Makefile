@@ -55,14 +55,14 @@ $(BUILD_DIR)/$(JAG_BINARY): $(JAG_GO_SOURCES)
 assets: $(BUILD_DIR)/assets/jaguar.snapshot
 
 $(BUILD_DIR)/assets/jaguar.snapshot: install-dependencies
-$(BUILD_DIR)/assets/jaguar.snapshot: $(SDK_PATH)/bin/toit$(EXE_SUFFIX)
+$(BUILD_DIR)/assets/jaguar.snapshot: $(SDK_PATH)/bin/toit.compile$(EXE_SUFFIX)
 $(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_SOURCES)
 	mkdir -p $(BUILD_DIR)/assets
-	$(SDK_PATH)/bin/toit$(EXE_SUFFIX) compile -O2 --snapshot -o $@ $(JAG_ENTRY_POINT)
+	$(SDK_PATH)/bin/toit.compile$(EXE_SUFFIX) -O2 -w $@ $(JAG_ENTRY_POINT)
 
 .PHONY: install-dependencies
-install-dependencies: $(SDK_PATH)/bin/toit$(EXE_SUFFIX)
-	$(SDK_PATH)/bin/toit$(EXE_SUFFIX) pkg --project-root=$(CURDIR) install
+install-dependencies: $(SDK_PATH)/bin/toit.pkg$(EXE_SUFFIX)
+	$(SDK_PATH)/bin/toit.pkg$(EXE_SUFFIX) --project-root=$(CURDIR) install
 
 ############################################
 # Rules to build with JAG_TOIT_REPO_PATH set
@@ -71,7 +71,8 @@ install-dependencies: $(SDK_PATH)/bin/toit$(EXE_SUFFIX)
 ifdef JAG_TOIT_REPO_PATH
 all: $(JAG_TOIT_REPO_PATH)/build/esp32/firmware.envelope
 
-JAG_TOIT_DEPENDENCIES  = $(SDK_PATH)/bin/toit$(EXE_SUFFIX)
+JAG_TOIT_DEPENDENCIES  = $(SDK_PATH)/bin/toit.compile$(EXE_SUFFIX)
+JAG_TOIT_DEPENDENCIES += $(SDK_PATH)/bin/toit.pkg$(EXE_SUFFIX)
 JAG_TOIT_DEPENDENCIES += $(JAG_TOIT_REPO_PATH)/build/esp32/firmware.envelope
 
 # We use a marker in the build directory to avoid

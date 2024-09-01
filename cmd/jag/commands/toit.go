@@ -37,7 +37,7 @@ func ToitLspCmd() *cobra.Command {
 			}
 
 			cmd.SilenceErrors = true
-			toitLsp := sdk.ToitLsp(ctx, args)
+			toitLsp := sdk.ToitLsp(ctx, append([]string{"--toitc", sdk.ToitCompilePath()}, args...))
 			toitLsp.Stdin = os.Stdin
 			toitLsp.Stdout = os.Stdout
 			toitLsp.Stderr = os.Stderr

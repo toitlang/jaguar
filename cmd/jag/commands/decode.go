@@ -171,13 +171,13 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 		plain = "--force-plain"
 	}
 
-	var decodeCommand *exec.Cmd = sdk.SystemMessage(ctx, base64Message, pretty, plain)
+	var decodeCommand *exec.Cmd = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
 	isMissingSnapshot := false
 	if programId != uuid.Nil {
 		if _, err := os.Stat(snapshot); errors.Is(err, os.ErrNotExist) {
 			isMissingSnapshot = true
 		} else {
-			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, base64Message, pretty, plain)
+			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, pretty, plain)
 		}
 	} else {
 
