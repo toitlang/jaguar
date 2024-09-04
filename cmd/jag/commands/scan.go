@@ -32,7 +32,8 @@ func ScanCmd() *cobra.Command {
 			"Unless 'device' is an address, listen for UDP packets broadcasted by the devices.\n" +
 			"In that case you need to be on the same network as the device.\n" +
 			"If a device selection is given, automatically select that device.\n" +
-			"If the device selection is an address, connect to it using TCP.",
+			"If the device selection is a BLE address, connect to it using BLE.\n" +
+			"If the device selection is an IP address, connect to it using TCP.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -71,7 +72,7 @@ func ScanCmd() *cobra.Command {
 				return outputter.Encode(Devices{devices})
 			}
 
-			device, _, err := scanAndPickDevice(ctx, timeout, port, autoSelect, false)
+			device, _, err := scanAndPickDevice(ctx, timeout, port, autoSelect, true)
 			if err != nil {
 				return err
 			}
@@ -229,6 +230,15 @@ func scan(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect 
 		devices = append(devices, bleDevices...)
 	}
 
+	scanCachePath, err := directory.GetScanCachePath()
+	if err != nil {
+		return nil, err
+	}
+	err = writeYamlDevices(scanCachePath, devices)
+	if err != nil {
+		fmt.Printf("Failed to write scan cache: %v\n", err)
+	}
+
 	return devices, nil
 }
 
@@ -244,7 +254,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 				return d, true, nil
 			}
 		}
-		if manualPick {
+		if !manualPick {
 			return nil, false, fmt.Errorf("couldn't find %s", autoSelect)
 		}
 	}

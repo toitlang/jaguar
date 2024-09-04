@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 	"unicode/utf8"
 
 	"github.com/spf13/viper"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -73,6 +75,55 @@ func readDeviceConfig(cfg *viper.Viper) (Device, error) {
 		}
 		return NewDeviceNetworkFromSerializable(&serializable)
 	}
+}
+
+func readYamlDevices(path string) ([]Device, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var serializable []map[string]interface{}
+	if err := yaml.Unmarshal(data, &serializable); err != nil {
+		return nil, err
+	}
+	var devices []Device
+	for _, m := range serializable {
+		if kind, ok := m["kind"].(string); ok {
+			switch kind {
+			case "ble":
+				d, err := NewDeviceBleFromJson(m, "")
+				if err != nil {
+					return nil, err
+				}
+				devices = append(devices, d)
+			case "network":
+				d, err := NewDeviceNetworkFromJson(m)
+				if err != nil {
+					return nil, err
+				}
+				devices = append(devices, d)
+			default:
+				return nil, fmt.Errorf("unknown device kind: %s", kind)
+			}
+		}
+	}
+	return devices, nil
+}
+
+func writeYamlDevices(path string, devices []Device) error {
+	var serializable []interface{}
+	for _, d := range devices {
+		serializable = append(serializable, d.ToSerializable())
+	}
+	data, err := yaml.Marshal(serializable)
+	if err != nil {
+		return err
+	}
+	// Create the directory if it doesn't exist.
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 type Devices struct {
@@ -172,12 +223,15 @@ func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect devic
 	if err != nil {
 		return nil, err
 	}
-	manualPick := deviceSelect != nil
-	if deviceCfg.IsSet("device") && !manualPick {
+
+	// Set the manualPick flag before we potentially change the 'deviceSelect' after looking
+	// at the device-config file.
+	// In other words: allow to manually pick a device if the device-selection was not set,
+	// or comes from the device-config file.
+	manualPick := deviceSelect == nil
+
+	if deviceCfg.IsSet("device") && deviceSelect == nil {
 		d, err := readDeviceConfig(deviceCfg)
-		if err != nil {
-			return nil, err
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -192,11 +246,38 @@ func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect devic
 		}
 	}
 
+	if deviceSelect != nil {
+		// Try to find the device in the cached scan if there is one.
+		scanCache, err := directory.GetScanCachePath()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := os.Stat(scanCache); err == nil {
+			devices, err := readYamlDevices(scanCache)
+			if err == nil {
+				// We ignore errors, and just handle it as if there wasn't any scan cache.
+				for _, d := range devices {
+					if deviceSelect.Match(d) {
+						if checkPing {
+							if d.Ping(ctx, sdk) {
+								return d, nil
+							}
+							fmt.Printf("Failed to ping '%s'.\n", d.Name())
+						} else {
+							return d, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
 	d, autoSelected, err := scanAndPickDevice(ctx, 0*time.Second, scanPort, deviceSelect, manualPick)
 	if err != nil {
 		return nil, err
 	}
-	if !manualPick {
+	if manualPick {
+		// The user was allowed to manually pick a device.
 		if autoSelected {
 			fmt.Printf("Found device '%s' again\n", d.Name())
 		}
