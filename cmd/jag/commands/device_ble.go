@@ -110,23 +110,17 @@ func withCharacteristics(address string, uuidStrings []string, callback func([]b
 		charUUIDs[i] = charUUID
 	}
 
-	parsedMac, err := bluetooth.ParseMAC(address)
-	if err != nil {
-		return err
-	}
-	bleAddress := bluetooth.Address{
-		MACAddress: bluetooth.MACAddress{
-			MAC: parsedMac,
-		},
-	}
 	adapter, err := EnabledAdapter()
 	if err != nil {
 		return err
 	}
 
+	var bleAddress bluetooth.Address
+
 	// DBUS apparently wants to have seen the device through a scan first.
 	adapter.Scan(func(adapter *bluetooth.Adapter, scanResult bluetooth.ScanResult) {
 		if scanResult.Address.String() == address {
+			bleAddress = scanResult.Address
 			adapter.StopScan()
 		}
 	})
