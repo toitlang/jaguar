@@ -417,6 +417,10 @@ func parseDeviceSelection(d string) deviceSelect {
 	if len(d) == 17 && strings.Count(d, ":") == 5 {
 		return deviceBLEAddressSelect(d)
 	}
+	// Same for a BLE UUID, consisting of something like 0000xxxx-0000-1000-8000-00805f9b34fb.
+	if len(d) == 36 && strings.Count(d, "-") == 4 {
+		return deviceBLEAddressSelect(d)
+	}
 
 	colonIdx := strings.Index(d, ":")
 	if colonIdx > 0 {

@@ -32,7 +32,8 @@ func ScanCmd() *cobra.Command {
 			"Unless 'device' is an address, listen for UDP packets broadcasted by the devices.\n" +
 			"In that case you need to be on the same network as the device.\n" +
 			"If a device selection is given, automatically select that device.\n" +
-			"If the device selection is an address, connect to it using TCP.",
+			"If the device selection is a BLE address, connect to it using BLE.\n" +
+			"If the device selection is an IP address, connect to it using TCP.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
