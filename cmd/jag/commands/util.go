@@ -194,7 +194,7 @@ func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string, o
 	return nil
 }
 
-func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, assetsPath string) ([]byte, error) {
+func (s *SDK) Build(ctx context.Context, device Device, snapshotPath string, assetsPath string) ([]byte, error) {
 	image, err := os.CreateTemp("", "*.image")
 	if err != nil {
 		return nil, err
@@ -203,7 +203,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, as
 	defer os.Remove(image.Name())
 
 	bits := "-m32"
-	if device.WordSize == 8 {
+	if device.WordSize() == 8 {
 		bits = "-m64"
 	}
 

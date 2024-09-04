@@ -48,7 +48,7 @@ func FirmwareCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Device '%s' is running Toit SDK %s\n", device.Name, device.SDKVersion)
+			fmt.Printf("Device '%s' is running Toit SDK %s\n", device.Name(), device.SDKVersion())
 			return nil
 		},
 	}
@@ -97,7 +97,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			}
 
 			if chip == "auto" || chip == "" {
-				chip = device.Chip
+				chip = device.Chip()
 			}
 
 			wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
@@ -107,7 +107,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 
 			deviceOptions := DeviceOptions{
 				Id:           newID,
-				Name:         device.Name,
+				Name:         device.Name(),
 				Chip:         chip,
 				WifiSsid:     wifiSSID,
 				WifiPassword: wifiPassword,
@@ -162,7 +162,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Updating firmware on '%s' to Toit SDK %s\n\n", device.Name, sdk.Version)
+			fmt.Printf("Updating firmware on '%s' to Toit SDK %s\n\n", device.Name(), sdk.Version)
 			if err := device.UpdateFirmware(ctx, sdk, bin); err != nil {
 				return err
 			}
@@ -171,9 +171,9 @@ func FirmwareUpdateCmd() *cobra.Command {
 			// have to scan and ping before they can use the device after the firmware update.
 			// If the update failed or if the device got a new IP address after rebooting, we
 			// will have to ping again.
-			device.ID = newID
-			device.SDKVersion = sdk.Version
-			cfg.Set("device", device)
+			device.SetID(newID)
+			device.SetSDKVersion(sdk.Version)
+			cfg.Set("device", device.ToJson())
 			return cfg.WriteConfig()
 		},
 	}

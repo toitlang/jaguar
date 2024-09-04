@@ -217,32 +217,32 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string, optimizat
 
 func RunFile(
 	cmd *cobra.Command,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	path string,
 	defines map[string]interface{},
 	assetsPath string,
 	optimizationLevel int) error {
-	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
+	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name())
 	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel)
 }
 
 func InstallFile(
 	cmd *cobra.Command,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	name string,
 	path string,
 	defines map[string]interface{},
 	assetsPath string,
 	optimizationLevel int) error {
-	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name)
+	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name())
 	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath, optimizationLevel)
 }
 
 func sendCodeFromFile(
 	cmd *cobra.Command,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	request string,
 	path string,
@@ -391,7 +391,7 @@ func sendCodeFromFile(
 		cmd.SilenceErrors = true
 		return err
 	}
-	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
+	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name())
 	return nil
 }
 
