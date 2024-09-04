@@ -27,11 +27,6 @@ func FirmwareCmd() *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			ctx := cmd.Context()
 			deviceSelect, err := parseDeviceFlag(cmd)
 			if err != nil {
@@ -43,7 +38,7 @@ func FirmwareCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -66,11 +61,6 @@ func FirmwareUpdateCmd() *cobra.Command {
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			ctx := cmd.Context()
 			deviceSelect, err := parseDeviceFlag(cmd)
 			if err != nil {
@@ -86,7 +76,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			// the device flash stored by an older version are invalidated.
 			newID := uuid.New().String()
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -173,8 +163,12 @@ func FirmwareUpdateCmd() *cobra.Command {
 			// will have to ping again.
 			device.SetID(newID)
 			device.SetSDKVersion(sdk.Version)
-			cfg.Set("device", device.ToJson())
-			return cfg.WriteConfig()
+			deviceCfg, err := directory.GetDeviceConfig()
+			if err != nil {
+				return err
+			}
+			deviceCfg.Set("device", device.ToJson())
+			return deviceCfg.WriteConfig()
 		},
 	}
 

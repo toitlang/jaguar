@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func ContainerCmd() *cobra.Command {
@@ -33,11 +32,6 @@ func ContainerListCmd() *cobra.Command {
 		Use:  "list",
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			deviceSelect, err := parseDeviceFlag(cmd)
 			if err != nil {
 				return err
@@ -49,7 +43,7 @@ func ContainerListCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, false, deviceSelect)
+			device, err := GetDevice(ctx, sdk, false, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -99,11 +93,6 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
 			if err != nil {
 				return err
@@ -132,7 +121,7 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -166,17 +155,12 @@ func ContainerUninstallCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}

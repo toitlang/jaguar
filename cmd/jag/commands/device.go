@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/spf13/viper"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 const (
@@ -143,11 +143,15 @@ func intOr(data map[string]interface{}, key string, def int) int {
 	return def
 }
 
-func GetDevice(ctx context.Context, cfg *viper.Viper, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (Device, error) {
+func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (Device, error) {
+	deviceCfg, err := directory.GetDeviceConfig()
+	if err != nil {
+		return nil, err
+	}
 	manualPick := deviceSelect != nil
-	if cfg.IsSet("device") && !manualPick {
+	if deviceCfg.IsSet("device") && !manualPick {
 		var decoded map[string]interface{}
-		if err := cfg.UnmarshalKey("device", &decoded); err != nil {
+		if err := deviceCfg.UnmarshalKey("device", &decoded); err != nil {
 			return nil, err
 		}
 		d, err := NewDeviceFromJson(decoded)
@@ -173,8 +177,8 @@ func GetDevice(ctx context.Context, cfg *viper.Viper, sdk *SDK, checkPing bool, 
 		if autoSelected {
 			fmt.Printf("Found device '%s' again\n", d.Name())
 		}
-		cfg.Set("device", d.ToJson())
-		if err := cfg.WriteConfig(); err != nil {
+		deviceCfg.Set("device", d.ToJson())
+		if err := deviceCfg.WriteConfig(); err != nil {
 			return nil, err
 		}
 	}

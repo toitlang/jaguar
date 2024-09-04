@@ -132,11 +132,6 @@ func RunCmd() *cobra.Command {
 				return fmt.Errorf("--expression/-s is not yet supported when running on devices")
 			}
 
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			if len(args) == 0 {
 				return fmt.Errorf("no input file provided")
 			} else if len(args) > 1 {
@@ -163,7 +158,7 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
