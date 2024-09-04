@@ -26,9 +26,37 @@ func ConfigCmd(info Info) *cobra.Command {
 	}
 
 	cmd.AddCommand(
+		ConfigBLECmd(),
 		ConfigAnalyticsCmd(),
 		ConfigUpToDateCmd(info),
 		ConfigWifiCmd(),
+	)
+	return cmd
+}
+
+func ConfigBLECmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ble",
+		Short: "Configure Bluetooth Low Energy (BLE) settings",
+		Args:  cobra.NoArgs,
+	}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "enable",
+			Short: "Enable Bluetooth Low Energy (BLE) support",
+			Long: `Enable Bluetooth Low Energy (BLE) support.
+
+When BLE is enabled, Jaguar will scan for BLE devices. This
+takes more time and is thus disabled by default.`,
+			Args: cobra.NoArgs,
+			RunE: configBLE(true),
+		},
+		&cobra.Command{
+			Use:   "disable",
+			Short: "Disable Bluetooth Low Energy (BLE) support",
+			Args:  cobra.NoArgs,
+			RunE:  configBLE(false),
+		},
 	)
 	return cmd
 }
@@ -144,6 +172,18 @@ credentials whenever necessary.`,
 	setCmd.MarkFlagRequired("wifi-password")
 	cmd.AddCommand(setCmd)
 	return cmd
+}
+
+func configBLE(enable bool) func(*cobra.Command, []string) error {
+	return func(_ *cobra.Command, _ []string) error {
+		cfg, err := directory.GetUserConfig()
+		if err != nil {
+			return err
+		}
+
+		cfg.Set("ble.enabled", enable)
+		return directory.WriteConfig(cfg)
+	}
 }
 
 func configAnalytics(disable bool) func(*cobra.Command, []string) error {

@@ -16,6 +16,7 @@ import system.assets
 import system.containers
 import system.firmware
 
+import .ble
 import .container-registry
 import .network
 import .uart
@@ -61,6 +62,8 @@ main arguments:
   ]
   uart := device.config.get "endpointUart"
   if uart: endpoints.add (EndpointUart --config=uart --logger=logger)
+  ble := device.config.get "endpointBle"
+  if ble: endpoints.add (EndpointBle --config=ble --logger=logger)
   main device endpoints
 
 main device/Device endpoints/List:

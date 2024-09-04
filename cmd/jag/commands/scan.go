@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	scanTimeout  = 600 * time.Millisecond
-	scanPort     = 1990
-	scanHttpPort = 9000
+	scanTimeoutBle     = 2 * time.Second
+	scanTimeoutNetwork = 600 * time.Millisecond
+	scanPort           = 1990
+	scanHttpPort       = 9000
 )
 
 func ScanCmd() *cobra.Command {
@@ -35,10 +36,6 @@ func ScanCmd() *cobra.Command {
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
 
 			var autoSelect deviceSelect = nil
 			if len(args) == 1 {
@@ -66,11 +63,7 @@ func ScanCmd() *cobra.Command {
 
 			cmd.SilenceUsage = true
 			if outputter != nil {
-				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-				var devices []Device
-				var err error
-				devices, err = ScanNetwork(scanCtx, autoSelect, port)
-				cancel()
+				devices, err := scan(ctx, timeout, port, autoSelect)
 				if err != nil {
 					return err
 				}
@@ -91,15 +84,19 @@ func ScanCmd() *cobra.Command {
 				}
 			}
 
-			cfg.Set("device", device.ToJson())
-			return cfg.WriteConfig()
+			deviceCfg, err := directory.GetDeviceConfig()
+			if err != nil {
+				return err
+			}
+			deviceCfg.Set("device", device.ToSerializable())
+			return deviceCfg.WriteConfig()
 		},
 	}
 
 	cmd.Flags().BoolP("list", "l", false, "if set, list the devices")
 	cmd.Flags().StringP("output", "o", "short", "set output format to json, yaml or short (works only with '--list')")
 	cmd.Flags().UintP("port", "p", scanPort, "UDP port to scan for devices on (ignored when an address is given)")
-	cmd.Flags().DurationP("timeout", "t", scanTimeout, "how long to scan")
+	cmd.Flags().DurationP("timeout", "t", 0, "how long to scan")
 	return cmd
 }
 
@@ -162,18 +159,81 @@ func (s deviceAddressSelect) String() string {
 	return fmt.Sprintf("device with address: '%s'", string(s))
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (Device, bool, error) {
+type deviceBLEAddressSelect string
+
+func (s deviceBLEAddressSelect) Match(d Device) bool {
+	return string(s) == d.Address()
+}
+
+func (s deviceBLEAddressSelect) Address() string {
+	return string(s)
+}
+
+func (s deviceBLEAddressSelect) String() string {
+	return fmt.Sprintf("BLE device with address: '%s'", string(s))
+}
+
+func scan(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect) ([]Device, error) {
+	userCfg, err := directory.GetUserConfig()
+	if err != nil {
+		return nil, err
+	}
+	bleIsEnabled := userCfg.GetBool("ble.enabled")
+
+	description := "network"
+	if bleIsEnabled {
+		description += " and BLE"
+	}
 	if autoSelect == nil {
-		fmt.Println("Scanning ...")
+		fmt.Printf("Scanning %s ...\n", description)
 	} else {
-		fmt.Println("Scanning for ", autoSelect)
+		fmt.Printf("Scanning %s for %s\n", description, autoSelect)
+	}
+
+	if scanTimeout == 0 {
+		if bleIsEnabled {
+			scanTimeout = scanTimeoutBle
+		} else {
+			scanTimeout = scanTimeoutNetwork
+		}
+	}
+
+	bleCh := make(chan []Device)
+	errCh := make(chan error, 1) // Buffered to hold one error.
+
+	if bleIsEnabled {
+		go func() {
+			scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
+			defer cancel()
+			bleDevices, err := ScanBle(scanCtx, autoSelect)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			bleCh <- bleDevices
+		}()
+	} else {
+		bleCh <- []Device{}
 	}
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
+	defer cancel()
 	devices, err := ScanNetwork(scanCtx, autoSelect, port)
-	cancel()
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
+	// Wait for the BLE scan to finish.
+	select {
+	case err := <-errCh:
+		return nil, err
+	case bleDevices := <-bleCh:
+		devices = append(devices, bleDevices...)
+	}
+
+	return devices, nil
+}
+
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (Device, bool, error) {
+	devices, err := scan(ctx, scanTimeout, port, autoSelect)
 
 	if len(devices) == 0 {
 		return nil, false, fmt.Errorf("didn't find any Jaguar devices.\nPerhaps you need to be on the same wifi as the device.\nYou can also specify the IP address of the device")

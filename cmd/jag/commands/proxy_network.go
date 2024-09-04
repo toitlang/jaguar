@@ -26,12 +26,6 @@ const (
 	// The URL for the style sheet.
 	styleURL = "https://toitlang.github.io/jaguar/device-files/style.css"
 
-	headerDeviceId         = "X-Jaguar-Device-ID"
-	headerSdkVersion       = "X-Jaguar-SDK-Version"
-	headerDisabled         = "X-Jaguar-Disabled"
-	headerContainerName    = "X-Jaguar-Container-Name"
-	headerContainerTimeout = "X-Jaguar-Container-Timeout"
-
 	defineJagDisabled = "jag.disabled"
 	defineJagTimeout  = "jag.timeout"
 
@@ -61,24 +55,24 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 	}
 
 	checkValidDeviceId := func(w http.ResponseWriter, r *http.Request) bool {
-		deviceId := r.Header.Get(headerDeviceId)
+		deviceId := r.Header.Get(JaguarDeviceIDHeader)
 		if deviceId != "" && deviceId != identity.Id {
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("Device has id '" + identity.Id + "', jag is trying to talk to '" + deviceId + "'.\n"))
 			// TODO(florian): this print should be a log.
-			fmt.Println("Denied request: Header '" + headerDeviceId + "' has value '" + deviceId + "' but expected '" + identity.Id + "'.")
+			fmt.Println("Denied request: Header '" + JaguarDeviceIDHeader + "' has value '" + deviceId + "' but expected '" + identity.Id + "'.")
 			return false
 		}
 		return true
 	}
 
 	checkSameSDK := func(w http.ResponseWriter, r *http.Request) bool {
-		sdkVersion := r.Header.Get(headerSdkVersion)
+		sdkVersion := r.Header.Get(JaguarSDKVersionHeader)
 		if sdkVersion != "" && sdkVersion != identity.SdkVersion {
 			w.WriteHeader(http.StatusNotAcceptable)
 			w.Write([]byte("Device has SDK version '" + identity.SdkVersion + "', jag has '" + sdkVersion + "'.\n"))
 			// TODO(florian): this print should be a log.
-			fmt.Println("Denied request: Header '" + headerSdkVersion + "' has value '" + sdkVersion + "' but expected '" + identity.SdkVersion + "'.")
+			fmt.Println("Denied request: Header '" + JaguarSDKVersionHeader + "' has value '" + sdkVersion + "' but expected '" + identity.SdkVersion + "'.")
 			return false
 		}
 		return true
@@ -134,7 +128,7 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		if !checkValidDeviceId(w, r) || !checkIsPut(w, r) {
 			return
 		}
-		containerName := r.Header.Get(headerContainerName)
+		containerName := r.Header.Get(JaguarContainerNameHeader)
 		if containerName == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -166,12 +160,12 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		if !checkValidDeviceId(w, r) || !checkSameSDK(w, r) || !checkIsPut(w, r) {
 			return
 		}
-		containerName := r.Header.Get(headerContainerName)
+		containerName := r.Header.Get(JaguarContainerNameHeader)
 		if containerName == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		defines := extractDefines(r)
+		defines := extractNetworkDefines(r)
 		containerImage, err := readBody(r.Body, r.ContentLength)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -188,7 +182,7 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		if !checkValidDeviceId(w, r) || !checkSameSDK(w, r) || !checkIsPut(w, r) {
 			return
 		}
-		defines := extractDefines(r)
+		defines := extractNetworkDefines(r)
 		image, err := readBody(r.Body, r.ContentLength)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -220,6 +214,14 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		return err
 	}
 	return http.Serve(listener, mux)
+}
+
+func extractNetworkDefines(r *http.Request) map[string]interface{} {
+	headerMap := map[string]string{}
+	for key, values := range r.Header {
+		headerMap[key] = values[0]
+	}
+	return extractDefines(headerMap)
 }
 
 func createIdentityPayload(identity *uartIdentity, localIP string, localPort int) ([]byte, error) {
@@ -273,21 +275,6 @@ func broadcastIdentity(identityPayload []byte) error {
 		}
 	}()
 	return nil
-}
-
-func extractDefines(r *http.Request) map[string]interface{} {
-	defines := map[string]interface{}{}
-	if r.Header.Get(headerDisabled) != "" {
-		defines[defineJagDisabled] = true
-	}
-	if r.Header.Get(headerContainerTimeout) != "" {
-		val := r.Header.Get(headerContainerTimeout)
-		// Parse the integer value.
-		if timeout, err := strconv.Atoi(val); err == nil {
-			defines[defineJagTimeout] = timeout
-		}
-	}
-	return defines
 }
 
 func serveBrowser(identity *uartIdentity, w http.ResponseWriter, r *http.Request) {

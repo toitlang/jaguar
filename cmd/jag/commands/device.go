@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"strconv"
+	"time"
 	"unicode/utf8"
 
+	"github.com/spf13/viper"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
@@ -43,7 +45,34 @@ type Device interface {
 	ContainerUninstall(ctx context.Context, sdk *SDK, name string) error
 	UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error
 
-	ToJson() map[string]interface{}
+	ToSerializable() interface{}
+}
+
+func readDeviceConfig(cfg *viper.Viper) (Device, error) {
+	type DeserializerKind struct {
+		Kind string `json:"kind" yaml:"kind" ubjson:"kind"`
+	}
+	var kind DeserializerKind
+	if err := cfg.UnmarshalKey("device", &kind); err != nil {
+		return nil, err
+	}
+	switch kind.Kind {
+	case "ble":
+		var serializable SerializableDeviceBle
+		if err := cfg.UnmarshalKey("device", &serializable); err != nil {
+			return nil, err
+		}
+		return NewDeviceBleFromSerializable(&serializable)
+	case "network":
+		// Network is the default.
+		fallthrough
+	default:
+		var serializable SerializableDeviceNetwork
+		if err := cfg.UnmarshalKey("device", &serializable); err != nil {
+			return nil, err
+		}
+		return NewDeviceNetworkFromSerializable(&serializable)
+	}
 }
 
 type Devices struct {
@@ -65,6 +94,16 @@ type DeviceBase struct {
 	sdkVersion string
 	wordSize   int
 	address    string
+}
+
+type SerializableDeviceBase struct {
+	Kind       string `json:"kind" yaml:"kind" ubjson:"kind"`
+	ID         string `json:"id" yaml:"id" ubjson:"id"`
+	Name       string `json:"name" yaml:"name" ubjson:"name"`
+	Chip       string `json:"chip" yaml:"chip" ubjson:"chip"`
+	SDKVersion string `json:"sdkVersion" yaml:"sdkVersion" ubjson:"sdkVersion"`
+	WordSize   int    `json:"wordSize" yaml:"wordSize" ubjson:"wordSize"`
+	Address    string `json:"address" yaml:"address" ubjson:"address"`
 }
 
 func (d DeviceBase) ID() string {
@@ -107,15 +146,7 @@ func (d DeviceBase) String() string {
 	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name(), d.Address(), d.WordSize()*8)
 }
 
-func NewDeviceFromJson(data map[string]interface{}) (Device, error) {
-	return NewDeviceNetworkFromJson(data)
-}
 func boolOr(data map[string]interface{}, key string, def bool) bool {
-	if val, ok := data[key].(bool); ok {
-		return val
-	}
-	// Viper converts all keys to lowercase, so we need to check for that as well.
-	key = strings.ToLower(key)
 	if val, ok := data[key].(bool); ok {
 		return val
 	}
@@ -126,20 +157,10 @@ func stringOr(data map[string]interface{}, key string, def string) string {
 	if val, ok := data[key].(string); ok {
 		return val
 	}
-	// Viper converts all keys to lowercase, so we need to check for that as well.
-	key = strings.ToLower(key)
-	if val, ok := data[key].(string); ok {
-		return val
-	}
 	return def
 }
 
 func intOr(data map[string]interface{}, key string, def int) int {
-	if val, ok := data[key].(float64); ok {
-		return int(val)
-	}
-	// Viper converts all keys to lowercase, so we need to check for that as well.
-	key = strings.ToLower(key)
 	if val, ok := data[key].(float64); ok {
 		return int(val)
 	}
@@ -153,11 +174,10 @@ func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect devic
 	}
 	manualPick := deviceSelect != nil
 	if deviceCfg.IsSet("device") && !manualPick {
-		var decoded map[string]interface{}
-		if err := deviceCfg.UnmarshalKey("device", &decoded); err != nil {
+		d, err := readDeviceConfig(deviceCfg)
+		if err != nil {
 			return nil, err
 		}
-		d, err := NewDeviceFromJson(decoded)
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +192,7 @@ func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect devic
 		}
 	}
 
-	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, scanPort, deviceSelect, manualPick)
+	d, autoSelected, err := scanAndPickDevice(ctx, 0*time.Second, scanPort, deviceSelect, manualPick)
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +200,26 @@ func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect devic
 		if autoSelected {
 			fmt.Printf("Found device '%s' again\n", d.Name())
 		}
-		deviceCfg.Set("device", d.ToJson())
+		deviceCfg.Set("device", d)
 		if err := deviceCfg.WriteConfig(); err != nil {
 			return nil, err
 		}
 	}
 	return d, nil
+}
+
+func extractDefines(headerMap map[string]string) map[string]interface{} {
+	defines := map[string]interface{}{}
+
+	if disabled, ok := headerMap[JaguarDisabledHeader]; ok {
+		defines[JaguarDisabledHeader] = disabled
+	}
+	if timeout, ok := headerMap[JaguarContainerTimeoutHeader]; ok {
+		if val, err := strconv.Atoi(timeout); err == nil {
+			defines[JaguarContainerTimeoutHeader] = val
+		}
+	}
+	return defines
 }
 
 // A Reader based on a byte array that prints a progress bar.
