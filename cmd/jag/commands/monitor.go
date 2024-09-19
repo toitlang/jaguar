@@ -119,11 +119,17 @@ type serialPort struct {
 }
 
 func (s serialPort) Read(buf []byte) (n int, err error) {
-	n, err = s.Port.Read(buf)
-	if err == nil && n == 0 {
-		return 0, io.ErrUnexpectedEOF
+	for {
+		n, err = s.Port.Read(buf)
+		if err == nil && n == 0 {
+			// This seems to happen on Windows.
+			// Could be a timeout.
+			// See https://github.com/bugst/go-serial/issues/130.
+			// We'll just try again.
+			continue
+		}
+		return n, err
 	}
-	return n, err
 }
 
 func (s *serialPort) Reboot() {
