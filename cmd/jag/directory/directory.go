@@ -18,6 +18,7 @@ const (
 	UserConfigPathEnv    = "JAG_USER_CONFIG_PATH"
 	DeviceConfigPathEnv  = "JAG_DEVICE_CONFIG_PATH"
 	SnapshotCachePathEnv = "JAG_SNAPSHOT_CACHE_PATH"
+	ScanCachePathEnv     = "JAG_SCAN_CACHE_PATH"
 	configFile           = ".jaguar"
 
 	ToitUserConfigPathEnv = "TOIT_CONFIG_FILE"
@@ -103,6 +104,20 @@ func GetDeviceConfigPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(configDir, "jaguar", "device.yaml"), nil
+}
+
+func GetScanCachePath() (string, error) {
+	path, ok := os.LookupEnv(ScanCachePathEnv)
+	if ok {
+		return path, nil
+	}
+
+	cacheDir, err := getCacheDirPath()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(cacheDir, "jaguar", "scan.yaml"), nil
 }
 
 func GetSnapshotsPaths() ([]string, error) {

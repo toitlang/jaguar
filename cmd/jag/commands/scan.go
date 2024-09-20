@@ -72,7 +72,7 @@ func ScanCmd() *cobra.Command {
 				return outputter.Encode(Devices{devices})
 			}
 
-			device, _, err := scanAndPickDevice(ctx, timeout, port, autoSelect, false)
+			device, _, err := scanAndPickDevice(ctx, timeout, port, autoSelect, true)
 			if err != nil {
 				return err
 			}
@@ -230,6 +230,15 @@ func scan(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect 
 		devices = append(devices, bleDevices...)
 	}
 
+	scanCachePath, err := directory.GetScanCachePath()
+	if err != nil {
+		return nil, err
+	}
+	err = writeYamlDevices(scanCachePath, devices)
+	if err != nil {
+		fmt.Printf("Failed to write scan cache: %v\n", err)
+	}
+
 	return devices, nil
 }
 
@@ -245,7 +254,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 				return d, true, nil
 			}
 		}
-		if manualPick {
+		if !manualPick {
 			return nil, false, fmt.Errorf("couldn't find %s", autoSelect)
 		}
 	}
