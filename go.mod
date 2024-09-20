@@ -28,7 +28,7 @@ require (
 	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.17.0
-	github.com/toitlang/tpkg v0.0.0-20230928125532-1be02ac647ae
+	github.com/toitlang/tpkg v0.0.0-20240919112017-273e738f33d0
 	github.com/toitware/ubjson v0.0.0-20231002110407-71c8fab5e607
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.6.1
