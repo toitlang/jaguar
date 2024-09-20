@@ -6,21 +6,14 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net"
-	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/libp2p/go-reuseport"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
-	"github.com/toitware/ubjson"
 	"gopkg.in/yaml.v2"
 )
 
@@ -76,7 +69,7 @@ func ScanCmd() *cobra.Command {
 				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 				var devices []Device
 				var err error
-				devices, err = scan(scanCtx, autoSelect, port)
+				devices, err = ScanNetwork(scanCtx, autoSelect, port)
 				cancel()
 				if err != nil {
 					return err
@@ -176,7 +169,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 		fmt.Println("Scanning for ", autoSelect)
 	}
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-	devices, err := scan(scanCtx, autoSelect, port)
+	devices, err := ScanNetwork(scanCtx, autoSelect, port)
 	cancel()
 	if err != nil {
 		return nil, false, err
@@ -209,109 +202,4 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 
 	res := devices[i]
 	return res, false, nil
-}
-
-func scan(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
-	if ds != nil && ds.Address() != "" {
-		addr := ds.Address()
-		if !strings.Contains(addr, ":") {
-			addr = addr + ":" + fmt.Sprint(scanHttpPort)
-		}
-		req, err := http.NewRequestWithContext(ctx, "GET", "http://"+addr+"/identify", nil)
-		if err != nil {
-			return nil, err
-		}
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		buf, err := io.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
-		}
-		dev, err := parseDeviceNetwork(buf)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse identify. reason %w", err)
-		} else if dev == nil {
-			return nil, fmt.Errorf("invalid identify response")
-		}
-		return []Device{*dev}, nil
-	}
-
-	pc, err := reuseport.ListenPacket("udp4", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return nil, err
-	}
-	defer pc.Close()
-	if deadline, ok := ctx.Deadline(); ok {
-		if err := pc.SetDeadline(deadline); err != nil {
-			return nil, err
-		}
-	}
-
-	devices := map[string]Device{}
-looping:
-	for {
-		select {
-		case <-ctx.Done():
-			err := ctx.Err()
-			if err == context.DeadlineExceeded {
-				break looping
-			}
-			return nil, err
-		default:
-		}
-
-		buf := make([]byte, 1024)
-		n, _, err := pc.ReadFrom(buf)
-		if err != nil {
-			if isTimeoutError(err) {
-				break looping
-			}
-			return nil, err
-		}
-
-		dev, err := parseDeviceNetwork(buf[:n])
-		if err != nil {
-			fmt.Println("Failed to parse identify", err)
-		} else if dev != nil {
-			devices[dev.Address()] = *dev
-		}
-	}
-
-	var res []Device
-	for _, d := range devices {
-		res = append(res, d)
-	}
-	sort.Slice(res, func(i, j int) bool { return res[i].Name() < res[j].Name() })
-	return res, nil
-}
-
-type udpMessage struct {
-	Method  string                 `json:"method"`
-	Payload map[string]interface{} `json:"payload"`
-}
-
-func parseDeviceNetwork(bytes []byte) (*DeviceNetwork, error) {
-	var msg udpMessage
-	if err := ubjson.Unmarshal(bytes, &msg); err != nil {
-		if err := json.Unmarshal(bytes, &msg); err != nil {
-			return nil, fmt.Errorf("could not parse message: %s. Reason: %w", string(bytes), err)
-
-		}
-	}
-
-	if msg.Method != "jaguar.identify" {
-		return nil, nil
-	}
-
-	return NewDeviceNetworkFromJson(msg.Payload)
-}
-
-func isTimeoutError(err error) bool {
-	e, ok := err.(net.Error)
-	return ok && e.Timeout()
 }
