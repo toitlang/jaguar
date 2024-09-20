@@ -187,6 +187,32 @@ like `10s`, `5m`, or `1h` to indicate how many seconds, minutes, or hours the ap
 jag run -D jag.timeout=10s service.toit
 ```
 
+## Defines
+Jaguar supports defining values that can be used in your Toit code. This is done through
+the `-D` option. Its primary use is to configure Jaguar (see below for temporarily disabling
+Jaguar), but it can also be used to pass values to your Toit code.
+
+All defined values that are available in the `jag.defines` assets, where they are stored as
+Tison. The `encoding.tison` library has functions to extract these values from the assets.
+
+``` sh
+jag run -D my-define=499 defines.toit
+```
+
+``` toit
+// defines.toit
+import encoding.tison
+import system.assets
+
+main:
+  defines := assets.decode.get "jag.defines"
+      --if-present=: tison.decode it
+      --if-absent=: {:}
+  if defines is not Map:
+    throw "defines are malformed"
+  print defines["my-define"]
+```
+
 ## Temporarily disabling Jaguar
 You can disable Jaguar while your application runs using the `-D jag.disabled`. This is useful if Jaguar otherwise
 interferes with your application. As an example, consider an application that uses the WiFi to setup a

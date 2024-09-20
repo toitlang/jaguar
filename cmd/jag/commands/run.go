@@ -275,6 +275,7 @@ func sendCodeFromFile(
 			// We assume the error has been printed.
 			// Mark the command as silent to avoid printing the error twice.
 			cmd.SilenceErrors = true
+			cmd.SilenceUsage = true
 			return err
 		}
 	}
@@ -376,6 +377,7 @@ func sendCodeFromFile(
 		// We assume the error has been printed.
 		// Mark the command as silent to avoid printing the error twice.
 		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
 		return err
 	}
 
@@ -384,6 +386,7 @@ func sendCodeFromFile(
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.
 		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
 		return err
 	}
 	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name())
