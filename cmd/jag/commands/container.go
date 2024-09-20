@@ -60,7 +60,7 @@ func ContainerListCmd() *cobra.Command {
 			}
 
 			// Compute the column lengths for all columns except for the last.
-			deviceNameLength := max(len("DEVICE"), len(device.Name))
+			deviceNameLength := max(len("DEVICE"), len(device.Name()))
 			idLength := len("IMAGE")
 			for id := range containers {
 				idLength = max(idLength, len(id))
@@ -68,7 +68,7 @@ func ContainerListCmd() *cobra.Command {
 
 			fmt.Println(padded("DEVICE", deviceNameLength) + padded("IMAGE", idLength) + "NAME")
 			for id, name := range containers {
-				fmt.Println(padded(device.Name, deviceNameLength) + padded(id, idLength) + name)
+				fmt.Println(padded(device.Name(), deviceNameLength) + padded(id, idLength) + name)
 			}
 			return nil
 		},
@@ -182,7 +182,7 @@ func ContainerUninstallCmd() *cobra.Command {
 			}
 
 			name := args[0]
-			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name)
+			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name())
 			return device.ContainerUninstall(ctx, sdk, name)
 		},
 	}

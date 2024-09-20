@@ -98,7 +98,7 @@ func ScanCmd() *cobra.Command {
 				}
 			}
 
-			cfg.Set("device", device)
+			cfg.Set("device", device.ToJson())
 			return cfg.WriteConfig()
 		},
 	}
@@ -118,7 +118,7 @@ type deviceSelect interface {
 type deviceIDSelect string
 
 func (s deviceIDSelect) Match(d Device) bool {
-	return string(s) == d.ID
+	return string(s) == d.ID()
 }
 
 func (s deviceIDSelect) Address() string {
@@ -132,7 +132,7 @@ func (s deviceIDSelect) String() string {
 type deviceNameSelect string
 
 func (s deviceNameSelect) Match(d Device) bool {
-	return string(s) == d.Name
+	return string(s) == d.Name()
 }
 
 func (s deviceNameSelect) Address() string {
@@ -154,7 +154,7 @@ func (s deviceAddressSelect) Match(d Device) bool {
 	if !strings.Contains(m, ":") {
 		m += ":"
 	}
-	return strings.HasPrefix(d.Address, m)
+	return strings.HasPrefix(d.Address(), m)
 }
 
 func (s deviceAddressSelect) Address() string {
@@ -169,7 +169,7 @@ func (s deviceAddressSelect) String() string {
 	return fmt.Sprintf("device with address: '%s'", string(s))
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (*Device, bool, error) {
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (Device, bool, error) {
 	if autoSelect == nil {
 		fmt.Println("Scanning ...")
 	} else {
@@ -188,7 +188,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	if autoSelect != nil {
 		for _, d := range devices {
 			if autoSelect.Match(d) {
-				return &d, true, nil
+				return d, true, nil
 			}
 		}
 		if manualPick {
@@ -208,7 +208,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	}
 
 	res := devices[i]
-	return &res, false, nil
+	return res, false, nil
 }
 
 func scan(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
@@ -232,7 +232,7 @@ func scan(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
 		if res.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
 		}
-		dev, err := parseDevice(buf)
+		dev, err := parseDeviceNetwork(buf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse identify. reason %w", err)
 		} else if dev == nil {
@@ -274,11 +274,11 @@ looping:
 			return nil, err
 		}
 
-		dev, err := parseDevice(buf[:n])
+		dev, err := parseDeviceNetwork(buf[:n])
 		if err != nil {
 			fmt.Println("Failed to parse identify", err)
 		} else if dev != nil {
-			devices[dev.Address] = *dev
+			devices[dev.Address()] = *dev
 		}
 	}
 
@@ -286,7 +286,7 @@ looping:
 	for _, d := range devices {
 		res = append(res, d)
 	}
-	sort.Slice(res, func(i, j int) bool { return res[i].Name < res[j].Name })
+	sort.Slice(res, func(i, j int) bool { return res[i].Name() < res[j].Name() })
 	return res, nil
 }
 
@@ -295,9 +295,7 @@ type udpMessage struct {
 	Payload map[string]interface{} `json:"payload"`
 }
 
-func parseDevice(bytes []byte) (*Device, error) {
-	var device Device
-
+func parseDeviceNetwork(bytes []byte) (*DeviceNetwork, error) {
 	var msg udpMessage
 	if err := ubjson.Unmarshal(bytes, &msg); err != nil {
 		if err := json.Unmarshal(bytes, &msg); err != nil {
@@ -310,17 +308,7 @@ func parseDevice(bytes []byte) (*Device, error) {
 		return nil, nil
 	}
 
-	// We marshal the payload into JSON again, so we can use the reflection
-	// based support in encoding/json to fill in the fields in the device
-	// struct before returning it.
-	payload, err := json.Marshal(msg.Payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-marshal jaguar.identify: %s. reason: %w", string(bytes), err)
-	}
-	if err := json.Unmarshal(payload, &device); err != nil {
-		return nil, fmt.Errorf("failed to parse payload of jaguar.identify: %s. reason: %w", string(bytes), err)
-	}
-	return &device, nil
+	return NewDeviceNetworkFromJson(msg.Payload)
 }
 
 func isTimeoutError(err error) bool {

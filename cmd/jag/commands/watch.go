@@ -181,7 +181,7 @@ func parseDependeniesToDirs(b []byte) []string {
 func onWatchChanges(
 	cmd *cobra.Command,
 	watcher *watcher,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	entrypoint string,
 	assetsPath string,
