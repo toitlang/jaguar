@@ -17,7 +17,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
-	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func WatchCmd() *cobra.Command {
@@ -27,11 +26,6 @@ func WatchCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
 			if err != nil {
 				return err
@@ -58,7 +52,7 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
