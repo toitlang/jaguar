@@ -18,6 +18,8 @@ import (
 // GetCachedFirmwareEnvelopePath returns the path to the cached firmware envelope.
 // If necessary, downloads the envelope from the server first.
 func GetCachedFirmwareEnvelopePath(ctx context.Context, version string, model string) (string, error) {
+	// Envelopes published in the Toit envelope repository are always lowercase.
+	model = strings.ToLower(model)
 	path, err := getFirmwareEnvelopePath(version, model)
 	if err != nil && err != os.ErrNotExist {
 		return "", err
@@ -25,6 +27,16 @@ func GetCachedFirmwareEnvelopePath(ctx context.Context, version string, model st
 	if err == os.ErrNotExist {
 		// Download the envelope from the server.
 		if err := downloadPublishedFirmware(ctx, version, model); err != nil {
+			fmt.Printf("Failed to download firmware: %v\n", err)
+			switch model {
+			case "esp32", "esp32s3", "esp32c3", "esp32s2":
+				// These names are correct. Simply return the error.
+			case "ESP32-S3", "ESP32-C3", "ESP32-S2":
+				fmt.Printf("Chip model names must be lowercase without dashes. Please try again with 'esp32s3', 'esp32c3', or 'esp32s2'.\n")
+			default:
+				fmt.Printf("Make sure the model name is correct. You can find supported models at\n")
+				fmt.Printf("https://github.com/toitlang/envelopes/releases/tag/%s.\n", version)
+			}
 			return "", err
 		}
 	}
@@ -41,11 +53,10 @@ func isURL(path string) bool {
 
 func downloadGzipped(ctx context.Context, url string, path string) error {
 	bundle, err := download(ctx, url)
-	defer bundle.Close()
 	if err != nil {
 		return err
 	}
-
+	defer bundle.Close()
 	return storeGzipped(bundle, path)
 }
 
