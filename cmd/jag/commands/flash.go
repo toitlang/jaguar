@@ -115,7 +115,12 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, uartEndpointOptions)
+			bleEndpointOptions, err := getBLEEndpointOptions(cmd)
+			if err != nil {
+				return err
+			}
+
+			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, uartEndpointOptions, bleEndpointOptions)
 			if err != nil {
 				return err
 			}
@@ -163,5 +168,6 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().MarkHidden("uart-endpoint-rx")
 	cmd.Flags().Uint("uart-endpoint-baud", 0, "set the baud rate for the UART endpoint")
 	cmd.Flags().MarkHidden("uart-endpoint-baud")
+	cmd.Flags().Bool("enable-ble", false, "enable BLE endpoint")
 	return cmd
 }

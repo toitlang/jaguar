@@ -37,4 +37,5 @@ require (
 	golang.org/x/term v0.14.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231120223509-83a465c0220f // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	tinygo.org/x/bluetooth v0.10.0 // indirect
 )

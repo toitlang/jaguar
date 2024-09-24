@@ -26,22 +26,58 @@ type DeviceNetwork struct {
 	proxied bool
 }
 
+type SerializableDeviceNetwork struct {
+	Kind       string `json:"kind" yaml:"kind" ubjson:"kind"`
+	ID         string `json:"id" yaml:"id" ubjson:"id"`
+	Name       string `json:"name" yaml:"name" ubjson:"name"`
+	Chip       string `json:"chip" yaml:"chip" ubjson:"chip"`
+	SDKVersion string `json:"sdkVersion" yaml:"sdkVersion" ubjson:"sdkVersion"`
+	WordSize   int    `json:"wordSize" yaml:"wordSize" ubjson:"wordSize"`
+	Address    string `json:"address" yaml:"address" ubjson:"address"`
+	Proxied    bool   `json:"proxied" yaml:"proxied" ubjson:"proxied"`
+}
+
 func NewDeviceNetworkFromJson(data map[string]interface{}) (*DeviceNetwork, error) {
+	var d DeviceNetwork
 	// Print the data object for debugging:
+	d.id = stringOr(data, "id", "")
+	d.name = stringOr(data, "name", "")
+	d.chip = stringOr(data, "chip", "esp32")
+	d.sdkVersion = stringOr(data, "sdkVersion", "")
+	d.wordSize = intOr(data, "wordSize", 4)
+	d.address = stringOr(data, "address", "")
+	d.proxied = boolOr(data, "proxied", false)
+	return &d, nil
+}
+
+func NewDeviceNetworkFromSerializable(serializable *SerializableDeviceNetwork) (*DeviceNetwork, error) {
 	return &DeviceNetwork{
 		DeviceBase: DeviceBase{
-			id:         stringOr(data, "id", ""),
-			name:       stringOr(data, "name", ""),
-			chip:       stringOr(data, "chip", "esp32"),
-			sdkVersion: stringOr(data, "sdkVersion", ""),
-			wordSize:   intOr(data, "wordSize", 4),
-			address:    stringOr(data, "address", ""),
+			id:         serializable.ID,
+			name:       serializable.Name,
+			chip:       serializable.Chip,
+			sdkVersion: serializable.SDKVersion,
+			wordSize:   serializable.WordSize,
+			address:    serializable.Address,
 		},
-		proxied: boolOr(data, "proxied", false),
+		proxied: serializable.Proxied,
 	}, nil
 }
 
-func (d DeviceNetwork) String() string {
+func (d *DeviceNetwork) ToSerializable() interface{} {
+	return &SerializableDeviceNetwork{
+		Kind:       "network",
+		ID:         d.ID(),
+		Name:       d.Name(),
+		Chip:       d.Chip(),
+		SDKVersion: d.SDKVersion(),
+		WordSize:   d.WordSize(),
+		Address:    d.Address(),
+		Proxied:    d.proxied,
+	}
+}
+
+func (d *DeviceNetwork) String() string {
 	proxied := ""
 	if d.proxied {
 		proxied = ", proxied"
@@ -49,23 +85,11 @@ func (d DeviceNetwork) String() string {
 	return fmt.Sprintf("%s (address: %s, %d-bit%s)", d.Name(), d.Address(), d.WordSize()*8, proxied)
 }
 
-func (d DeviceNetwork) ToJson() map[string]interface{} {
-	return map[string]interface{}{
-		"id":         d.ID(),
-		"name":       d.Name(),
-		"chip":       d.Chip(),
-		"sdkVersion": d.SDKVersion(),
-		"wordSize":   d.WordSize(),
-		"address":    d.Address(),
-		"proxied":    d.proxied,
-	}
-}
-
 const (
 	pingTimeout = 3000 * time.Millisecond
 )
 
-func (d DeviceNetwork) newRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
+func (d *DeviceNetwork) newRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
 	lanIp, err := getLanIp()
 	if err != nil {
 		return nil, err
@@ -79,7 +103,7 @@ func (d DeviceNetwork) newRequest(ctx context.Context, method string, path strin
 	return http.NewRequestWithContext(ctx, method, address+path, body)
 }
 
-func (d DeviceNetwork) Ping(ctx context.Context, sdk *SDK) bool {
+func (d *DeviceNetwork) Ping(ctx context.Context, sdk *SDK) bool {
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 	req, err := d.newRequest(ctx, "GET", "/ping", nil)
@@ -97,7 +121,7 @@ func (d DeviceNetwork) Ping(ctx context.Context, sdk *SDK) bool {
 	return res.StatusCode == http.StatusOK
 }
 
-func (d DeviceNetwork) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error {
+func (d *DeviceNetwork) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error {
 	req, err := d.newRequest(ctx, "PUT", request, bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -123,7 +147,7 @@ func (d DeviceNetwork) SendCode(ctx context.Context, sdk *SDK, request string, b
 	return nil
 }
 
-func (d DeviceNetwork) ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error) {
+func (d *DeviceNetwork) ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error) {
 	req, err := d.newRequest(ctx, "GET", "/list", nil)
 	if err != nil {
 		return nil, err
@@ -153,7 +177,7 @@ func (d DeviceNetwork) ContainerList(ctx context.Context, sdk *SDK) (map[string]
 	return unmarshalled, nil
 }
 
-func (d DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name string) error {
+func (d *DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name string) error {
 	req, err := d.newRequest(ctx, "PUT", "/uninstall", nil)
 	if err != nil {
 		return err
@@ -176,7 +200,7 @@ func (d DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name st
 	return nil
 }
 
-func (d DeviceNetwork) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
+func (d *DeviceNetwork) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
 	var reader = NewProgressReader(b)
 	req, err := d.newRequest(ctx, "PUT", "/firmware", reader)
 	if err != nil {
@@ -200,7 +224,8 @@ func (d DeviceNetwork) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) e
 }
 
 func ScanNetwork(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
-	if ds != nil && ds.Address() != "" {
+	// Check whether the ds is a deviceAddressSelect and if it is, use the address to identify the device.
+	if _, ok := ds.(deviceAddressSelect); ok && ds.Address() != "" {
 		addr := ds.Address()
 		if !strings.Contains(addr, ":") {
 			addr = addr + ":" + fmt.Sprint(scanHttpPort)
@@ -226,7 +251,7 @@ func ScanNetwork(ctx context.Context, ds deviceSelect, port uint) ([]Device, err
 		} else if dev == nil {
 			return nil, fmt.Errorf("invalid identify response")
 		}
-		return []Device{*dev}, nil
+		return []Device{dev}, nil
 	}
 
 	pc, err := reuseport.ListenPacket("udp4", fmt.Sprintf(":%d", port))
@@ -266,7 +291,7 @@ looping:
 		if err != nil {
 			fmt.Println("Failed to parse identify", err)
 		} else if dev != nil {
-			devices[dev.Address()] = *dev
+			devices[dev.Address()] = dev
 		}
 	}
 
@@ -296,7 +321,11 @@ func parseDeviceNetwork(bytes []byte) (*DeviceNetwork, error) {
 		return nil, nil
 	}
 
-	return NewDeviceNetworkFromJson(msg.Payload)
+	device, err := NewDeviceNetworkFromJson(msg.Payload)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse device: %w", err)
+	}
+	return device, nil
 }
 
 func isTimeoutError(err error) bool {

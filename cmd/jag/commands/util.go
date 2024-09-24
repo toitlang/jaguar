@@ -413,6 +413,15 @@ func parseDeviceSelection(d string) deviceSelect {
 	if strings.HasPrefix(d, "http://") {
 		return deviceAddressSelect(d)
 	}
+	// Detect a BLE address, consisting of something like xx:yy:zz:aa:bb:cc.
+	if len(d) == 17 && strings.Count(d, ":") == 5 {
+		return deviceBLEAddressSelect(d)
+	}
+	// Same for a BLE UUID, consisting of something like 0000xxxx-0000-1000-8000-00805f9b34fb.
+	if len(d) == 36 && strings.Count(d, "-") == 4 {
+		return deviceBLEAddressSelect(d)
+	}
+
 	colonIdx := strings.Index(d, ":")
 	if colonIdx > 0 {
 		// Test if the part before the colon is a valid IP address.
@@ -531,6 +540,19 @@ func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) 
 		uartEndpointOptions["baud"] = uartBaud
 	}
 	return uartEndpointOptions, nil
+}
+
+func getBLEEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) {
+	// For now we just look for a '--enable-ble' flag.
+	// In the future we might want to add more options.
+	enableBLE, err := cmd.Flags().GetBool("enable-ble")
+	if err != nil {
+		return nil, err
+	}
+	if !enableBLE {
+		return nil, nil
+	}
+	return map[string]interface{}{}, nil
 }
 
 // isLikelyRunningOnBuildbot returns true if the current process is running on a buildbot.

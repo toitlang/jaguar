@@ -134,7 +134,12 @@ func FirmwareUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, uartEndpointOptions)
+			bleEndpointOptions, err := getBLEEndpointOptions(cmd)
+			if err != nil {
+				return err
+			}
+
+			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, uartEndpointOptions, bleEndpointOptions)
 			if err != nil {
 				return err
 			}
@@ -167,7 +172,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			deviceCfg.Set("device", device.ToJson())
+			deviceCfg.Set("device", device)
 			return deviceCfg.WriteConfig()
 		},
 	}
@@ -181,6 +186,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 	cmd.Flags().MarkHidden("uart-endpoint-rx")
 	cmd.Flags().Uint("uart-endpoint-baud", 0, "set the baud rate for the UART endpoint")
 	cmd.Flags().MarkHidden("uart-endpoint-baud")
+	cmd.Flags().Bool("enable-ble", false, "enable BLE endpoint")
 	return cmd
 }
 
@@ -206,7 +212,7 @@ func (d DeviceOptions) GetConfig() map[string]interface{} {
 	}
 }
 
-func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions, uartEndpointOptions map[string]interface{}) (*os.File, error) {
+func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions, uartEndpointOptions map[string]interface{}, bleEndpointOptions map[string]interface{}) (*os.File, error) {
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return nil, err
@@ -241,6 +247,9 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 		}
 		if uartEndpointOptions != nil {
 			configAssetMap["endpointUart"] = uartEndpointOptions
+		}
+		if bleEndpointOptions != nil {
+			configAssetMap["endpointBle"] = bleEndpointOptions
 		}
 		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {
