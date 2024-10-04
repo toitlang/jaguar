@@ -161,9 +161,9 @@ class Device:
 
     id/uuid.Uuid? := null
     if arguments.size >= 2:
-      id = uuid.parse arguments[1]
+      id = uuid.Uuid.parse arguments[1]
     else:
-      id = config.get "id" --if-present=: uuid.parse it
+      id = config.get "id" --if-present=: uuid.Uuid.parse it
 
     name/string? := null
     if arguments.size >= 3:
@@ -178,7 +178,7 @@ class Device:
     chip/string? := config.get "chip"
 
     return Device
-        --id=id or uuid.NIL
+        --id=id or uuid.Uuid.NIL
         --name=name or "unknown"
         --port=port
         --chip=chip or "unknown"
