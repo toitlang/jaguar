@@ -216,7 +216,7 @@ func crashDecode(ctx context.Context, envelope string, backtrace string) error {
 		}
 	}
 
-	firmwareElf, err := ExtractFirmware(ctx, sdk, envelopePath, "elf")
+	firmwareElf, err := ExtractFirmware(ctx, sdk, envelopePath, "elf", nil)
 	if err != nil {
 		return err
 	}

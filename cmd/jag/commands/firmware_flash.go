@@ -246,12 +246,12 @@ func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, conf
 	return binaryFile, nil
 }
 
-func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format string) (*os.File, error) {
+func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format string, config map[string]interface{}) (*os.File, error) {
 	outputFile, err := os.CreateTemp("", "firmware-"+format+".*")
 	if err != nil {
 		return nil, err
 	}
-	if err := runFirmwareTool(ctx, sdk, envelopePath, "extract", "--format", format, "-o", outputFile.Name()); err != nil {
+	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, "extract", "--format", format, "-o", outputFile.Name()); err != nil {
 		outputFile.Close()
 		return nil, err
 	}
@@ -263,22 +263,24 @@ func setFirmwareProperty(ctx context.Context, sdk *SDK, envelope *os.File, key s
 }
 
 func runFirmwareToolWithConfig(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}, args ...string) error {
-	configFile, err := os.CreateTemp("", "*.json.config")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(configFile.Name())
+	if config != nil {
+		configFile, err := os.CreateTemp("", "*.json.config")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(configFile.Name())
 
-	configBytes, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
+		configBytes, err := json.Marshal(config)
+		if err != nil {
+			return err
+		}
 
-	if err := os.WriteFile(configFile.Name(), configBytes, 0666); err != nil {
-		return err
-	}
+		if err := os.WriteFile(configFile.Name(), configBytes, 0666); err != nil {
+			return err
+		}
 
-	args = append(args, "--config", configFile.Name())
+		args = append(args, "--config", configFile.Name())
+	}
 	return runFirmwareTool(ctx, sdk, envelopePath, args...)
 }
 
