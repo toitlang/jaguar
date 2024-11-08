@@ -226,6 +226,8 @@ func ScanNetwork(ctx context.Context, ds deviceSelect, port uint) ([]Device, err
 		} else if dev == nil {
 			return nil, fmt.Errorf("invalid identify response")
 		}
+		// Use the provided address. This way we can tunnel through the device.
+		dev.address = "http://" + addr
 		return []Device{*dev}, nil
 	}
 
