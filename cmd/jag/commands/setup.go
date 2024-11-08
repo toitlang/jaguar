@@ -18,17 +18,36 @@ import (
 
 func getToitSDKURL(version string) (string, error) {
 	currOS := runtime.GOOS
+	currARCH := runtime.GOARCH
+	selector := ""
 	if currOS == "darwin" {
-		currOS = "macos"
-	} else {
-		currARCH := runtime.GOARCH
-		if currARCH == "arm" {
-			currOS = "rpi"
+		if currARCH == "amd64" {
+			selector = "macos-x64"
 		} else if currARCH == "arm64" {
-			currOS = "aarch64"
+			selector = "macos-aarch64"
+		} else {
+			return "", fmt.Errorf("unsupported architecture %s for macOS", currARCH)
 		}
+	} else if currOS == "linux" {
+		if currARCH == "amd64" {
+			selector = "linux-x64"
+		} else if currARCH == "arm" {
+			selector = "linux-armv7"
+		} else if currARCH == "arm64" {
+			selector = "linux-aarch64"
+		} else {
+			return "", fmt.Errorf("unsupported architecture %s for Linux", currARCH)
+		}
+	} else if currOS == "windows" {
+		if currARCH == "amd64" {
+			selector = "windows-x64"
+		} else {
+			return "", fmt.Errorf("unsupported architecture %s for Windows", currARCH)
+		}
+	} else {
+		return "", fmt.Errorf("unsupported OS %s", currOS)
 	}
-	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, currOS), nil
+	return fmt.Sprintf("https://github.com/toitlang/toit/releases/download/%s/toit-%s.tar.gz", version, selector), nil
 }
 
 func getAssetsURL(version string) string {
