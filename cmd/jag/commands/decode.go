@@ -143,11 +143,24 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 		return fmt.Errorf("failed to parse program id: %v", err)
 	}
 
-	snapshotsCache, err := directory.GetSnapshotsCachePath()
+	snapshotsPaths, err := directory.GetSnapshotsPaths()
 	if err != nil {
 		return err
 	}
-	snapshot := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+	snapshot := ""
+	for _, path := range snapshotsPaths {
+		candidate := filepath.Join(path, programId.String()+".snapshot")
+		if snapshot == "" {
+			// Remember the first candidate so we use it in the error message if
+			// we don't find any snapshot.
+			snapshot = candidate
+		}
+		_, err := os.Stat(candidate)
+		if err == nil || !errors.Is(err, os.ErrNotExist) {
+			snapshot = candidate
+			break
+		}
+	}
 
 	pretty := "--no-force-pretty"
 	if forcePretty {
@@ -158,18 +171,16 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 		plain = "--force-plain"
 	}
 
-	var decodeCommand *exec.Cmd
+	var decodeCommand *exec.Cmd = sdk.SystemMessage(ctx, base64Message, pretty, plain)
 	isMissingSnapshot := false
 	if programId != uuid.Nil {
 		if _, err := os.Stat(snapshot); errors.Is(err, os.ErrNotExist) {
 			isMissingSnapshot = true
-			// Still run the decodeCommand for the exception, even though we won't get the stacktrace
-			decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
 		} else {
-			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, "--message", base64Message, "--uuid", programId.String(), pretty, plain)
+			decodeCommand = sdk.SystemMessage(ctx, "--snapshot", snapshot, base64Message, pretty, plain)
 		}
 	} else {
-		decodeCommand = sdk.SystemMessage(ctx, "--message", base64Message, pretty, plain)
+
 	}
 
 	decodeCommand.Stderr = os.Stderr

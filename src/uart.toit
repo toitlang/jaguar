@@ -2,14 +2,14 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-import binary show LITTLE-ENDIAN
 import encoding.base64
 import encoding.json
 import encoding.ubjson
 import gpio
+import io
+import io show LITTLE-ENDIAN
 import log
 import uart
-import reader show BufferedReader Reader
 import system
 
 import .jaguar
@@ -32,7 +32,7 @@ class EndpointUart implements Endpoint:
 
     try:
       client := UartClient
-          --reader=port
+          --reader=port.in
           --writer=StdoutWriter
           --device=device
           --logger=logger
@@ -89,13 +89,12 @@ class UartClient:
 
   static ACK-RESPONSE_ ::= 255
 
-  reader/BufferedReader
+  reader/io.Reader
   writer/UartWriter
   device/Device
   logger/log.Logger
 
-  constructor --reader/Reader --.writer --.device --.logger:
-    this.reader = BufferedReader reader
+  constructor --.reader --.writer --.device --.logger:
 
   run -> none:
     announce
@@ -147,7 +146,7 @@ class UartClient:
         // Can't be a sync request.
         reader.skip (index + 1)
         continue
-      packet := reader.bytes needed-packet-size
+      packet := reader.peek-bytes needed-packet-size
       pos := 0
       size := LITTLE-ENDIAN.uint16 packet pos
       pos += 2
@@ -277,16 +276,16 @@ class UartClient:
     LITTLE-ENDIAN.put-uint16 bytes 1 consumed
     send bytes
 
-class AckingReader implements Reader:
+class AckingReader extends io.Reader:
   size_/int
-  wrapped-reader_/Reader
+  wrapped-reader_/io.Reader
   send-ack_/Lambda
   produced_/int := 0
 
   constructor .size_ .wrapped-reader_ --send-ack/Lambda:
     send-ack_ = send-ack
 
-  read -> ByteArray?:
+  read_ -> ByteArray?:
     if produced_ == size_:
       return null
     data := wrapped-reader_.read

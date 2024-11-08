@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
-	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -25,10 +23,6 @@ func FlashCmd() *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			sdk, err := GetSDK(ctx)
-			if err != nil {
-				return err
-			}
 
 			port, err := cmd.Flags().GetString("port")
 			if err != nil {
@@ -49,115 +43,46 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			chip, err := cmd.Flags().GetString("chip")
-			if err != nil {
-				return err
-			}
+			return withFirmware(cmd, args, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
 
-			if chip == "auto" {
-				return fmt.Errorf("auto-detecting chip type isn't supported yet")
-			}
-
-			id := uuid.New()
-			var name string
-			if cmd.Flags().Changed("name") {
-				name, err = cmd.Flags().GetString("name")
+				sdk, err := GetSDK(ctx)
 				if err != nil {
 					return err
 				}
-			} else {
-				name = GetRandomName(id[:])
-			}
 
-			wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
-			if err != nil {
-				return err
-			}
-
-			deviceOptions := DeviceOptions{
-				Id:           id.String(),
-				Name:         name,
-				Chip:         chip,
-				WifiSsid:     wifiSSID,
-				WifiPassword: wifiPassword,
-			}
-
-			var envelopePath string
-			if len(args) == 1 {
-				envelopePath = args[0]
-			} else {
-				envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, chip)
-				if err != nil {
-					return err
+				flashArguments := []string{
+					"flash",
+					"--port", port,
+					"--baud", strconv.Itoa(int(baud)),
 				}
-			}
 
-			excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
-			if err != nil {
-				return err
-			}
-
-			envelopeOptions := EnvelopeOptions{
-				Path:          envelopePath,
-				ExcludeJaguar: excludeJaguar,
-			}
-
-			uartEndpointOptions, err := getUartEndpointOptions(cmd)
-			if err != nil {
-				return err
-			}
-
-			envelopeFile, err := BuildFirmwareEnvelope(ctx, envelopeOptions, deviceOptions, uartEndpointOptions)
-			if err != nil {
-				return err
-			}
-			defer os.Remove(envelopeFile.Name())
-
-			// Split at first '-'.
-			chip = strings.SplitN(chip, "-", 2)[0]
-
-			flashArguments := []string{
-				"flash",
-				"--chip", chip,
-				"--port", port,
-				"--baud", strconv.Itoa(int(baud)),
-			}
-
-			// Golang equivalent of #ifdef Windows.  We skip this
-			// because the whole uucp group issue does not affect
-			// Windows, but on the other hand Windows has strange
-			// escaping rules for COM ports over 10 (COM10, COM11),
-			// which we don't want to deal with.
-			if os.PathSeparator != '\\' && !shouldSkipPortCheck {
-				// Use golang to check the port can be opened for writing first.
-				// This is to avoid the error message from esptool.py, which is
-				// confusing to users in the common case where the port is owned
-				// by the dialout or uucp group.
-				file, err := os.OpenFile(port, os.O_WRONLY, 0)
-				if err != nil {
-					return err
+				// Golang equivalent of #ifdef Windows.  We skip this
+				// because the whole uucp group issue does not affect
+				// Windows, but on the other hand Windows has strange
+				// escaping rules for COM ports over 10 (COM10, COM11),
+				// which we don't want to deal with.
+				if os.PathSeparator != '\\' && !shouldSkipPortCheck {
+					// Use golang to check the port can be opened for writing first.
+					// This is to avoid the error message from esptool.py, which is
+					// confusing to users in the common case where the port is owned
+					// by the dialout or uucp group.
+					file, err := os.OpenFile(port, os.O_WRONLY, 0)
+					if err != nil {
+						return err
+					}
+					// Close the file again:
+					file.Close()
 				}
-				// Close the file again:
-				file.Close()
-			}
 
-			fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
-			config := deviceOptions.GetConfig()
-			return runFirmwareToolWithConfig(ctx, sdk, envelopeFile.Name(), config, flashArguments...)
+				fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
+				return runFirmwareToolWithConfig(ctx, sdk, envelopeFile.Name(), config, flashArguments...)
+			})
 		},
 	}
 
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
-	cmd.Flags().StringP("chip", "c", "esp32", "chip of the target device")
-	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
-	cmd.Flags().String("wifi-password", "", "default WiFi password")
-	cmd.Flags().String("name", "", "name for the device, if not set a name will be auto generated")
-	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
 	cmd.Flags().Bool("skip-port-check", false, "accept the given port without checking")
-	cmd.Flags().Int("uart-endpoint-rx", -1, "add a UART endpoint to the device listening on the given pin")
-	cmd.Flags().MarkHidden("uart-endpoint-rx")
-	cmd.Flags().Uint("uart-endpoint-baud", 0, "set the baud rate for the UART endpoint")
-	cmd.Flags().MarkHidden("uart-endpoint-baud")
+	addFirmwareFlashFlags(cmd, "esp32", "name for the device, if not set a name will be auto generated")
 	return cmd
 }

@@ -33,8 +33,8 @@ const (
 // Hackishly set by main.go.
 var IsReleaseBuild = false
 
-func GetUserConfigPath() (string, error) {
-	if path, ok := os.LookupEnv(UserConfigPathEnv); ok {
+func getConfigDirPath() (string, error) {
+	if path, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
 		return path, nil
 	}
 
@@ -42,7 +42,43 @@ func GetUserConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homedir, ".config", "jaguar", "config.yaml"), nil
+	return filepath.Join(homedir, ".config"), nil
+}
+
+func getStateDirPath() (string, error) {
+	if path, ok := os.LookupEnv("XDG_STATE_HOME"); ok {
+		return path, nil
+	}
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homedir, ".local", "state"), nil
+}
+
+func getCacheDirPath() (string, error) {
+	if path, ok := os.LookupEnv("XDG_CACHE_HOME"); ok {
+		return path, nil
+	}
+
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(homedir, ".cache"), nil
+}
+
+func GetUserConfigPath() (string, error) {
+	if path, ok := os.LookupEnv(UserConfigPathEnv); ok {
+		return path, nil
+	}
+
+	configDir, err := getConfigDirPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configDir, "jaguar", "config.yaml"), nil
 }
 
 func GetToitUserConfigPath() (string, error) {
@@ -50,11 +86,11 @@ func GetToitUserConfigPath() (string, error) {
 		return path, nil
 	}
 
-	homedir, err := os.UserHomeDir()
+	configDir, err := getConfigDirPath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homedir, ".config", "toit", "config.yaml"), nil
+	return filepath.Join(configDir, "toit", "config.yaml"), nil
 }
 
 func GetDeviceConfigPath() (string, error) {
@@ -62,25 +98,61 @@ func GetDeviceConfigPath() (string, error) {
 		return path, nil
 	}
 
-	homedir, err := os.UserHomeDir()
+	configDir, err := getConfigDirPath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homedir, ".config", "jaguar", "device.yaml"), nil
+	return filepath.Join(configDir, "jaguar", "device.yaml"), nil
 }
 
-func GetSnapshotsCachePath() (string, error) {
+func GetSnapshotsPaths() ([]string, error) {
+	paths := []string{}
+	path, ok := os.LookupEnv(SnapshotCachePathEnv)
+	if ok {
+		paths = append(paths, path)
+	}
+
+	stateDir, err := getStateDirPath()
+	if err != nil {
+		return nil, err
+	}
+
+	cacheDir, err := getCacheDirPath()
+	if err != nil {
+		return nil, err
+	}
+
+	// We are not using the XDG here, as we used to write snapshots
+	// directly in to the home/.cache/jaguar/snapshots directory, ignoring
+	// the XDG environment variables.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	paths = append(paths, filepath.Join(stateDir, "toit", "snapshots"))
+	cachePath := filepath.Join(cacheDir, "jaguar", "snapshots")
+	homeCachePath := filepath.Join(home, ".cache", "jaguar", "snapshots")
+	paths = append(paths, cachePath)
+	if cachePath != homeCachePath {
+		// For backwards compatibility add the home cache path as well.
+		paths = append(paths, filepath.Join(home, ".cache", "jaguar", "snapshots"))
+	}
+	return paths, nil
+}
+
+func GetSnapshotsStatePath() (string, error) {
 	path, ok := os.LookupEnv(SnapshotCachePathEnv)
 	if ok {
 		return path, nil
 	}
 
-	home, err := os.UserHomeDir()
+	stateDir, err := getStateDirPath()
 	if err != nil {
 		return "", err
 	}
 
-	return ensureDirectory(filepath.Join(home, ".cache", "jaguar", "snapshots"), nil)
+	return ensureDirectory(filepath.Join(stateDir, "toit", "snapshots"), nil)
 }
 
 func GetRepoPath() (string, bool) {

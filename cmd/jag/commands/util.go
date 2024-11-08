@@ -86,16 +86,8 @@ func GetProgramAssetsPath(flags *pflag.FlagSet, flagName string) (string, error)
 	return assetsPath, nil
 }
 
-func (s *SDK) ToitCompilePath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toit.compile"))
-}
-
-func (s *SDK) ToitRunPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toit.run"))
-}
-
-func (s *SDK) ToitLspPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toit.lsp"))
+func (s *SDK) ToitPath() string {
+	return filepath.Join(s.Path, "bin", directory.Executable("toit"))
 }
 
 func (s *SDK) VersionPath() string {
@@ -104,25 +96,6 @@ func (s *SDK) VersionPath() string {
 
 func (s *SDK) DownloaderInfoPath() string {
 	return filepath.Join(s.Path, "JAGUAR")
-}
-
-func (s *SDK) SystemMessagePath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("system_message"))
-}
-
-func (s *SDK) SnapshotToImagePath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("snapshot_to_image"))
-}
-
-func (s *SDK) AssetsToolPath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("assets"))
-}
-
-func (s *SDK) FirmwareToolPath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("firmware"))
-}
-func (s *SDK) StacktracePath() string {
-	return filepath.Join(s.Path, "tools", directory.Executable("stacktrace"))
 }
 
 func (s *SDK) validate(info Info, skipSdkVersionCheck bool) error {
@@ -150,15 +123,8 @@ func (s *SDK) validate(info Info, skipSdkVersionCheck bool) error {
 	}
 
 	paths := []string{
-		s.ToitCompilePath(),
-		s.ToitRunPath(),
-		s.ToitLspPath(),
+		s.ToitPath(),
 		s.VersionPath(),
-		s.AssetsToolPath(),
-		s.FirmwareToolPath(),
-		s.SystemMessagePath(),
-		s.SnapshotToImagePath(),
-		s.StacktracePath(),
 	}
 	for _, p := range paths {
 		if err := checkFilepath(p, "invalid Toit SDK"); err != nil {
@@ -182,43 +148,43 @@ func checkFilepath(p string, invalidMsg string) error {
 }
 
 func (s *SDK) ToitCompile(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitCompilePath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"compile"}, args...)...)
 }
 
 func (s *SDK) ToitRun(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitRunPath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"run", "--"}, args...)...)
 }
 
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitLspPath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "lsp"}, args...)...)
 }
 
 func (s *SDK) AssetsTool(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.AssetsToolPath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "assets"}, args...)...)
 }
 
 func (s *SDK) FirmwareTool(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.FirmwareToolPath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "firmware"}, args...)...)
 }
 
 func (s *SDK) SnapshotToImage(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.SnapshotToImagePath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "snapshot-to-image"}, args...)...)
 }
 
 func (s *SDK) SystemMessage(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.SystemMessagePath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"decode"}, args...)...)
 }
 
 func (s *SDK) Stacktrace(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.StacktracePath(), args...)
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "esp", "stacktrace"}, args...)...)
 }
 
 func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string, optimizationLevel int) error {
 	var buildSnap *exec.Cmd
 	if optimizationLevel >= 0 {
-		buildSnap = s.ToitCompile(ctx, "-w", snapshot, "-O"+strconv.Itoa(optimizationLevel), entrypoint)
+		buildSnap = s.ToitCompile(ctx, "--snapshot", "-o", snapshot, "-O"+strconv.Itoa(optimizationLevel), entrypoint)
 	} else {
-		buildSnap = s.ToitCompile(ctx, "-w", snapshot, entrypoint)
+		buildSnap = s.ToitCompile(ctx, "--snapshot", "-o", snapshot, entrypoint)
 	}
 	buildSnap.Stderr = os.Stderr
 	buildSnap.Stdout = os.Stdout
@@ -228,7 +194,7 @@ func (s *SDK) Compile(ctx context.Context, snapshot string, entrypoint string, o
 	return nil
 }
 
-func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, assetsPath string) ([]byte, error) {
+func (s *SDK) Build(ctx context.Context, device Device, snapshotPath string, assetsPath string) ([]byte, error) {
 	image, err := os.CreateTemp("", "*.image")
 	if err != nil {
 		return nil, err
@@ -237,7 +203,7 @@ func (s *SDK) Build(ctx context.Context, device *Device, snapshotPath string, as
 	defer os.Remove(image.Name())
 
 	bits := "-m32"
-	if device.WordSize == 8 {
+	if device.WordSize() == 8 {
 		bits = "-m64"
 	}
 

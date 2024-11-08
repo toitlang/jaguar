@@ -27,7 +27,10 @@ jobs:
   build_jag:
     strategy:
       matrix:
-        container: [ ubuntu-latest, ubuntu-20.04, macos-latest, windows-latest ]
+        # Use macos-13, since it's still intel based.
+        # When changing to a different macos-version, also update the
+        # signing job below.
+        container: [ ubuntu-latest, ubuntu-20.04, macos-13, windows-latest ]
 
     runs-on: ${{ matrix.container }}
     steps:
@@ -36,7 +39,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.19
+          go-version: "1.22"
 
       - name: Build jag
         shell: bash
@@ -147,7 +150,9 @@ jobs:
           mkdir release
           cp jag_installer_x64.exe release
           cp jag_installer_x64.exe release/jag_installer.exe
-          cp jag.zip release/jag.zip
+          # The filename 'jag_windows.zip' is used by the esp-idf installer.
+          # See https://github.com/espressif/idf-env/blob/681ec4a5056336e3a4573ceda3d7b27976ba3951/src/toit.rs#L18
+          cp jag.zip release/jag_windows.zip
 
       - name: Upload Windows release files
         if: (github.event_name == 'release') && (runner.os == 'Windows')
@@ -205,7 +210,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: jag-build-macos-latest
+          name: jag-build-macos-13
           path: build
 
       - name: Setup binary rights
@@ -213,13 +218,13 @@ jobs:
           chmod +x build/macos/jag
 
       - name: Sign and notarize
-        uses: toitlang/action-macos-sign-notarize@v1.1.2
+        uses: toitlang/action-macos-sign-notarize@v1.2.0
         with:
           certificate: ${{ secrets.MACOS_CERTIFICATE }}
           certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
           username: ${{ secrets.AC_USERNAME }}
           password: ${{ secrets.AC_PASSWORD }}
-          apple-team-id: 33DS2ZRDST
+          apple-team-id: ${{ vars.MACOS_TEAM_ID}}
           app-path: build/macos/jag
 
       - name: Create a DMG
@@ -233,6 +238,16 @@ jobs:
               --add-file jag build/macos/jag 0 0 \
               build/macos/jag.dmg \
               empty
+
+      - name: Sign DMG
+        uses: toitlang/action-macos-sign-notarize@v1.2.0
+        with:
+          certificate: ${{ secrets.MACOS_CERTIFICATE }}
+          certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          username: ${{ secrets.AC_USERNAME }}
+          password: ${{ secrets.AC_PASSWORD }}
+          apple-team-id: ${{ vars.MACOS_TEAM_ID }}
+          app-path: build/macos/jag.dmg
 
       - name: Create a ZIP
         run: |
@@ -345,6 +360,7 @@ jobs:
         with:
           path: jaguar
           pkgver: ${{ steps.version.outputs.version }}
+          pkgrel: 1
           updpkgsums: true
           srcinfo: true
           # Workaround for https://github.com/hapakaien/archlinux-package-action/issues/23.
@@ -355,6 +371,7 @@ jobs:
         with:
           path: jaguar-bin
           pkgver: ${{ steps.version.outputs.version }}
+          pkgrel: 1
           updpkgsums: true
           srcinfo: true
 

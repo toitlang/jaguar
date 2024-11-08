@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 func ContainerCmd() *cobra.Command {
@@ -33,11 +32,6 @@ func ContainerListCmd() *cobra.Command {
 		Use:  "list",
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			deviceSelect, err := parseDeviceFlag(cmd)
 			if err != nil {
 				return err
@@ -49,7 +43,7 @@ func ContainerListCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, false, deviceSelect)
+			device, err := GetDevice(ctx, sdk, false, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -60,7 +54,7 @@ func ContainerListCmd() *cobra.Command {
 			}
 
 			// Compute the column lengths for all columns except for the last.
-			deviceNameLength := max(len("DEVICE"), len(device.Name))
+			deviceNameLength := max(len("DEVICE"), len(device.Name()))
 			idLength := len("IMAGE")
 			for id := range containers {
 				idLength = max(idLength, len(id))
@@ -68,7 +62,7 @@ func ContainerListCmd() *cobra.Command {
 
 			fmt.Println(padded("DEVICE", deviceNameLength) + padded("IMAGE", idLength) + "NAME")
 			for id, name := range containers {
-				fmt.Println(padded(device.Name, deviceNameLength) + padded(id, idLength) + name)
+				fmt.Println(padded(device.Name(), deviceNameLength) + padded(id, idLength) + name)
 			}
 			return nil
 		},
@@ -95,11 +89,6 @@ func ContainerInstallCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			deviceSelect, err := parseDeviceFlag(cmd)
-			if err != nil {
-				return err
-			}
-
-			cfg, err := directory.GetDeviceConfig()
 			if err != nil {
 				return err
 			}
@@ -132,7 +121,7 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -166,23 +155,18 @@ func ContainerUninstallCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
 
 			name := args[0]
-			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name)
+			fmt.Printf("Uninstalling container '%s' on '%s' ...\n", name, device.Name())
 			return device.ContainerUninstall(ctx, sdk, name)
 		},
 	}

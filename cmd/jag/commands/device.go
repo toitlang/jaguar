@@ -5,20 +5,14 @@
 package commands
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"hash/crc32"
 	"io"
-	"net/http"
 	"os"
 	"strings"
-	"time"
 	"unicode/utf8"
 
-	"github.com/spf13/viper"
-	"github.com/toitware/ubjson"
+	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 const (
@@ -30,8 +24,30 @@ const (
 	JaguarCRC32Header            = "X-Jaguar-CRC32"
 )
 
+type Device interface {
+	ID() string
+	Name() string
+	Chip() string
+	SDKVersion() string
+	WordSize() int
+	Address() string
+	Short() string
+	String() string
+
+	SetID(string)
+	SetSDKVersion(string)
+
+	Ping(ctx context.Context, sdk *SDK) bool
+	SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error
+	ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error)
+	ContainerUninstall(ctx context.Context, sdk *SDK, name string) error
+	UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error
+
+	ToJson() map[string]interface{}
+}
+
 type Devices struct {
-	Devices []Device `mapstructure:"devices" yaml:"devices" json:"devices"`
+	Devices []Device
 }
 
 func (d Devices) Elements() []Short {
@@ -42,141 +58,134 @@ func (d Devices) Elements() []Short {
 	return res
 }
 
-type Device struct {
-	ID         string `mapstructure:"id" yaml:"id" json:"id"`
-	Name       string `mapstructure:"name" yaml:"name" json:"name"`
-	Chip       string `mapstructure:"chip" yaml:"chip" json:"chip"`
-	Address    string `mapstructure:"address" yaml:"address" json:"address"`
-	SDKVersion string `mapstructure:"sdkVersion" yaml:"sdkVersion" json:"sdkVersion"`
-	WordSize   int    `mapstructure:"wordSize" yaml:"wordSize" json:"wordSize"`
-	Proxied    bool   `mapstructure:"proxied" yaml:"proxied" json:"proxied"`
+type DeviceBase struct {
+	id         string
+	name       string
+	chip       string
+	sdkVersion string
+	wordSize   int
+	address    string
 }
 
-func (d Device) String() string {
-	proxied := ""
-	if d.Proxied {
-		proxied = ", proxied"
+func (d DeviceBase) ID() string {
+	return d.id
+}
+
+func (d DeviceBase) Name() string {
+	return d.name
+}
+
+func (d DeviceBase) Chip() string {
+	return d.chip
+}
+
+func (d DeviceBase) SDKVersion() string {
+	return d.sdkVersion
+}
+
+func (d DeviceBase) WordSize() int {
+	return d.wordSize
+}
+
+func (d DeviceBase) Address() string {
+	return d.address
+}
+
+func (d DeviceBase) SetID(id string) {
+	d.id = id
+}
+
+func (d DeviceBase) SetSDKVersion(version string) {
+	d.sdkVersion = version
+}
+
+func (d DeviceBase) Short() string {
+	return d.Name()
+}
+
+func (d DeviceBase) String() string {
+	return fmt.Sprintf("%s (address: %s, %d-bit)", d.Name(), d.Address(), d.WordSize()*8)
+}
+
+func NewDeviceFromJson(data map[string]interface{}) (Device, error) {
+	return NewDeviceNetworkFromJson(data)
+}
+func boolOr(data map[string]interface{}, key string, def bool) bool {
+	if val, ok := data[key].(bool); ok {
+		return val
 	}
-	return fmt.Sprintf("%s (address: %s, %d-bit%s)", d.Name, d.Address, d.WordSize*8, proxied)
+	// Viper converts all keys to lowercase, so we need to check for that as well.
+	key = strings.ToLower(key)
+	if val, ok := data[key].(bool); ok {
+		return val
+	}
+	return def
 }
 
-func (d Device) Short() string {
-	return d.Name
+func stringOr(data map[string]interface{}, key string, def string) string {
+	if val, ok := data[key].(string); ok {
+		return val
+	}
+	// Viper converts all keys to lowercase, so we need to check for that as well.
+	key = strings.ToLower(key)
+	if val, ok := data[key].(string); ok {
+		return val
+	}
+	return def
 }
 
-const (
-	pingTimeout = 3000 * time.Millisecond
-)
+func intOr(data map[string]interface{}, key string, def int) int {
+	if val, ok := data[key].(float64); ok {
+		return int(val)
+	}
+	// Viper converts all keys to lowercase, so we need to check for that as well.
+	key = strings.ToLower(key)
+	if val, ok := data[key].(float64); ok {
+		return int(val)
+	}
+	return def
+}
 
-func (d Device) newRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
-	lanIp, err := getLanIp()
+func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (Device, error) {
+	deviceCfg, err := directory.GetDeviceConfig()
 	if err != nil {
 		return nil, err
 	}
-	// If the device is on the same machine (proxied) use "localhost" instead of the
-	// public IP. This is more stable on Windows machines.
-	address := d.Address
-	if strings.HasPrefix(address, "http://"+lanIp+":") {
-		address = "http://localhost:" + strings.TrimPrefix(address, "http://"+lanIp+":")
-	}
-	return http.NewRequestWithContext(ctx, method, address+path, body)
-}
-
-func (d Device) Ping(ctx context.Context, sdk *SDK) bool {
-	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
-	defer cancel()
-	req, err := d.newRequest(ctx, "GET", "/ping", nil)
-	if err != nil {
-		return false
-	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false
-	}
-
-	io.ReadAll(res.Body) // Avoid closing connection prematurely.
-	return res.StatusCode == http.StatusOK
-}
-
-func (d Device) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error {
-	req, err := d.newRequest(ctx, "PUT", request, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	for key, value := range headersMap {
-		req.Header.Set(key, value)
-	}
-	// Set a crc32 header of the bytes.
-	req.Header.Set(JaguarCRC32Header, fmt.Sprintf("%d", crc32.ChecksumIEEE(b)))
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	io.ReadAll(res.Body) // Avoid closing connection prematurely.
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("got non-OK from device: %s", res.Status)
-	}
-
-	return nil
-}
-
-func (d Device) ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error) {
-	req, err := d.newRequest(ctx, "GET", "/list", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
-	}
-
-	var unmarshalled map[string]string
-	if err = ubjson.Unmarshal(body, &unmarshalled); err != nil {
-		if err = json.Unmarshal(body, &unmarshalled); err != nil {
+	manualPick := deviceSelect != nil
+	if deviceCfg.IsSet("device") && !manualPick {
+		var decoded map[string]interface{}
+		if err := deviceCfg.UnmarshalKey("device", &decoded); err != nil {
 			return nil, err
+		}
+		d, err := NewDeviceFromJson(decoded)
+		if err != nil {
+			return nil, err
+		}
+		if checkPing {
+			if d.Ping(ctx, sdk) {
+				return d, nil
+			}
+			deviceSelect = deviceIDSelect(d.ID())
+			fmt.Printf("Failed to ping '%s'.\n", d.Name())
+		} else {
+			return d, nil
 		}
 	}
 
-	return unmarshalled, nil
-}
-
-func (d Device) ContainerUninstall(ctx context.Context, sdk *SDK, name string) error {
-	req, err := d.newRequest(ctx, "PUT", "/uninstall", nil)
+	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, scanPort, deviceSelect, manualPick)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	req.Header.Set(JaguarContainerNameHeader, name)
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
+	if !manualPick {
+		if autoSelected {
+			fmt.Printf("Found device '%s' again\n", d.Name())
+		}
+		deviceCfg.Set("device", d.ToJson())
+		if err := deviceCfg.WriteConfig(); err != nil {
+			return nil, err
+		}
 	}
-
-	io.ReadAll(res.Body) // Avoid closing connection prematurely.
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("got non-OK from device: %s", res.Status)
-	}
-	return nil
+	return d, nil
 }
 
 // A Reader based on a byte array that prints a progress bar.
@@ -230,61 +239,4 @@ func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
 	fmt.Print(todo[:len(todo)-pos*todoBytesPerPart])
 	fmt.Print("] ")
 	return copied, nil
-}
-
-func (d Device) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
-	var reader = NewProgressReader(b)
-	req, err := d.newRequest(ctx, "PUT", "/firmware", reader)
-	if err != nil {
-		return err
-	}
-	req.ContentLength = int64(len(b))
-	req.Header.Set(JaguarDeviceIDHeader, d.ID)
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
-	defer fmt.Print("\n\n")
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	io.ReadAll(res.Body) // Avoid closing connection prematurely.
-	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("got non-OK from device: %s", res.Status)
-	}
-
-	return nil
-}
-
-func GetDevice(ctx context.Context, cfg *viper.Viper, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (*Device, error) {
-	manualPick := deviceSelect != nil
-	if cfg.IsSet("device") && !manualPick {
-		var d Device
-		if err := cfg.UnmarshalKey("device", &d); err != nil {
-			return nil, err
-		}
-		if checkPing {
-			if d.Ping(ctx, sdk) {
-				return &d, nil
-			}
-			deviceSelect = deviceIDSelect(d.ID)
-			fmt.Printf("Failed to ping '%s'.\n", d.Name)
-		} else {
-			return &d, nil
-		}
-	}
-
-	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, scanPort, deviceSelect, manualPick)
-	if err != nil {
-		return nil, err
-	}
-	if !manualPick {
-		if autoSelected {
-			fmt.Printf("Found device '%s' again\n", d.Name)
-		}
-		cfg.Set("device", d)
-		if err := cfg.WriteConfig(); err != nil {
-			return nil, err
-		}
-	}
-	return d, nil
 }

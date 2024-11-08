@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	version    = "v1.29.1"
-	sdkVersion = "v2.0.0-alpha.141"
+	version    = "v1.43.2"
+	sdkVersion = "v2.0.0-alpha.164"
 )
 
 var buildDate = "unknown"
@@ -32,10 +32,6 @@ func main() {
 	ctx := commands.SetInfo(context.Background(), info)
 	cmd := commands.JagCmd(info, isReleaseBuild)
 	if err := cmd.ExecuteContext(ctx); err != nil {
-		// The 'jag' command needs to have its "post run" function called
-		// even when we exit with an error. The cobra framework doesn't
-		// automatically call this, so we do it manually.
-		cmd.PersistentPostRun(cmd, cmd.Flags().Args())
 		os.Exit(1)
 	}
 }

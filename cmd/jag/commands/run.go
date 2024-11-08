@@ -132,11 +132,6 @@ func RunCmd() *cobra.Command {
 				return fmt.Errorf("--expression/-s is not yet supported when running on devices")
 			}
 
-			cfg, err := directory.GetDeviceConfig()
-			if err != nil {
-				return err
-			}
-
 			if len(args) == 0 {
 				return fmt.Errorf("no input file provided")
 			} else if len(args) > 1 {
@@ -163,7 +158,7 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, cfg, sdk, true, deviceSelect)
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
 			if err != nil {
 				return err
 			}
@@ -217,32 +212,32 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string, optimizat
 
 func RunFile(
 	cmd *cobra.Command,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	path string,
 	defines map[string]interface{},
 	assetsPath string,
 	optimizationLevel int) error {
-	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name)
+	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name())
 	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel)
 }
 
 func InstallFile(
 	cmd *cobra.Command,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	name string,
 	path string,
 	defines map[string]interface{},
 	assetsPath string,
 	optimizationLevel int) error {
-	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name)
+	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name())
 	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath, optimizationLevel)
 }
 
 func sendCodeFromFile(
 	cmd *cobra.Command,
-	device *Device,
+	device Device,
 	sdk *SDK,
 	request string,
 	path string,
@@ -252,7 +247,7 @@ func sendCodeFromFile(
 	optimizationLevel int) error {
 
 	ctx := cmd.Context()
-	snapshotsCache, err := directory.GetSnapshotsCachePath()
+	snapshotsStateDir, err := directory.GetSnapshotsStatePath()
 	if err != nil {
 		return err
 	}
@@ -280,6 +275,7 @@ func sendCodeFromFile(
 			// We assume the error has been printed.
 			// Mark the command as silent to avoid printing the error twice.
 			cmd.SilenceErrors = true
+			cmd.SilenceUsage = true
 			return err
 		}
 	}
@@ -289,7 +285,7 @@ func sendCodeFromFile(
 		return err
 	}
 
-	cacheDestination := filepath.Join(snapshotsCache, programId.String()+".snapshot")
+	cacheDestination := filepath.Join(snapshotsStateDir, programId.String()+".snapshot")
 
 	// Copy the snapshot into the cache dir so it is available for
 	// decoding stack traces etc.  We want to add it to the cache in
@@ -298,9 +294,9 @@ func sendCodeFromFile(
 	// first copying to a temp file in the cache dir, then renaming
 	// in that directory.
 	if cacheDestination != snapshot {
-		tempFileInCacheDirectory, err := os.CreateTemp(snapshotsCache, "jag_run_*.snapshot")
+		tempFileInCacheDirectory, err := os.CreateTemp(snapshotsStateDir, "jag_run_*.snapshot")
 		if err != nil {
-			fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsCache)
+			fmt.Printf("Failed to write temporary file in '%s'\n", snapshotsStateDir)
 			return err
 		}
 		defer tempFileInCacheDirectory.Close()
@@ -384,6 +380,7 @@ func sendCodeFromFile(
 		// We assume the error has been printed.
 		// Mark the command as silent to avoid printing the error twice.
 		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
 		return err
 	}
 
@@ -392,9 +389,10 @@ func sendCodeFromFile(
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.
 		cmd.SilenceErrors = true
+		cmd.SilenceUsage = true
 		return err
 	}
-	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name)
+	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name())
 	return nil
 }
 
