@@ -73,7 +73,7 @@ func SimulateCmd() *cobra.Command {
 				decoder.decode(pretty, plain)
 			}()
 
-			simCmd := sdk.ToitRun(ctx, snapshot, strconv.Itoa(int(port)), id.String(), name)
+			simCmd := sdk.ToitRunSnapshot(ctx, snapshot, strconv.Itoa(int(port)), id.String(), name)
 			simCmd.Stderr = os.Stderr
 			simCmd.Stdout = outWriter
 			return simCmd.Run()
