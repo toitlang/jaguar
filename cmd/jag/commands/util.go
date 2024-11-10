@@ -155,6 +155,10 @@ func (s *SDK) ToitRun(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"run", "--"}, args...)...)
 }
 
+func (s *SDK) ToitRunSnapshot(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitPath(), args...)
+}
+
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "lsp"}, args...)...)
 }
