@@ -135,15 +135,25 @@ func stringOr(data map[string]interface{}, key string, def string) string {
 }
 
 func intOr(data map[string]interface{}, key string, def int) int {
-	if val, ok := data[key].(float64); ok {
-		return int(val)
+	// Attempt to retrieve the value using the original key.
+	val, ok := data[key]
+	if !ok {
+		// If not found, try the lowercase version of the key.
+		val, ok = data[strings.ToLower(key)]
+		if !ok {
+			return def
+		}
 	}
-	// Viper converts all keys to lowercase, so we need to check for that as well.
-	key = strings.ToLower(key)
-	if val, ok := data[key].(float64); ok {
-		return int(val)
+
+	// Check if the value is an int or float64, and convert as needed.
+	switch v := val.(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	default:
+		return def
 	}
-	return def
 }
 
 func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect deviceSelect) (Device, error) {
