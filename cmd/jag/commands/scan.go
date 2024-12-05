@@ -83,15 +83,16 @@ func ScanCmd() *cobra.Command {
 				return err
 			}
 
+			json := device.ToJson()
 			if autoSelect != nil {
 				outputter = yaml.NewEncoder(os.Stdout)
-				err = outputter.Encode(device)
+				err = outputter.Encode(json)
 				if err != nil {
 					return err
 				}
 			}
 
-			cfg.Set("device", device.ToJson())
+			cfg.Set("device", json)
 			return cfg.WriteConfig()
 		},
 	}
