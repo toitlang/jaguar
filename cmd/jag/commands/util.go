@@ -147,6 +147,10 @@ func checkFilepath(p string, invalidMsg string) error {
 	return nil
 }
 
+func (s *SDK) ToitAnalyze(ctx context.Context, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"analyze"}, args...)...)
+}
+
 func (s *SDK) ToitCompile(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"compile"}, args...)...)
 }
