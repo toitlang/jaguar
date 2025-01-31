@@ -574,6 +574,10 @@ func download(ctx context.Context, url string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("failed downloading from %s: %v", url, resp.Status)
 	}
 
+	if resp.Body == nil {
+		return nil, fmt.Errorf("received nil response body from %s", url)
+	}
+
 	progress := pb.New64(resp.ContentLength)
 	return progress.Start().NewProxyReader(resp.Body), nil
 }
