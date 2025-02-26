@@ -100,7 +100,7 @@ jobs:
 
       - name: Sign Windows binary
         if: runner.os == 'Windows' && (github.event_name == 'release' || inputs.sign_windows)
-        uses: toitlang/action-sign-server@51cf79bedcdbf065d9e5f334b594f91a675a1bed  # v1.0.3
+        uses: toitlang/action-sign-server@c0ddf849f5d30d53189381ea35daec08b1457e0d  # v1.0.4
         with:
           uri: ${{ vars.CERTUM_URI }}
           password: ${{ secrets.CERTUM_PWD }}
@@ -130,7 +130,7 @@ jobs:
 
       - name: Sign Windows installer
         if: (github.event_name == 'release') && (runner.os == 'Windows')
-        uses: toitlang/action-sign-server@51cf79bedcdbf065d9e5f334b594f91a675a1bed  # v1.0.3
+        uses: toitlang/action-sign-server@c0ddf849f5d30d53189381ea35daec08b1457e0d  # v1.0.4
         with:
           uri: ${{ vars.CERTUM_URI }}
           password: ${{ secrets.CERTUM_PWD }}
