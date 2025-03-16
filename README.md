@@ -41,7 +41,7 @@ downloading and installing the `jag` binary for your host platform.
 
 On macOS, you can use [Homebrew](https://brew.sh/) to manage the installation of `jag`:
 ``` sh
-brew install toitlang/toit/jag
+brew install jaguar
 ```
 
 On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.com/en-us/windows/package-manager/winget/):
