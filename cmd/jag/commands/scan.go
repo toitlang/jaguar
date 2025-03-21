@@ -167,7 +167,7 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	if autoSelect == nil {
 		fmt.Println("Scanning ...")
 	} else {
-		fmt.Println("Scanning for ", autoSelect)
+		fmt.Println("Scanning for", autoSelect)
 	}
 	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 	devices, err := ScanNetwork(scanCtx, autoSelect, port)
