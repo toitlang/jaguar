@@ -380,7 +380,7 @@ func sendCodeFromFile(
 		cmd.SilenceUsage = true
 		return err
 	}
-
+	startSend := time.Now()
 	if err := device.SendCode(ctx, sdk, request, b, headersMap); err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
@@ -389,7 +389,8 @@ func sendCodeFromFile(
 		cmd.SilenceUsage = true
 		return err
 	}
-	fmt.Printf("Success: Sent %dKB code to '%s'\n", len(b)/1024, device.Name())
+	elapsed := time.Since(startSend)
+	fmt.Printf("Success: Sent %dKB code to '%s' in %.2fs\n", len(b)/1024, device.Name(), elapsed.Seconds())
 	return nil
 }
 
