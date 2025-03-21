@@ -5,11 +5,13 @@
 import encoding.ubjson
 import http
 import log
+import monitor
 import net
 import net.udp
 import net.tcp
 import system
 import system.firmware
+import uuid
 
 import .jaguar
 
@@ -20,10 +22,10 @@ STATUS-OK-JSON   ::= """{ "status": "OK" }"""
 
 HEADER-DEVICE-ID         ::= "X-Jaguar-Device-ID"
 HEADER-SDK-VERSION       ::= "X-Jaguar-SDK-Version"
-HEADER-DISABLED          ::= "X-Jaguar-Disabled"
+HEADER-NETWORK-DISABLED  ::= "X-Jaguar-Network-Disabled"
 HEADER-CONTAINER-NAME    ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT ::= "X-Jaguar-Container-Timeout"
-HEADER_CRC32             ::= "X-Jaguar-CRC32"
+HEADER-CRC32             ::= "X-Jaguar-CRC32"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -34,6 +36,9 @@ class EndpointHttp implements Endpoint:
 
   constructor logger/log.Logger:
     this.logger = logger.with-name "http"
+
+  uses-network -> bool:
+    return true
 
   run device/Device:
     logger.debug "starting endpoint"
@@ -49,13 +54,23 @@ class EndpointHttp implements Endpoint:
       // firmware if requested to do so.
       validate-firmware --reason="connected to network"
 
+      request-mutex := monitor.Mutex
+
       // We run two tasks concurrently: One broadcasts the device identity
       // via UDP and one serves incoming HTTP requests. We run the tasks
       // in a group so if one of them terminates, we take the other one down
       // and clean up nicely.
       Task.group --required=1 [
         :: broadcast-identity network device address,
-        :: serve-incoming-requests socket device address,
+        :: serve-incoming-requests socket device address request-mutex,
+        // If the call to the network-manager monitor returns, it will terminate the
+        // task and thus shut down the whole group.
+        ::
+          network-manager.wait-for-request-to-disable-network
+          request-mutex.do:
+            // Get the lock so that we know that the last request has been handled.
+            socket.close
+            socket = null
       ]
     finally:
       if socket: socket.close
@@ -135,11 +150,12 @@ class EndpointHttp implements Endpoint:
       writer.write-headers http.STATUS-NOT-FOUND
       writer.out.write "Not found: $path"
 
-  serve-incoming-requests socket/tcp.ServerSocket device/Device address/string -> none:
+  serve-incoming-requests socket/tcp.ServerSocket device/Device address/string request-mutex/monitor.Mutex -> none:
     self := Task.current
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
 
+    server-task := Task.current
     server.listen socket:: | request/http.Request writer/http.ResponseWriter |
       headers ::= request.headers
       device-id := "$device.id"
@@ -175,46 +191,52 @@ class EndpointHttp implements Endpoint:
 
       // Handle uninstalling containers.
       else if path == "/uninstall" and request.method == http.PUT:
-        container-name ::= headers.single HEADER-CONTAINER-NAME
-        uninstall-image container-name
-        respond-ok writer
+        request-mutex.do:
+          container-name ::= headers.single HEADER-CONTAINER-NAME
+          uninstall-image container-name
+          respond-ok writer
 
       // Handle firmware updates.
       else if path == "/firmware" and request.method == http.PUT:
-        install-firmware request.content-length request.body
-        respond-ok writer
-        // Mark the firmware as having a pending upgrade and close
-        // the server socket to force the HTTP server loop to stop.
-        firmware-is-upgrade-pending = true
-        socket.close
+        request-mutex.do:
+          install-firmware request.content-length request.body
+          respond-ok writer
+          // Mark the firmware as having a pending upgrade and close
+          // the server socket to force the HTTP server loop to stop.
+          firmware-is-upgrade-pending = true
+          socket.close
 
       // Validate SDK version before attempting to install containers or run code.
       else if sdk-version-header != system.vm-sdk-version:
         logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
         writer.write-headers http.STATUS-NOT-ACCEPTABLE --message="Device has $system.vm-sdk-version, jag has $sdk-version-header"
 
-      // Handle installing containers.
-      else if path == "/install" and request.method == "PUT":
-        container-name ::= headers.single HEADER-CONTAINER-NAME
-        crc32 := int.parse (headers.single HEADER_CRC32)
-        defines ::= extract-defines headers
-        install-image request.content-length request.body container-name defines --crc32=crc32
-        respond-ok writer
-
-      // Handle code running.
-      else if path == "/run" and request.method == "PUT":
-        crc32 := int.parse (headers.single HEADER_CRC32)
-        defines ::= extract-defines headers
-        run-code request.content-length request.body defines --crc32=crc32
-        respond-ok writer
-        // If the code needs to run with Jaguar disabled, we close
-        // the server socket to force the HTTP server loop to stop.
-        if disabled: socket.close
+      // Handle installing containers and code running.
+      else if (path == "/install" or path == "/run") and request.method == "PUT":
+        image/uuid.Uuid? := null
+        defines/Map? := null
+        request-mutex.do:
+          container-name := path == "/install"
+              ? headers.single HEADER-CONTAINER-NAME
+              : null
+          crc32 := int.parse (headers.single HEADER-CRC32)
+          defines = extract-defines headers
+          image = flash-image request.content-length request.body name defines --crc32=crc32
+          respond-ok writer
+        run-message := path == "/install" ? "installed and started" : "started"
+        // We don't run the image from within the request-mutex, as we need to be able to
+        // shut down the server while trying to run the image.
+        // For the same reason we must make sure that the task that runs the image isn't
+        // the server task.
+        if Task.current == server-task:
+          task:: run-image image run-message name defines
+        else:
+          run-image image run-message name defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
-    if headers.single HEADER-DISABLED:
-      defines[JAG-DISABLED] = true
+    if headers.single HEADER-NETWORK-DISABLED:
+      defines[JAG-NETWORK-DISABLED] = true
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
       timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout
