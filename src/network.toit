@@ -155,6 +155,7 @@ class EndpointHttp implements Endpoint:
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
 
+    server-task := Task.current
     server.listen socket:: | request/http.Request writer/http.ResponseWriter |
       headers ::= request.headers
       device-id := "$device.id"
@@ -223,7 +224,14 @@ class EndpointHttp implements Endpoint:
           image = flash-image request.content-length request.body name defines --crc32=crc32
           respond-ok writer
         run-message := path == "/install" ? "installed and started" : "started"
-        run-image image run-message name defines
+        // We don't run the image from within the request-mutex, as we need to be able to
+        // shut down the server while trying to run the image.
+        // For the same reason we must make sure that the task that runs the image isn't
+        // the server task.
+        if Task.current == server-task:
+          task:: run-image image run-message name defines
+        else:
+          run-image image run-message name defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}

@@ -151,7 +151,7 @@ serve device/Device endpoints/List -> none:
       sleep backoff
   Task.group lambdas
 
-validation-mutex ::= monitor.Mutex
+validation-mutex / monitor.Mutex ::= monitor.Mutex
 validate-firmware --reason/string -> none:
   validation-mutex.do:
     if firmware-is-validation-pending:
@@ -239,8 +239,6 @@ This is used to kill containers that have deadlines.
 scheduled-callbacks := ScheduledCallbacks
 
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
- // TODO(florian): remove this 'task::'.
- task::
   network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
 
   // First, we wait until we're ready to run the container. Usually,
