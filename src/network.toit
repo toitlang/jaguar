@@ -5,11 +5,13 @@
 import encoding.ubjson
 import http
 import log
+import monitor
 import net
 import net.udp
 import net.tcp
 import system
 import system.firmware
+import uuid show Uuid
 
 import .jaguar
 
@@ -35,6 +37,9 @@ class EndpointHttp implements Endpoint:
   constructor logger/log.Logger:
     this.logger = logger.with-name "http"
 
+  uses-network -> bool:
+    return true
+
   run device/Device:
     logger.debug "starting endpoint"
     network ::= net.open
@@ -49,13 +54,23 @@ class EndpointHttp implements Endpoint:
       // firmware if requested to do so.
       validate-firmware --reason="connected to network"
 
+      request-mutex := monitor.Mutex
+
       // We run two tasks concurrently: One broadcasts the device identity
       // via UDP and one serves incoming HTTP requests. We run the tasks
       // in a group so if one of them terminates, we take the other one down
       // and clean up nicely.
       Task.group --required=1 [
         :: broadcast-identity network device address,
-        :: serve-incoming-requests socket device address,
+        :: serve-incoming-requests socket device address request-mutex,
+        // If the call to the network-manager monitor returns, it will terminate the
+        // task and thus shut down the whole group.
+        ::
+          network-manager.wait-for-request-to-disable-network
+          request-mutex.do:
+            // Get the lock so that we know that the last request has been handled.
+            socket.close
+            socket = null
       ]
     finally:
       if socket: socket.close
@@ -135,7 +150,7 @@ class EndpointHttp implements Endpoint:
       writer.write-headers http.STATUS-NOT-FOUND
       writer.out.write "Not found: $path"
 
-  serve-incoming-requests socket/tcp.ServerSocket device/Device address/string -> none:
+  serve-incoming-requests socket/tcp.ServerSocket device/Device address/string request-mutex/monitor.Mutex -> none:
     self := Task.current
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
@@ -175,18 +190,20 @@ class EndpointHttp implements Endpoint:
 
       // Handle uninstalling containers.
       else if path == "/uninstall" and request.method == http.PUT:
-        container-name ::= headers.single HEADER-CONTAINER-NAME
-        uninstall-image container-name
-        respond-ok writer
+        request-mutex.do:
+          container-name ::= headers.single HEADER-CONTAINER-NAME
+          uninstall-image container-name
+          respond-ok writer
 
       // Handle firmware updates.
       else if path == "/firmware" and request.method == http.PUT:
-        install-firmware request.content-length request.body
-        respond-ok writer
-        // Mark the firmware as having a pending upgrade and close
-        // the server socket to force the HTTP server loop to stop.
-        firmware-is-upgrade-pending = true
-        socket.close
+        request-mutex.do:
+          install-firmware request.content-length request.body
+          respond-ok writer
+          // Mark the firmware as having a pending upgrade and close
+          // the server socket to force the HTTP server loop to stop.
+          firmware-is-upgrade-pending = true
+          socket.close
 
       // Validate SDK version before attempting to install containers or run code.
       else if sdk-version-header != system.vm-sdk-version:
@@ -195,6 +212,7 @@ class EndpointHttp implements Endpoint:
 
       // Handle installing containers.
       else if path == "/install" and request.method == "PUT":
+       request-mutex.do:
         container-name ::= headers.single HEADER-CONTAINER-NAME
         crc32 := int.parse (headers.single HEADER_CRC32)
         defines ::= extract-defines headers
@@ -203,13 +221,11 @@ class EndpointHttp implements Endpoint:
 
       // Handle code running.
       else if path == "/run" and request.method == "PUT":
+       request-mutex.do:
         crc32 := int.parse (headers.single HEADER_CRC32)
         defines ::= extract-defines headers
         run-code request.content-length request.body defines --crc32=crc32
         respond-ok writer
-        // If the code needs to run with Jaguar disabled, we close
-        // the server socket to force the HTTP server loop to stop.
-        if disabled: socket.close
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
