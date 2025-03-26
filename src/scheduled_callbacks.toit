@@ -26,12 +26,12 @@ class PriorityQueue:
   size -> int:
     return heap_.size
 
-  add element/PriorityQueueElement:
+  add element/PriorityQueueElement -> none:
     heap_.add element
     element.position_ = heap_.size - 1
     bubble-up_ (heap_.size - 1)
 
-  remove element/PriorityQueueElement:
+  remove element/PriorityQueueElement -> none:
     index := element.position_
     // Swap the element with the last element.
     heap_[index] = heap_.last
@@ -81,7 +81,6 @@ class PriorityQueue:
       current.position_ = smallest-index
       // Move down the tree.
       index = smallest-index
-
 
 class ScheduledCallbacks:
   queue_/PriorityQueue? := null

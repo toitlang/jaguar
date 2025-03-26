@@ -151,7 +151,7 @@ serve device/Device endpoints/List -> none:
       sleep backoff
   Task.group lambdas
 
-validation-mutex/monitor.Mutex ::= monitor.Mutex
+validation-mutex / monitor.Mutex ::= monitor.Mutex
 validate-firmware --reason/string -> none:
   validation-mutex.do:
     if firmware-is-validation-pending:
