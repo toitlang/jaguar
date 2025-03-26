@@ -91,6 +91,7 @@ $(SDK_BUILD_MARKER):
 .PHONY: all-chips
 all-chips:
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c3 esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c6 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s2 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s3 esp32
 
@@ -107,3 +108,17 @@ endif
 download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
 	rm -rf $(BUILD_SDK_DIR)
 	$(BUILD_DIR)/$(JAG_BINARY) --no-analytics setup sdk $(BUILD_SDK_DIR)
+
+.PHONY: test
+test: $(BUILD_DIR)/$(JAG_BINARY)
+	@# For now just try to extract images for all chips.
+	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
+		set -e; \
+		tmp_dir=$$(mktemp -d); \
+		$(BUILD_DIR)/$(JAG_BINARY) \
+				--no-analytics \
+				--wifi-ssid=test --wifi-password=test \
+				firmware extract $$chip \
+				-o $$tmp_dir/$$chip.snapshot; \
+		rm -rf $$tmp_dir; \
+	done
