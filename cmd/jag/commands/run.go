@@ -95,13 +95,13 @@ func RunCmd() *cobra.Command {
 			"program runs on the current computer instead.\n" +
 			"\n" +
 			"The following define flags have a special meaning:\n" +
-			"	'-D jag.disabled': Disable Jaguar for this program.\n" +
-			"     Disables the HTTP server on the device.\n" +
+			"	'-D jag.network-disabled': Disable Jaguar for this program.\n" +
+			"     Disables the WiFi-based HTTP server on the device.\n" +
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
-			"     If jag.disabled is enabled, then the default is 10 seconds.\n" +
+			"     If jag.network-disabled is enabled, then the default is 10 seconds.\n" +
 			"\n" +
-			"For example 'jag run -D jag.disabled wifi-scan.toit' will run the wifi-scan\n" +
+			"For example 'jag run -D jag.network-disabled wifi-scan.toit' will run the wifi-scan\n" +
 			"program on the device without Jaguar using the network.",
 		Args:         cobra.MinimumNArgs(0),
 		SilenceUsage: true,
@@ -331,14 +331,17 @@ func sendCodeFromFile(
 	assetsMap := make(map[string]interface{})
 	for key, value := range defines {
 		if strings.HasPrefix(key, "jag.") {
-			if key == "jag.disabled" {
+			if key == "jag.disabled" || key == "jag.network-disabled" {
+				if key == "jag.disabled" {
+					fmt.Println("Warning: jag.disabled is deprecated, use jag.network-disabled instead")
+				}
 				switch converted := value.(type) {
 				case bool:
 					if converted {
-						headersMap[JaguarDisabledHeader] = "true"
+						headersMap[JaguarNetworkDisabledHeader] = "true"
 					}
 				default:
-					return fmt.Errorf("jag.disabled must be a bool")
+					return fmt.Errorf("jag.network-disabled must be a bool")
 				}
 			} else if key == "jag.timeout" {
 				switch converted := value.(type) {

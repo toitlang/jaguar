@@ -25,7 +25,7 @@ interface Endpoint:
   name -> string
 
 // Defines recognized by Jaguar for /run and /install requests.
-JAG-DISABLED ::= "jag.disabled"
+JAG-NETWORK-DISABLED ::= "jag.network-disabled"
 JAG-TIMEOUT  ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
@@ -35,8 +35,8 @@ firmware-is-validation-pending / bool := firmware.is-validation-pending
 firmware-is-upgrade-pending / bool := false
 
 /**
-Jaguar can run containers while Jaguar itself is disabled. You can
-  enable this behavior by using `jag run -D jag.disabled ...` when
+Jaguar can run containers while the network for Jaguar is disabled. You can
+  enable this behavior by using `jag run -D jag.network-disabled ...` when
   starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 
@@ -85,7 +85,7 @@ run-installed-containers -> none:
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
     start ::= Time.monotonic-us
     container := run-image image "started" name defines
-    if defines.get JAG-DISABLED:
+    if defines.get JAG-NETWORK-DISABLED:
       timeout/Duration ::= compute-timeout defines --disabled
       blockers.add:: run-to-completion name container start timeout
   if blockers.is-empty: return
@@ -223,7 +223,7 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Co
 
 install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
   image := flash-image image-size reader name defines --crc32=crc32
-  if defines.get JAG-DISABLED:
+  if defines.get JAG-NETWORK-DISABLED:
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with Jaguar disabled"
   else:
@@ -268,7 +268,7 @@ run-to-completion name/string? container/containers.Container start/int timeout/
     logger.error "$nick stopped - exit code $code"
 
 run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  jag-disabled := defines.get JAG-DISABLED
+  jag-disabled := defines.get JAG-NETWORK-DISABLED
   if jag-disabled: disabled = true
   timeout/Duration? := compute-timeout defines --disabled=disabled
 
