@@ -25,6 +25,7 @@ jobs:
           build/jag setup --skip-assets
           SDK_PATH="$(build/jag setup --print-sdk-path)"
           ASSETS_PATH="$(build/jag setup --print-assets-path)"
+          mkdir -p "$ASSETS_PATH"
           export PATH="$PATH:$SDK_PATH/bin"
           make SDK_PATH="$SDK_PATH" assets
           cp build/assets/* "$ASSETS_PATH"
