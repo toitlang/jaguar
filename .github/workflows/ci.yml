@@ -22,7 +22,12 @@ jobs:
 
       - name: Setup
         run: |
-          build/jag setup
+          build/jag setup --skip-assets
+          SDK_PATH="$(build/jag setup --print-path sdk)"
+          ASSETS_PATH="$(build/jag setup --print-path assets)"
+          mkdir -p "$ASSETS_PATH"
+          make SDK_PATH="$SDK_PATH" assets
+          cp -r build/assets/* "$ASSETS_PATH"
 
       - name: Run tests
         run: |
