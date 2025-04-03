@@ -213,36 +213,36 @@ main:
   print defines["my-define"]
 ```
 
-## Temporarily disabling Jaguar
-You can disable Jaguar while your application runs using the `-D jag.disabled`. This is useful if Jaguar otherwise
+## Temporarily disabling Jaguar's WiFi
+You can disable Jaguar's WiFi while your application runs using `-D jag.wifi=false`. This is useful if Jaguar otherwise
 interferes with your application. As an example, consider an application that uses the WiFi to setup a
 software-enabled access point ("Soft AP"). This would normally conflict with Jaguar's use of the WiFi, so your
 application and Jaguar cannot run at the same time. By temporarily disabling Jaguar, it is possible to test and tinker with
 the Soft AP based service.
 
 ``` sh
-jag run -D jag.disabled softap.toit
+jag run -D jag.wifi=false softap.toit
 ```
 
-By default this runs with a 10 seconds timeout to avoid completely shutting down Jaguar. However, this can be configured
-by passing a separate `-D jag.timeout` option:
+By default this runs with a 10 seconds timeout to avoid making the device inaccessible by Jaguar. You can configure
+the timeout by passing a separate `-D jag.timeout` option:
 
 ``` sh
-jag run -D jag.disabled -D jag.timeout=5m softap.toit
+jag run -D jag.wifi=false -D jag.timeout=5m softap.toit
 ```
 
-This also works for installed containers. Containers that run with `-D jag.disabled` start when the device boots and
-runs to completion before Jaguar is enabled. This allows them to control the WiFi and to prevent Jaguar from taking
-over before they are ready for it:
+This also works for installed containers. Containers that run with `-D jag.wifi=false` start when the device boots and
+runs to completion before Jaguar tries to connect to WiFi. This allows them to control the WiFi and to prevent
+Jaguar from taking over before they are ready for it:
 
 ``` sh
-jag container install -D jag.disabled softap softap.toit
+jag container install -D jag.wifi=false softap softap.toit
 ```
 
 You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
 
 ``` sh
-jag container install -D jag.disabled -D jag.timeout=20s softap softap.toit
+jag container install -D jag.wifi=false -D jag.timeout=20s softap softap.toit
 ```
 
 ---

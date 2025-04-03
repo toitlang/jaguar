@@ -18,7 +18,7 @@ import system.firmware
 
 import .container-registry
 import .network
-import .scheduled-callbacks
+import .schedule
 import .uart
 
 interface Endpoint:
@@ -27,7 +27,7 @@ interface Endpoint:
   uses-network -> bool
 
 // Defines recognized by Jaguar for /run and /install requests.
-JAG-NETWORK-DISABLED ::= "jag.network-disabled"
+JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
@@ -38,7 +38,7 @@ firmware-is-upgrade-pending / bool := false
 
 /**
 Jaguar can run containers while the network for Jaguar is disabled. You can
-  enable this behavior by using `jag run -D jag.network-disabled ...` when
+  enable this behavior by using `jag run -D jag.wifi=false ...` when
   starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 
@@ -47,12 +47,12 @@ We keep track of the state through the global $network-manager variable.
 class NetworkManager:
   signal_/monitor.Signal ::= monitor.Signal
   network-endpoints_/int := 0
-  network-is-disabled_/bool := false
+  network-disabled-requests_/int := 0
 
   serve device/Device endpoint/Endpoint -> none:
     uses-network := endpoint.uses-network
     if uses-network:
-      signal_.wait: not network-is-disabled_
+      signal_.wait: network-disabled-requests_ == 0
       network-endpoints_++
       signal_.raise
     try:
@@ -63,21 +63,21 @@ class NetworkManager:
         signal_.raise
 
   network-is-disabled -> bool:
-    return network-is-disabled_
+    return network-disabled-requests_ > 0
 
   disable-network -> none:
-    network-is-disabled_ = true
+    network-disabled-requests_++
     signal_.raise
 
   wait-for-network-down -> none:
     signal_.wait: network-endpoints_ == 0
 
   enable-network -> none:
-    network-is-disabled_ = false
+    network-disabled-requests_--
     signal_.raise
 
   wait-for-request-to-disable-network -> none:
-    signal_.wait: network-is-disabled_
+    signal_.wait: network-disabled-requests_ > 0
 
 network-manager / NetworkManager ::= NetworkManager
 
@@ -236,12 +236,12 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
 Callbacks that are scheduled to run at a specific time.
 This is used to kill containers that have deadlines.
 */
-scheduled-callbacks := ScheduledCallbacks
+scheduled-callbacks := Schedule
 
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
  // TODO(florian): remove this 'task::'.
  task::
-  network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
+  network-disabled := (defines.get JAG-WIFI) == false
 
   // First, we wait until we're ready to run the container. Usually,
   // we are ready right away, but if we've been asked to disable
@@ -261,15 +261,13 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
   suffix := defines.is-empty ? "" : " with $defines"
   logger.info "$nick $cause$suffix"
 
-  container/containers.Container? := null
-
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
   cancelation-token := null
 
-  container = containers.start image --on-stopped=:: | code/int |
+  container := containers.start image --on-stopped=:: | code/int |
     if cancelation-token:
-      scheduled-callbacks.cancel cancelation-token
+      scheduled-callbacks.remove cancelation-token
 
     if code == 0:
       logger.info "$nick stopped"
@@ -282,8 +280,8 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
 
   if timeout:
     // We schedule a callback to kill the container if it doesn't
-    // stop on its own within the timeout.
-    cancelation-token = scheduled-callbacks.schedule timeout::
+    // stop on its own before the timeout.
+    cancelation-token = scheduled-callbacks.add timeout --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
 
@@ -301,6 +299,7 @@ compute-timeout defines/Map --disabled/bool -> Duration?:
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
   return disabled ? (Duration --s=10) : null
+  // Start the image, but don't wait for it to run to completion.
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
