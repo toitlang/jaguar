@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Toitware ApS. All rights reserved.
+// Copyright (C) 2025 Toit contributors
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
@@ -35,6 +35,7 @@ class PriorityQueue:
     index := element.position_
     // Swap the element with the last element.
     heap_[index] = heap_.last
+    heap_[index].position_ = index
     heap_.resize (heap_.size - 1)
     // Move the element down the tree.
     bubble-down_ index
@@ -43,22 +44,25 @@ class PriorityQueue:
   first -> PriorityQueueElement:
     return heap_.first
 
+  remove-first -> PriorityQueueElement:
+    element := heap_.first
+    remove element
+    return element
+
   bubble-up_ index/int:
     heap := heap_
     while index > 0:
       parent-index := (index - 1) / 2
       current := heap[index]
       parent := heap[parent-index]
-      if current.priority < parent.priority:
-        // Swap the elements.
-        heap[index] = parent
-        parent.position_ = index
-        heap[parent-index] = current
-        current.position_ = parent-index
-        // Move up the tree.
-        index = parent-index
-      else:
-        break
+      if current.priority >= parent.priority: break
+      // Swap the elements.
+      heap[index] = parent
+      parent.position_ = index
+      heap[parent-index] = current
+      current.position_ = parent-index
+      // Move up the tree.
+      index = parent-index
 
   bubble-down_ index/int:
     heap := heap_
@@ -82,7 +86,7 @@ class PriorityQueue:
       // Move down the tree.
       index = smallest-index
 
-class ScheduledCallbacks:
+class Schedule:
   queue_/PriorityQueue? := null
   task_/Task? := null
   signal_/monitor.Signal ::= monitor.Signal
@@ -91,13 +95,13 @@ class ScheduledCallbacks:
   Schedules the given $callback to run in $duration time.
   Returns a token that can be used to cancel the scheduled callback.
   */
-  schedule duration/Duration callback/Lambda -> any:
-    if queue_ == null:
+  add duration/Duration --callback/Lambda -> any:
+    if not queue_:
       queue_ = PriorityQueue
     deadline := Time.monotonic-us + duration.in-us
     element := PriorityQueueElement --priority=deadline callback
     queue_.add element
-    if task_ == null:
+    if not task_:
       watch-deadlines_
     else:
       signal_.raise
@@ -107,10 +111,10 @@ class ScheduledCallbacks:
   /**
   Cancels the scheduled callback identified by the given $token.
 
-  The $token must have beenn returned by a previous call to $schedule.
+  The $token must have beenn returned by a previous call to $add.
   Callbacks can be canceled multiple times, but only the first call has an effect.
   */
-  cancel token/any:
+  remove token/any:
     element := token as PriorityQueueElement
     if not element.is-linked: return
     queue_.remove element
@@ -119,17 +123,16 @@ class ScheduledCallbacks:
     task_ = task::
       try:
         while true:
-          element/PriorityQueueElement? := null
           now := Time.monotonic-us
-          while queue_.size > 0 and queue_.first.priority <= now:
-            element = queue_.first
-            queue_.remove element
+          if queue_.size > 0 and queue_.first.priority <= now:
+            element := queue_.remove-first
             catch --trace:
               callback := element.value as Lambda
               callback.call
+            continue
           if queue_.size == 0:
             break
-          element = queue_.first
+          element := queue_.first
           assert: element and element.priority > now
           // Wait for the next deadline or a change in the queue.
           catch --unwind=(: it != DEADLINE-EXCEEDED-ERROR):

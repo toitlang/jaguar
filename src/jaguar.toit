@@ -206,7 +206,7 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
 Callbacks that are scheduled to run at a specific time.
 This is used to kill containers that have deadlines.
 */
-scheduled-callbacks := ScheduledCallbacks
+scheduled-callbacks := Schedule
 
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
  network-disabled := (defines.get JAG-WIFI) == false
@@ -228,15 +228,13 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
   suffix := defines.is-empty ? "" : " with $defines"
   logger.info "$nick $cause$suffix"
 
-  container/containers.Container? := null
-
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
   cancelation-token := null
 
-  container = containers.start image --on-stopped=:: | code/int |
+  container := containers.start image --on-stopped=:: | code/int |
     if cancelation-token:
-      scheduled-callbacks.cancel cancelation-token
+      scheduled-callbacks.remove cancelation-token
 
     if code == 0:
       logger.info "$nick stopped"
@@ -250,8 +248,8 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
 
   if timeout:
     // We schedule a callback to kill the container if it doesn't
-    // stop on its own within the timeout.
-    cancelation-token = scheduled-callbacks.schedule timeout::
+    // stop on its own before the timeout.
+    cancelation-token = scheduled-callbacks.add timeout --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
 
@@ -261,8 +259,6 @@ install-image image-size/int reader/reader.Reader name/string defines/Map --crc3
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with Jaguar disabled"
   else:
-    timeout := compute-timeout defines --no-disabled
-    if timeout: logger.warn "container '$name' needs 'jag.wifi=false' for 'jag.timeout' to take effect"
     run-image image "installed and started" name defines
 
 uninstall-image name/string -> none:
@@ -281,12 +277,10 @@ compute-timeout defines/Map --disabled/bool -> Duration?:
   return disabled ? (Duration --s=10) : null
 
 run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  if (defines.get JAG-WIFI) == false: disabled = true
-  timeout/Duration? := compute-timeout defines --disabled=disabled
-
   // Write the image into flash.
   image := flash-image image-size reader null defines --crc32=crc32
 
+  // Start the image, but don't wait for it to run to completion.
   run-image image "started" null defines
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
