@@ -36,7 +36,7 @@ firmware-is-upgrade-pending / bool := false
 
 /**
 Jaguar can run containers while the network for Jaguar is disabled. You can
-  enable this behavior by using `jag run -D jag.network-disabled ...` when
+  enable this behavior by using `jag run -D jag.wifi=false ...` when
   starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 

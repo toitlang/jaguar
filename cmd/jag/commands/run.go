@@ -95,13 +95,13 @@ func RunCmd() *cobra.Command {
 			"program runs on the current computer instead.\n" +
 			"\n" +
 			"The following define flags have a special meaning:\n" +
-			"	'-D jag.network-disabled': Disable Jaguar for this program.\n" +
-			"     Disables the WiFi-based HTTP server on the device.\n" +
+			"	'-D jag.wifi=false': Disable Jaguar's WiFi-based HTTP server while the program.\n" +
+			"     is running.\n" +
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
-			"     If jag.network-disabled is enabled, then the default is 10 seconds.\n" +
+			"     If jag.wifi=false is set, then the default is 10 seconds.\n" +
 			"\n" +
-			"For example 'jag run -D jag.network-disabled wifi-scan.toit' will run the wifi-scan\n" +
+			"For example 'jag run -D jag.wifi=false wifi-scan.toit' will run the wifi-scan\n" +
 			"program on the device without Jaguar using the network.",
 		Args:         cobra.MinimumNArgs(0),
 		SilenceUsage: true,
