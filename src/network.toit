@@ -215,13 +215,14 @@ class EndpointHttp implements Endpoint:
       else if (path == "/install" or path == "/run") and request.method == "PUT":
         image/Uuid? := null
         defines/Map? := null
+        container-name/string? := null
         request-mutex.do:
-          container-name := path == "/install"
+          container-name = (path == "/install")
               ? headers.single HEADER-CONTAINER-NAME
               : null
           crc32 := int.parse (headers.single HEADER-CRC32)
           defines = extract-defines headers
-          image = flash-image request.content-length request.body name defines --crc32=crc32
+          image = flash-image request.content-length request.body container-name defines --crc32=crc32
           respond-ok writer
         run-message := path == "/install" ? "installed and started" : "started"
         // We don't run the image from within the request-mutex, as we need to be able to
@@ -229,9 +230,9 @@ class EndpointHttp implements Endpoint:
         // For the same reason we must make sure that the task that runs the image isn't
         // the server task.
         if Task.current == server-task:
-          task:: run-image image run-message name defines
+          task:: run-image image run-message container-name defines
         else:
-          run-image image run-message name defines
+          run-image image run-message container-name defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
