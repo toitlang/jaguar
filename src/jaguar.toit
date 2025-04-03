@@ -18,7 +18,7 @@ import system.firmware
 
 import .container-registry
 import .network
-import .scheduled-callbacks
+import .schedule
 import .uart
 
 interface Endpoint:
