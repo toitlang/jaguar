@@ -18,7 +18,7 @@ import (
 const (
 	JaguarDeviceIDHeader         = "X-Jaguar-Device-ID"
 	JaguarSDKVersionHeader       = "X-Jaguar-SDK-Version"
-	JaguarNetworkDisabledHeader  = "X-Jaguar-Network-Disabled"
+	JaguarWifiDisabledHeader     = "X-Jaguar-Wifi-Disabled"
 	JaguarContainerNameHeader    = "X-Jaguar-Container-Name"
 	JaguarContainerTimeoutHeader = "X-Jaguar-Container-Timeout"
 	JaguarCRC32Header            = "X-Jaguar-CRC32"

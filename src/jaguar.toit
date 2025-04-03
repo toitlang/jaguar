@@ -26,7 +26,7 @@ interface Endpoint:
   name -> string
 
 // Defines recognized by Jaguar for /run and /install requests.
-JAG-NETWORK-DISABLED ::= "jag.network-disabled"
+JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
@@ -37,7 +37,7 @@ firmware-is-upgrade-pending / bool := false
 
 /**
 Jaguar can run containers while the network for Jaguar is disabled. You can
-  enable this behavior by using `jag run -D jag.network-disabled ...` when
+  enable this behavior by using `jag run -D jag.wifi=false ...` when
   starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 
@@ -209,7 +209,7 @@ This is used to kill containers that have deadlines.
 scheduled-callbacks := ScheduledCallbacks
 
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
- network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
+ network-disabled := (defines.get JAG-WIFI) == false
  if network-disabled: disabled = true
  // TODO(florian): remove this 'task::'.
  task::
@@ -257,12 +257,12 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
 
 install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
   image := flash-image image-size reader name defines --crc32=crc32
-  if defines.get JAG-NETWORK-DISABLED:
+  if (defines.get JAG-WIFI) == false:  // Only if it exists and is false.
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with Jaguar disabled"
   else:
     timeout := compute-timeout defines --no-disabled
-    if timeout: logger.warn "container '$name' needs 'jag.disabled' for 'jag.timeout' to take effect"
+    if timeout: logger.warn "container '$name' needs 'jag.wifi=false' for 'jag.timeout' to take effect"
     run-image image "installed and started" name defines
 
 uninstall-image name/string -> none:
@@ -281,8 +281,7 @@ compute-timeout defines/Map --disabled/bool -> Duration?:
   return disabled ? (Duration --s=10) : null
 
 run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  jag-disabled := defines.get JAG-NETWORK-DISABLED
-  if jag-disabled: disabled = true
+  if (defines.get JAG-WIFI) == false: disabled = true
   timeout/Duration? := compute-timeout defines --disabled=disabled
 
   // Write the image into flash.
