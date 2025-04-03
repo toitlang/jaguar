@@ -219,7 +219,6 @@ class EndpointHttp implements Endpoint:
         image := flash-image request.content-length request.body name defines --crc32=crc32
         respond-ok writer
         run-image image "installed and started" container-name defines
-        respond-ok writer
 
       // Handle code running.
       else if path == "/run" and request.method == "PUT":
