@@ -331,17 +331,17 @@ func sendCodeFromFile(
 	assetsMap := make(map[string]interface{})
 	for key, value := range defines {
 		if strings.HasPrefix(key, "jag.") {
-			if key == "jag.disabled" || key == "jag.network-disabled" {
+			if key == "jag.disabled" || key == "jag.wifi" {
 				if key == "jag.disabled" {
-					fmt.Println("Warning: jag.disabled is deprecated, use jag.network-disabled instead")
+					fmt.Println("Warning: jag.disabled is deprecated, use jag.wifi=false instead")
 				}
 				switch converted := value.(type) {
 				case bool:
-					if converted {
-						headersMap[JaguarNetworkDisabledHeader] = "true"
+					if !converted {
+						headersMap[JaguarWifiDisabledHeader] = "true"
 					}
 				default:
-					return fmt.Errorf("jag.network-disabled must be a bool")
+					return fmt.Errorf("jag.wifi must be a bool")
 				}
 			} else if key == "jag.timeout" {
 				switch converted := value.(type) {
