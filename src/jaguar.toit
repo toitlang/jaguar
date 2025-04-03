@@ -18,7 +18,7 @@ import system.firmware
 
 import .container-registry
 import .network
-import .scheduled-callbacks
+import .schedule
 import .uart
 
 interface Endpoint:
@@ -27,7 +27,7 @@ interface Endpoint:
   uses-network -> bool
 
 // Defines recognized by Jaguar for /run and /install requests.
-JAG-NETWORK-DISABLED ::= "jag.network-disabled"
+JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
@@ -38,7 +38,7 @@ firmware-is-upgrade-pending / bool := false
 
 /**
 Jaguar can run containers while the network for Jaguar is disabled. You can
-  enable this behavior by using `jag run -D jag.network-disabled ...` when
+  enable this behavior by using `jag run -D jag.wifi=false ...` when
   starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 
@@ -236,12 +236,12 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
 Callbacks that are scheduled to run at a specific time.
 This is used to kill containers that have deadlines.
 */
-scheduled-callbacks := ScheduledCallbacks
+scheduled-callbacks := Schedule
 
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
  // TODO(florian): remove this 'task::'.
  task::
-  network-disabled := (defines.get JAG-NETWORK-DISABLED) == true
+  network-disabled := (defines.get JAG-WIFI) == false
 
   // First, we wait until we're ready to run the container. Usually,
   // we are ready right away, but if we've been asked to disable
@@ -261,15 +261,13 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
   suffix := defines.is-empty ? "" : " with $defines"
   logger.info "$nick $cause$suffix"
 
-  container/containers.Container? := null
-
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
   cancelation-token := null
 
-  container = containers.start image --on-stopped=:: | code/int |
+  container := containers.start image --on-stopped=:: | code/int |
     if cancelation-token:
-      scheduled-callbacks.cancel cancelation-token
+      scheduled-callbacks.remove cancelation-token
 
     if code == 0:
       logger.info "$nick stopped"
@@ -282,19 +280,17 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
 
   if timeout:
     // We schedule a callback to kill the container if it doesn't
-    // stop on its own within the timeout.
-    cancelation-token = scheduled-callbacks.schedule timeout::
+    // stop on its own before the timeout.
+    cancelation-token = scheduled-callbacks.add timeout --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
 
 install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
   image := flash-image image-size reader name defines --crc32=crc32
-  if defines.get JAG-NETWORK-DISABLED:
+  if (defines.get JAG-WIFI) == false:  // Only if it exists and is false.
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with Jaguar disabled"
   else:
-    timeout := compute-timeout defines --no-disabled
-    if timeout: logger.warn "container '$name' needs 'jag.disabled' for 'jag.timeout' to take effect"
     run-image image "installed and started" name defines
 
 uninstall-image name/string -> none:
@@ -316,6 +312,7 @@ run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
   // Write the image into flash.
   image := flash-image image-size reader null defines --crc32=crc32
 
+  // Start the image, but don't wait for it to run to completion.
   run-image image "started" null defines
 
 install-firmware firmware-size/int reader/reader.Reader -> none:

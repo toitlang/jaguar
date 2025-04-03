@@ -359,8 +359,8 @@ func parseDefineFlags(cmd *cobra.Command, flagName string) (map[string]interface
 			}
 		}
 		if key == "jag.disabled" {
-			fmt.Println("Warning: Using '-D jag.disabled' is deprecated. Use '-D jag.network-disabled' instead.")
-			key = "jag.network-disabled"
+			fmt.Println("Warning: Using '-D jag.disabled' is deprecated. Use '-D jag.wifi=false' instead.")
+			key = "jag.wifi=false"
 		}
 		definesMap[key] = value
 		if key == "run.boot" {

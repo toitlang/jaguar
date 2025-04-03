@@ -22,7 +22,7 @@ STATUS-OK-JSON   ::= """{ "status": "OK" }"""
 
 HEADER-DEVICE-ID         ::= "X-Jaguar-Device-ID"
 HEADER-SDK-VERSION       ::= "X-Jaguar-SDK-Version"
-HEADER-NETWORK-DISABLED  ::= "X-Jaguar-Network-Disabled"
+HEADER-WIFI-DISABLED     ::= "X-Jaguar-Wifi-Disabled"
 HEADER-CONTAINER-NAME    ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT ::= "X-Jaguar-Container-Timeout"
 HEADER-CRC32             ::= "X-Jaguar-CRC32"
@@ -229,8 +229,8 @@ class EndpointHttp implements Endpoint:
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
-    if headers.single HEADER-NETWORK-DISABLED:
-      defines[JAG-NETWORK-DISABLED] = true
+    if headers.single HEADER-WIFI-DISABLED:
+      defines[JAG-WIFI] = false
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
       timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout
