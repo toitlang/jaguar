@@ -47,12 +47,12 @@ We keep track of the state through the global $network-manager variable.
 class NetworkManager:
   signal_/monitor.Signal ::= monitor.Signal
   network-endpoints_/int := 0
-  network-is-disabled_/bool := false
+  network-disabled-requests_/int := 0
 
   serve device/Device endpoint/Endpoint -> none:
     uses-network := endpoint.uses-network
     if uses-network:
-      signal_.wait: not network-is-disabled_
+      signal_.wait: network-disabled-requests_ == 0
       network-endpoints_++
       signal_.raise
     try:
@@ -63,21 +63,21 @@ class NetworkManager:
         signal_.raise
 
   network-is-disabled -> bool:
-    return network-is-disabled_
+    return network-disabled-requests_ > 0
 
   disable-network -> none:
-    network-is-disabled_ = true
+    network-disabled-requests_++
     signal_.raise
 
   wait-for-network-down -> none:
     signal_.wait: network-endpoints_ == 0
 
   enable-network -> none:
-    network-is-disabled_ = false
+    network-disabled-requests_--
     signal_.raise
 
   wait-for-request-to-disable-network -> none:
-    signal_.wait: network-is-disabled_
+    signal_.wait: network-disabled-requests_ > 0
 
 network-manager / NetworkManager ::= NetworkManager
 
