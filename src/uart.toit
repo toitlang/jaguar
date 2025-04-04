@@ -250,7 +250,8 @@ class UartClient:
     acking-reader := AckingReader container-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the container.
     send-response COMMAND-INSTALL_ #[]
-    install-image container-size acking-reader container-id defines --crc32=crc32
+    image := flash-image container-size acking-reader container-id defines --crc32=crc32
+    run-image image "installed and started" container-id defines
 
   handle-run data/ByteArray -> none:
     pos := 0
@@ -263,7 +264,8 @@ class UartClient:
     acking-reader := AckingReader image-size reader --send-ack=(:: send-ack it)
     // Signal that we are ready to receive the image.
     send-response COMMAND-RUN_ #[]
-    run-code image-size acking-reader defines --crc32=crc32
+    image := flash-image image-size acking-reader null defines --crc32=crc32
+    run-image image "started" null defines
 
   send-response command/int response/ByteArray -> none:
     data := #[command] + response

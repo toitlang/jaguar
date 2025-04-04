@@ -294,14 +294,6 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
       logger.error "$nick timed out after $timeout"
       container.stop
 
-install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
-  image := flash-image image-size reader name defines --crc32=crc32
-  if (defines.get JAG-WIFI) == false:  // Only if it exists and is false.
-    logger.info "container '$name' installed with $defines"
-    logger.warn "container '$name' needs reboot to start with WiFi disabled"
-  else:
-    run-image image "installed and started" name defines
-
 uninstall-image name/string -> none:
   with-timeout --ms=60_000: flash-mutex.do:
     if image := registry_.uninstall name:
@@ -316,13 +308,7 @@ compute-timeout defines/Map --wifi-disabled/bool -> Duration?:
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
   return wifi-disabled ? (Duration --s=10) : null
-
-run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  // Write the image into flash.
-  image := flash-image image-size reader null defines --crc32=crc32
-
   // Start the image, but don't wait for it to run to completion.
-  run-image image "started" null defines
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
