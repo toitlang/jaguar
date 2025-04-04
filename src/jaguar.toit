@@ -119,7 +119,7 @@ main device/Device endpoints/List:
 
 run-installed-containers -> none:
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
-    run-image image "started" name defines
+    start-image image "started" name defines
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
@@ -243,27 +243,61 @@ This is used to kill containers that have deadlines.
 */
 scheduled-callbacks := Schedule
 
-run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
+/**
+Starts the given image.
+
+Does not block.
+*/
+start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
   wifi-disabled := (defines.get JAG-WIFI) == false
 
-  // First, we wait until we're ready to run the container. Usually,
-  // we are ready right away, but if we've been asked to disable
-  // Jaguar while running the container, we wait until the HTTP server
-  // has been shut down and the network to be free.
-  if wifi-disabled:
+  if not wifi-disabled:
+    timeout := compute-timeout defines --no-wifi-disabled
+    start-image_ image cause name defines --timeout=timeout
+    return
+
+  // Run in a task, since we might need to wait for the network to be
+  // disabled.
+  task::
+    // We wait until the HTTP server has been shut down and the network is free.
     if cause != "started":
       // In case this image was started by a network server give it time
       // to respond with an OK.
       sleep --ms=100
     network-manager.disable-network
 
+    timeout := compute-timeout defines --wifi-disabled
+    was-started := start-image_ image cause name defines
+        --timeout=timeout
+        --on-stopped=:: | code/int |
+          // If Jaguar was disabled while running the container, now is the
+          // time to restart the HTTP server.
+          network-manager.enable-network
+
+    if not was-started:
+      // Probably means that a firmware upgrade is pending.
+      // Either way, the 'on-stopped' above won't be called, so we enable
+      // the network again here.
+      network-manager.enable-network
+
+/**
+Starts the given image, unless a firmware upgrade is pending.
+
+Returns whether the image was started or not.
+*/
+start-image_ -> bool
+    image/uuid.Uuid
+    cause/string
+    name/string?
+    defines/Map
+    --timeout/Duration?
+    --on-stopped/Lambda?=null:
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is-empty ? "" : " with $defines"
 
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
-    if wifi-disabled: network-manager.enable-network
-    continue.task
+    return false
 
   logger.info "$nick $cause$suffix"
 
@@ -271,6 +305,7 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
   // Once the program has terminated we need to cancel the callback.
   cancelation-token := null
 
+  // Start the image, but don't wait for it to run to completion.
   container := containers.start image --on-stopped=:: | code/int |
     if cancelation-token:
       scheduled-callbacks.remove cancelation-token
@@ -280,17 +315,16 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
     else:
       logger.error "$nick stopped - exit code $code"
 
-    // If Jaguar was disabled while running the container, now is the
-    // time to restart the HTTP server.
-    if wifi-disabled: network-manager.enable-network
+    if on-stopped: on-stopped.call code
 
-  timeout := compute-timeout defines --wifi-disabled=wifi-disabled
   if timeout:
     // We schedule a callback to kill the container if it doesn't
     // stop on its own before the timeout.
     cancelation-token = scheduled-callbacks.add timeout --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
+
+  return true
 
 uninstall-image name/string -> none:
   with-timeout --ms=60_000: flash-mutex.do:
@@ -306,7 +340,6 @@ compute-timeout defines/Map --wifi-disabled/bool -> Duration?:
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
   return wifi-disabled ? (Duration --s=10) : null
-  // Start the image, but don't wait for it to run to completion.
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
