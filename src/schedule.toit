@@ -4,7 +4,6 @@
 
 import monitor
 
-
 class Schedule:
   queue_/PriorityQueue_? := null
   task_/Task? := null
@@ -74,18 +73,18 @@ class PriorityQueue_:
 
   add element/PriorityQueueElement_ -> none:
     heap_.add element
-    element.position_ = heap_.size - 1
+    element.position = heap_.size - 1
     bubble-up_ (heap_.size - 1)
 
   remove element/PriorityQueueElement_ -> none:
-    index := element.position_
+    index := element.position
     // Swap the element with the last element.
     heap_[index] = heap_.last
-    heap_[index].position_ = index
+    heap_[index].position = index
     heap_.resize (heap_.size - 1)
     // Move the element down the tree.
     bubble-down_ index
-    element.position_ = -1
+    element.position = -1
 
   first -> PriorityQueueElement_:
     return heap_.first
@@ -104,9 +103,9 @@ class PriorityQueue_:
       if current.priority >= parent.priority: break
       // Swap the elements.
       heap[index] = parent
-      parent.position_ = index
+      parent.position = index
       heap[parent-index] = current
-      current.position_ = parent-index
+      current.position = parent-index
       // Move up the tree.
       index = parent-index
 
@@ -126,19 +125,18 @@ class PriorityQueue_:
         break
       // Swap the elements.
       heap[index] = heap[smallest-index]
-      heap[index].position_ = index
+      heap[index].position = index
       heap[smallest-index] = current
-      current.position_ = smallest-index
+      current.position = smallest-index
       // Move down the tree.
       index = smallest-index
 
 class PriorityQueueElement_:
   value/any
   priority/int
-  position_/int := -1
+  position/int := -1
 
   constructor .value --.priority:
 
   is-linked -> bool:
-    return position_ != -1
-
+    return position != -1
