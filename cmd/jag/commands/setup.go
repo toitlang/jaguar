@@ -63,6 +63,31 @@ func SetupCmd(info Info) *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			printPath, err := cmd.Flags().GetString("print-path")
+			if err != nil {
+				return err
+			}
+			if printPath == "assets" {
+				assetsPath, err := directory.GetAssetsCachePath()
+				if err != nil {
+					return err
+				}
+				fmt.Println(assetsPath)
+				return nil
+			}
+			if printPath == "sdk" {
+				sdkPath, err := directory.GetSDKCachePath()
+				if err != nil {
+					return err
+				}
+				fmt.Println(sdkPath)
+				return nil
+			}
+			if printPath != "" {
+				return fmt.Errorf("invalid value for --print-path: %s", printPath)
+			}
+
 			check, err := cmd.Flags().GetBool("check")
 			if err != nil {
 				return err
@@ -92,8 +117,14 @@ func SetupCmd(info Info) *cobra.Command {
 				return err
 			}
 
-			if err := downloadAssets(ctx, info.Version); err != nil {
+			skipAssets, err := cmd.Flags().GetBool("skip-assets")
+			if err != nil {
 				return err
+			}
+			if !skipAssets {
+				if err := downloadAssets(ctx, info.Version); err != nil {
+					return err
+				}
 			}
 
 			downloaderBytes, err := json.Marshal(&info)
@@ -112,6 +143,10 @@ func SetupCmd(info Info) *cobra.Command {
 	}
 	cmd.AddCommand(SetupSdkCmd(info))
 	cmd.Flags().BoolP("check", "c", false, "if set, will check the local setup")
+	cmd.Flags().BoolP("skip-assets", "s", false, "if set, will skip the assets download")
+	cmd.Flags().MarkHidden("skip-assets")
+	cmd.Flags().String("print-path", "", "if set to assets|sdk, will print the assets|sdk path")
+	cmd.Flags().MarkHidden("print-path")
 	return cmd
 }
 

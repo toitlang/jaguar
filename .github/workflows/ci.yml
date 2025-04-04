@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Make
+        run: |
+          make jag
+
+      - name: Setup
+        run: |
+          build/jag setup --skip-assets
+          SDK_PATH="$(build/jag setup --print-path sdk)"
+          ASSETS_PATH="$(build/jag setup --print-path assets)"
+          mkdir -p "$ASSETS_PATH"
+          make SDK_PATH="$SDK_PATH" assets
+          cp -r build/assets/* "$ASSETS_PATH"
+
+      - name: Run tests
+        run: |
+          make test

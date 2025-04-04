@@ -56,10 +56,10 @@ class EndpointHttp implements Endpoint:
 
       request-mutex := monitor.Mutex
 
-      // We run two tasks concurrently: One broadcasts the device identity
-      // via UDP and one serves incoming HTTP requests. We run the tasks
-      // in a group so if one of them terminates, we take the other one down
-      // and clean up nicely.
+      // A task that broadcasts the device identity via UDP and one that
+      // serves incoming HTTP requests.
+      // We run the tasks in a group so if one of them terminates, we take the other
+      // one down and clean up nicely.
       Task.group --required=1 [
         :: broadcast-identity network device address,
         :: serve-incoming-requests socket device address request-mutex,
@@ -155,6 +155,7 @@ class EndpointHttp implements Endpoint:
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
 
+    server-task := Task.current
     server.listen socket:: | request/http.Request writer/http.ResponseWriter |
       headers ::= request.headers
       device-id := "$device.id"
@@ -224,7 +225,7 @@ class EndpointHttp implements Endpoint:
           image = flash-image request.content-length request.body container-name defines --crc32=crc32
           respond-ok writer
         run-message := path == "/install" ? "installed and started" : "started"
-        run-image image run-message container-name defines
+        start-image image run-message container-name defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
