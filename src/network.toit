@@ -56,10 +56,10 @@ class EndpointHttp implements Endpoint:
 
       request-mutex := monitor.Mutex
 
-      // We run two tasks concurrently: One broadcasts the device identity
-      // via UDP and one serves incoming HTTP requests. We run the tasks
-      // in a group so if one of them terminates, we take the other one down
-      // and clean up nicely.
+      // A task that broadcasts the device identity via UDP and one that
+      // serves incoming HTTP requests.
+      // We run the tasks in a group so if one of them terminates, we take the other
+      // one down and clean up nicely.
       Task.group --required=1 [
         :: broadcast-identity network device address,
         :: serve-incoming-requests socket device address request-mutex,

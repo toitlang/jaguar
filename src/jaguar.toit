@@ -65,13 +65,19 @@ class NetworkManager:
   network-is-disabled -> bool:
     return network-disabled-requests_ > 0
 
+  /** Disables the network. Does nothing if the network is not enabled. */
   disable-network -> none:
     network-disabled-requests_++
     signal_.raise
-
-  wait-for-network-down -> none:
+    // Wait for the network to be down.
     signal_.wait: network-endpoints_ == 0
 
+  /**
+  Enables the network.
+
+  If there were multiple $disable-network calls, there must be
+    a similar number of $enable-network calls to re-enable the network.
+  */
   enable-network -> none:
     network-disabled-requests_--
     signal_.raise
@@ -117,7 +123,6 @@ run-installed-containers -> none:
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
-    uses-network := endpoint.uses-network
     while true:
       attempts ::= 3
       failures := 0
@@ -241,24 +246,27 @@ scheduled-callbacks := Schedule
 run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
  // TODO(florian): remove this 'task::'.
  task::
-  network-disabled := (defines.get JAG-WIFI) == false
+  wifi-disabled := (defines.get JAG-WIFI) == false
 
   // First, we wait until we're ready to run the container. Usually,
   // we are ready right away, but if we've been asked to disable
   // Jaguar while running the container, we wait until the HTTP server
   // has been shut down and the network to be free.
-  if network-disabled:
+  if wifi-disabled:
     if cause != "started":
       // In case this image was started by a network server give it time
       // to respond with an OK.
       sleep --ms=100
     network-manager.disable-network
-    network-manager.wait-for-network-down
 
-  timeout := compute-timeout defines --disabled=network-disabled
-  start ::= Time.monotonic-us
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is-empty ? "" : " with $defines"
+
+  if firmware-is-upgrade-pending:
+    logger.info "Not running $nick because firmware is pending upgrade"
+    if wifi-disabled: network-manager.enable-network
+    continue.task
+
   logger.info "$nick $cause$suffix"
 
   // The token we get when registering a timeout callback.
@@ -276,8 +284,9 @@ run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
 
     // If Jaguar was disabled while running the container, now is the
     // time to restart the HTTP server.
-    if network-disabled: network-manager.enable-network
+    if wifi-disabled: network-manager.enable-network
 
+  timeout := compute-timeout defines --wifi-disabled=wifi-disabled
   if timeout:
     // We schedule a callback to kill the container if it doesn't
     // stop on its own before the timeout.
@@ -292,13 +301,13 @@ uninstall-image name/string -> none:
     else:
       logger.error "container '$name' not found"
 
-compute-timeout defines/Map --disabled/bool -> Duration?:
+compute-timeout defines/Map --wifi-disabled/bool -> Duration?:
   jag-timeout := defines.get JAG-TIMEOUT
   if jag-timeout is int and jag-timeout > 0:
     return Duration --s=jag-timeout
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
-  return disabled ? (Duration --s=10) : null
+  return wifi-disabled ? (Duration --s=10) : null
   // Start the image, but don't wait for it to run to completion.
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
