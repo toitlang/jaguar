@@ -18,6 +18,7 @@ import system.firmware
 
 import .container-registry
 import .network
+import .schedule
 import .uart
 
 interface Endpoint:
@@ -69,6 +70,12 @@ main device/Device endpoints/List:
     // exceptions that might occur from that to avoid blocking
     // the Jaguar functionality in case something is off.
     catch --trace: run-installed-containers
+    if disabled:
+      // TODO(florian): this is currently broken.
+      // If there is more than one container that wants to run without network,
+      // it will be blocked on the semaphore (since we only up the network-free once).
+      network-free.up
+      container-done.down
     // We are now ready to start Jaguar.
     serve device endpoints
   finally: | is-exception exception |
@@ -81,25 +88,8 @@ main device/Device endpoints/List:
     logger.error "rebooting due to $exception.value"
 
 run-installed-containers -> none:
-  blockers ::= []
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
-    start ::= Time.monotonic-us
-    container := run-image image "started" name defines
-    if (defines.get JAG-WIFI) == false:
-      timeout/Duration ::= compute-timeout defines --disabled
-      blockers.add:: run-to-completion name container start timeout
-  if blockers.is-empty: return
-  // We have a number of containers that we need to allow
-  // to run to completion before we return and let Jaguar
-  // start serving requests.
-  semaphore := monitor.Semaphore
-  blockers.do: | lambda/Lambda |
-    task::
-      try:
-        lambda.call
-      finally:
-        semaphore.up
-  blockers.size.repeat: semaphore.down
+    run-image image "started" name defines
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
@@ -215,11 +205,56 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
     return image
   unreachable
 
-run-image image/uuid.Uuid cause/string name/string? defines/Map -> containers.Container:
+/**
+Callbacks that are scheduled to run at a specific time.
+This is used to kill containers that have deadlines.
+*/
+scheduled-callbacks := Schedule
+
+run-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
+ network-disabled := (defines.get JAG-WIFI) == false
+ if network-disabled: disabled = true
+ // TODO(florian): remove this 'task::'.
+ task::
+
+  // First, we wait until we're ready to run the container. Usually,
+  // we are ready right away, but if we've been asked to disable
+  // Jaguar while running the container, we wait until the HTTP server
+  // has been shut down and the network to be free.
+  if network-disabled:
+    disabled = true
+    network-free.down
+
+  timeout := compute-timeout defines --disabled=network-disabled
+  start ::= Time.monotonic-us
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is-empty ? "" : " with $defines"
   logger.info "$nick $cause$suffix"
-  return containers.start image
+
+  // The token we get when registering a timeout callback.
+  // Once the program has terminated we need to cancel the callback.
+  cancelation-token := null
+
+  container := containers.start image --on-stopped=:: | code/int |
+    if cancelation-token:
+      scheduled-callbacks.remove cancelation-token
+
+    if code == 0:
+      logger.info "$nick stopped"
+    else:
+      logger.error "$nick stopped - exit code $code"
+
+    // If Jaguar was disabled while running the container, now is the
+    // time to restart the HTTP server.
+    if network-disabled:
+      container-done.up
+
+  if timeout:
+    // We schedule a callback to kill the container if it doesn't
+    // stop on its own before the timeout.
+    cancelation-token = scheduled-callbacks.add timeout --callback=::
+      logger.error "$nick timed out after $timeout"
+      container.stop
 
 install-image image-size/int reader/reader.Reader name/string defines/Map --crc32/int -> none:
   image := flash-image image-size reader name defines --crc32=crc32
@@ -227,8 +262,6 @@ install-image image-size/int reader/reader.Reader name/string defines/Map --crc3
     logger.info "container '$name' installed with $defines"
     logger.warn "container '$name' needs reboot to start with WiFi disabled"
   else:
-    timeout := compute-timeout defines --no-disabled
-    if timeout: logger.warn "container '$name' needs 'jag.wifi=false' for 'jag.timeout' to take effect"
     run-image image "installed and started" name defines
 
 uninstall-image name/string -> none:
@@ -246,52 +279,12 @@ compute-timeout defines/Map --disabled/bool -> Duration?:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
   return disabled ? (Duration --s=10) : null
 
-run-to-completion name/string? container/containers.Container start/int timeout/Duration?:
-  nick := name ? "container '$name'" : "program $container.id"
-
-  // We're only interested in handling the timeout errors, so we
-  // unwind and produce a stack trace in all other cases.
-  filter ::= : it != DEADLINE-EXCEEDED-ERROR
-
-  // Wait until the container is done or until we time out.
-  code/int? := null
-  catch --unwind=filter --trace=filter:
-    with-timeout timeout: code = container.wait
-  if not code:
-    elapsed ::= Duration --us=Time.monotonic-us - start
-    code = container.stop
-    logger.info "$nick timed out after $elapsed"
-
-  if code == 0:
-    logger.info "$nick stopped"
-  else:
-    logger.error "$nick stopped - exit code $code"
-
 run-code image-size/int reader/reader.Reader defines/Map --crc32/int -> none:
-  if (defines.get JAG-WIFI) == false: disabled = true
-  timeout/Duration? := compute-timeout defines --disabled=disabled
-
   // Write the image into flash.
   image := flash-image image-size reader null defines --crc32=crc32
 
-  // We start the container from a separate task to allow the HTTP server
-  // to continue operating. This also means that the container running
-  // isn't covered by the flashing mutex or associated timeout.
-  task::
-    // First, we wait until we're ready to run the container. Usually,
-    // we are ready right away, but if we've been asked to disable
-    // Jaguar while running the container, we wait until the HTTP server
-    // has been shut down and the network to be free.
-    if disabled: network-free.down
-
-    // Start the image and wait for it to complete.
-    start ::= Time.monotonic-us
-    container ::= run-image image "started" null defines
-    run-to-completion null container start timeout
-
-    // If Jaguar was disabled while running the container, now is the
-    // time to restart the HTTP server.
-    if disabled: container-done.up
+  // Start the image, but don't wait for it to run to completion.
+  run-image image "started" null defines
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
