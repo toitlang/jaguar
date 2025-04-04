@@ -257,7 +257,7 @@ install-image image-size/int reader/reader.Reader name/string defines/Map --crc3
   image := flash-image image-size reader name defines --crc32=crc32
   if (defines.get JAG-WIFI) == false:  // Only if it exists and is false.
     logger.info "container '$name' installed with $defines"
-    logger.warn "container '$name' needs reboot to start with Jaguar disabled"
+    logger.warn "container '$name' needs reboot to start with WiFi disabled"
   else:
     run-image image "installed and started" name defines
 
