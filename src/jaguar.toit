@@ -71,6 +71,9 @@ main device/Device endpoints/List:
     // the Jaguar functionality in case something is off.
     catch --trace: run-installed-containers
     if disabled:
+      // TODO(florian): this is currently broken.
+      // If there is more than one container that wants to run without network,
+      // it will be blocked on the semaphore (since we only up the network-free once).
       network-free.up
       container-done.down
     // We are now ready to start Jaguar.
