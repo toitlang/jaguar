@@ -28,11 +28,12 @@ const (
 
 	headerDeviceId         = "X-Jaguar-Device-ID"
 	headerSdkVersion       = "X-Jaguar-SDK-Version"
-	headerDisabled         = "X-Jaguar-Disabled"
+	headerWifiDisabled     = "X-Jaguar-Wifi-Disabled"
 	headerContainerName    = "X-Jaguar-Container-Name"
 	headerContainerTimeout = "X-Jaguar-Container-Timeout"
 
 	defineJagDisabled = "jag.disabled"
+	defineJagWifi     = "jag.wifi"
 	defineJagTimeout  = "jag.timeout"
 
 	udpIdentifyPort = 1990
@@ -277,8 +278,8 @@ func broadcastIdentity(identityPayload []byte) error {
 
 func extractDefines(r *http.Request) map[string]interface{} {
 	defines := map[string]interface{}{}
-	if r.Header.Get(headerDisabled) != "" {
-		defines[defineJagDisabled] = true
+	if r.Header.Get(headerWifiDisabled) != "" {
+		defines[defineJagWifi] = false
 	}
 	if r.Header.Get(headerContainerTimeout) != "" {
 		val := r.Header.Get(headerContainerTimeout)

@@ -20,10 +20,10 @@ STATUS-OK-JSON   ::= """{ "status": "OK" }"""
 
 HEADER-DEVICE-ID         ::= "X-Jaguar-Device-ID"
 HEADER-SDK-VERSION       ::= "X-Jaguar-SDK-Version"
-HEADER-DISABLED          ::= "X-Jaguar-Disabled"
+HEADER-WIFI-DISABLED     ::= "X-Jaguar-Wifi-Disabled"
 HEADER-CONTAINER-NAME    ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT ::= "X-Jaguar-Container-Timeout"
-HEADER_CRC32             ::= "X-Jaguar-CRC32"
+HEADER-CRC32             ::= "X-Jaguar-CRC32"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -213,8 +213,8 @@ class EndpointHttp implements Endpoint:
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
-    if headers.single HEADER-DISABLED:
-      defines[JAG-DISABLED] = true
+    if headers.single HEADER-WIFI-DISABLED:
+      defines[JAG-WIFI] = false
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
       timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout
