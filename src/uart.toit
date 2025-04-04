@@ -44,6 +44,9 @@ class EndpointUart implements Endpoint:
   name -> string:
     return "uart"
 
+  uses-network -> bool:
+    return false
+
 interface UartWriter:
   write-framed data/ByteArray
 
