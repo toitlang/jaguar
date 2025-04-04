@@ -42,7 +42,7 @@ Jaguar can run containers while the network for Jaguar is disabled. You can
   starting the container. Use this mode to test how your apps behave
   when they run with no pre-established network.
 
-We keep track of the state through the global $network-manager variable.
+We keep track of the state through the global $wifi-manager variable.
 */
 class NetworkManager:
   signal_/monitor.Signal ::= monitor.Signal
@@ -85,7 +85,7 @@ class NetworkManager:
   wait-for-request-to-disable-network -> none:
     signal_.wait: network-disabled-requests_ > 0
 
-network-manager / NetworkManager ::= NetworkManager
+wifi-manager / NetworkManager ::= NetworkManager
 
 // The installed and named containers are kept in a registry backed
 // by the flash (on the device).
@@ -130,11 +130,11 @@ serve device/Device endpoints/List -> none:
         exception := catch:
           // If the endpoint needs network it might be blocked by the network
           // manager until the endpoint is allowed to use the network.
-          network-manager.serve device endpoint
+          wifi-manager.serve device endpoint
 
         if firmware-is-upgrade-pending: firmware.upgrade
 
-        if endpoint.uses-network and network-manager.network-is-disabled:
+        if endpoint.uses-network and wifi-manager.network-is-disabled:
           // If we were asked to shut down because the network was
           // disabled we may have gotten an exception. Ignore it.
           exception = null
@@ -264,7 +264,7 @@ start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
       // In case this image was started by a network server give it time
       // to respond with an OK.
       sleep --ms=100
-    network-manager.disable-network
+    wifi-manager.disable-network
 
     timeout := compute-timeout defines --wifi-disabled
     was-started := start-image_ image cause name defines
@@ -272,13 +272,13 @@ start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
         --on-stopped=:: | code/int |
           // If Jaguar was disabled while running the container, now is the
           // time to restart the HTTP server.
-          network-manager.enable-network
+          wifi-manager.enable-network
 
     if not was-started:
       // Probably means that a firmware upgrade is pending.
       // Either way, the 'on-stopped' above won't be called, so we enable
       // the network again here.
-      network-manager.enable-network
+      wifi-manager.enable-network
 
 /**
 Starts the given image, unless a firmware upgrade is pending.

@@ -66,7 +66,7 @@ class EndpointHttp implements Endpoint:
         // If the call to the network-manager monitor returns, it will terminate the
         // task and thus shut down the whole group.
         ::
-          network-manager.wait-for-request-to-disable-network
+          wifi-manager.wait-for-request-to-disable-network
           request-mutex.do:
             // Get the lock so that we know that the last request has been handled.
             socket.close
