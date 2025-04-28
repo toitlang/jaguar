@@ -199,38 +199,41 @@ func (d DeviceNetwork) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) e
 	return nil
 }
 
-func ScanNetwork(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
-	if ds != nil && ds.Address() != "" {
-		addr := ds.Address()
-		if !strings.Contains(addr, ":") {
-			addr = addr + ":" + fmt.Sprint(scanHttpPort)
-		}
-		req, err := http.NewRequestWithContext(ctx, "GET", "http://"+addr+"/identify", nil)
-		if err != nil {
-			return nil, err
-		}
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		buf, err := io.ReadAll(res.Body)
-		if err != nil {
-			return nil, err
-		}
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
-		}
-		dev, err := parseDeviceNetwork(buf)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse identify. reason %w", err)
-		} else if dev == nil {
-			return nil, fmt.Errorf("invalid identify response")
-		}
-		// Use the provided address. This way we can tunnel through the device.
-		dev.address = "http://" + addr
-		return []Device{*dev}, nil
+func Identify(ctx context.Context, ds deviceSelect) ([]Device, error) {
+	if ds == nil || ds.Address() == "" {
+		return nil, fmt.Errorf("no device address provided")
 	}
+	addr := ds.Address()
+	if !strings.Contains(addr, ":") {
+		addr = addr + ":" + fmt.Sprint(scanHttpPort)
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://"+addr+"/identify", nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	buf, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
+	}
+	dev, err := parseDeviceNetwork(buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse identify. reason %w", err)
+	} else if dev == nil {
+		return nil, fmt.Errorf("invalid identify response")
+	}
+	// Use the provided address. This way we can tunnel through the device.
+	dev.address = "http://" + addr
+	return []Device{*dev}, nil
+}
 
+func ScanNetwork(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
 	pc, err := reuseport.ListenPacket("udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
