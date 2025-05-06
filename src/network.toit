@@ -216,16 +216,18 @@ class EndpointHttp implements Endpoint:
         container-name ::= headers.single HEADER-CONTAINER-NAME
         crc32 := int.parse (headers.single HEADER_CRC32)
         defines ::= extract-defines headers
-        install-image request.content-length request.body container-name defines --crc32=crc32
+        image := flash-image request.content-length request.body name defines --crc32=crc32
         respond-ok writer
+        run-image image "installed and started" container-name defines
 
       // Handle code running.
       else if path == "/run" and request.method == "PUT":
        request-mutex.do:
         crc32 := int.parse (headers.single HEADER_CRC32)
         defines ::= extract-defines headers
-        run-code request.content-length request.body defines --crc32=crc32
+        image := flash-image request.content-length request.body name defines --crc32=crc32
         respond-ok writer
+        run-image image "started" null defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
