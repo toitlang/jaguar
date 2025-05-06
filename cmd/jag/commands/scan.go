@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	scanTimeout  = 600 * time.Millisecond
-	scanPort     = 1990
-	scanHttpPort = 9000
+	scanTimeout     = 600 * time.Millisecond
+	identifyTimeout = 1000 * time.Millisecond
+	scanPort        = 1990
+	scanHttpPort    = 9000
 )
 
 func ScanCmd() *cobra.Command {
@@ -66,9 +67,9 @@ func ScanCmd() *cobra.Command {
 
 			cmd.SilenceUsage = true
 			if outputter != nil {
-				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 				var devices []Device
 				var err error
+				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
 				devices, err = ScanNetwork(scanCtx, autoSelect, port)
 				cancel()
 				if err != nil {
@@ -169,9 +170,17 @@ func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint
 	} else {
 		fmt.Println("Scanning for", autoSelect)
 	}
-	scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
-	devices, err := ScanNetwork(scanCtx, autoSelect, port)
-	cancel()
+	var devices []Device
+	var err error
+	if autoSelect != nil && autoSelect.Address() != "" {
+		identifyCtx, cancel := context.WithTimeout(ctx, identifyTimeout)
+		devices, err = Identify(identifyCtx, autoSelect)
+		cancel()
+	} else {
+		scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
+		devices, err = ScanNetwork(scanCtx, autoSelect, port)
+		cancel()
+	}
 	if err != nil {
 		return nil, false, err
 	}
