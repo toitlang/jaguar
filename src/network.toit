@@ -155,6 +155,7 @@ class EndpointHttp implements Endpoint:
 
     server := http.Server --logger=logger --read-timeout=(Duration --s=3)
 
+    server-task := Task.current
     server.listen socket:: | request/http.Request writer/http.ResponseWriter |
       headers ::= request.headers
       device-id := "$device.id"
@@ -224,7 +225,7 @@ class EndpointHttp implements Endpoint:
           image = flash-image request.content-length request.body container-name defines --crc32=crc32
           respond-ok writer
         run-message := path == "/install" ? "installed and started" : "started"
-        run-image image run-message container-name defines
+        start-image image run-message container-name defines
 
   extract-defines headers/http.Headers -> Map:
     defines := {:}
