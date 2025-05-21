@@ -49,6 +49,9 @@ On Windows 10+ you can use the [Windows package manager](https://docs.microsoft.
 winget install --id=Toit.Jaguar -e
 ```
 
+Remember to run `winget upgrade --id=Toit.Jaguar -e` (or simply `winget upgrade`) from time
+to time to keep Jaguar up to date.
+
 For Archlinux you can install the AUR package [jaguar-bin](https://aur.archlinux.org/packages/jaguar-bin):
 ``` sh
 yay install jaguar-bin
