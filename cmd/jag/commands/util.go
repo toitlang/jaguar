@@ -228,6 +228,10 @@ func (s *SDK) Build(ctx context.Context, device Device, snapshotPath string, ass
 	return os.ReadFile(image.Name())
 }
 
+func (s *SDK) PassThrough(ctx context.Context, args []string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.ToitPath(), args...)
+}
+
 type gzipReader struct {
 	*gzip.Reader
 	inner io.ReadCloser
