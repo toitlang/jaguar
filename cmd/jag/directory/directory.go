@@ -177,6 +177,10 @@ func GetSDKPath() (string, error) {
 	return sdkCachePath, nil
 }
 
+func GetToitPath(sdkPath string) string {
+	return filepath.Join(sdkPath, "bin", Executable("toit"))
+}
+
 func GetSDKCachePath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {

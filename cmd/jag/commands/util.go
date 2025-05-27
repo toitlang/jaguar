@@ -36,21 +36,21 @@ type SDK struct {
 }
 
 func GetSDK(ctx context.Context) (*SDK, error) {
-	toit, err := directory.GetSDKPath()
+	sdkPath, err := directory.GetSDKPath()
 	if err != nil {
 		return nil, err
 	}
 
-	versionPath := filepath.Join(toit, "VERSION")
-
 	version := ""
-	versionBytes, err := os.ReadFile(versionPath)
+	toitPath := directory.GetToitPath(sdkPath)
+	toitVersion := exec.CommandContext(ctx, toitPath, "version")
+	versionBytes, err := toitVersion.Output()
 	if err == nil {
 		version = strings.TrimSpace(string(versionBytes))
 	}
 
 	res := &SDK{
-		Path:    toit,
+		Path:    sdkPath,
 		Version: version,
 	}
 	info := GetInfo(ctx)
@@ -87,11 +87,7 @@ func GetProgramAssetsPath(flags *pflag.FlagSet, flagName string) (string, error)
 }
 
 func (s *SDK) ToitPath() string {
-	return filepath.Join(s.Path, "bin", directory.Executable("toit"))
-}
-
-func (s *SDK) VersionPath() string {
-	return filepath.Join(s.Path, "VERSION")
+	return directory.GetToitPath(s.Path)
 }
 
 func (s *SDK) DownloaderInfoPath() string {
@@ -124,7 +120,6 @@ func (s *SDK) validate(info Info, skipSdkVersionCheck bool) error {
 
 	paths := []string{
 		s.ToitPath(),
-		s.VersionPath(),
 	}
 	for _, p := range paths {
 		if err := checkFilepath(p, "invalid Toit SDK"); err != nil {
