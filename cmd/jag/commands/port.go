@@ -97,26 +97,17 @@ func PortSetCmd() *cobra.Command {
 func PortExists(port string) (bool, error) {
 	// If 'port' is a symlink, resolve it to the actual path.
 	stat, err := os.Lstat(port)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, fmt.Errorf("error checking port %s: %w", port, err)
-	}
-	if stat.Mode()&os.ModeSymlink != 0 {
+	if err == nil && (stat.Mode()&os.ModeSymlink != 0) {
 		resolvedPort, err := os.Readlink(port)
 		if err == nil {
 			if !strings.HasPrefix(resolvedPort, "/") {
 				// If the symlink is relative, we resolve it relative to the original path.
-				resolvedPort, err = filepath.Abs(filepath.Join(filepath.Dir(port), resolvedPort))
-				if err != nil {
-					return false, fmt.Errorf("error resolving relative symlink %s: %w", port, err)
+				absolutePort, err := filepath.Abs(filepath.Join(filepath.Dir(port), resolvedPort))
+				if err == nil {
+					resolvedPort = absolutePort
 				}
 			}
 			port = resolvedPort
-		} else {
-			// If we can't resolve the symlink, we assume it's not a valid port.
-			return false, nil
 		}
 	}
 
