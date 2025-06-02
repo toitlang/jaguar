@@ -6,6 +6,8 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -93,6 +95,22 @@ func PortSetCmd() *cobra.Command {
 }
 
 func PortExists(port string) (bool, error) {
+	// If 'port' is a symlink, resolve it to the actual path.
+	stat, err := os.Lstat(port)
+	if err == nil && (stat.Mode()&os.ModeSymlink != 0) {
+		resolvedPort, err := os.Readlink(port)
+		if err == nil {
+			if !strings.HasPrefix(resolvedPort, "/") {
+				// If the symlink is relative, we resolve it relative to the original path.
+				absolutePort, err := filepath.Abs(filepath.Join(filepath.Dir(port), resolvedPort))
+				if err == nil {
+					resolvedPort = absolutePort
+				}
+			}
+			port = resolvedPort
+		}
+	}
+
 	ports, err := serial.GetPortsList()
 	if err != nil {
 		return false, err
