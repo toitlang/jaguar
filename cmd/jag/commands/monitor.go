@@ -6,9 +6,12 @@ package commands
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -22,6 +25,8 @@ func MonitorCmd() *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := context.WithCancel(cmd.Context())
+			defer cancel()
 
 			port, err := cmd.Flags().GetString("port")
 			if err != nil {
@@ -59,6 +64,27 @@ func MonitorCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			defer dev.Close()
+
+			signalChan := make(chan os.Signal, 1)
+			signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+
+			// Handle signals in a separate goroutine
+			go func() {
+				<-signalChan
+				fmt.Printf("\nInterrupt received, shutting down gracefully...\n")
+				cancel()
+
+				if dev != nil {
+					dev.Close()
+				}
+
+				// Give the decoder a moment to detect the cancellation
+				// If it's still running, force exit
+				time.Sleep(250 * time.Millisecond)
+				fmt.Printf("Exiting...\n")
+				os.Exit(0)
+			}()
 
 			if !attach {
 				dev.Reboot()
@@ -84,11 +110,25 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
-			decoder := NewDecoder(scanner, cmd.Context(), envelope)
+			// Create a context-aware decoder that can be interrupted
+			decoder := NewDecoder(scanner, ctx, envelope)
+			done := make(chan error, 1)
+			go func() {
+				decoder.decode(pretty, plain)
+				done <- scanner.Err()
+			}()
 
-			decoder.decode(pretty, plain)
-
-			return scanner.Err()
+			// Wait for either completion or context cancellation
+			select {
+			case err := <-done:
+				return err
+			case <-ctx.Done():
+				// Context was cancelled (by signal), clean up and exit
+				if dev != nil {
+					dev.Close()
+				}
+				return ctx.Err()
+			}
 		},
 	}
 
@@ -124,6 +164,13 @@ func (s serialPort) Read(buf []byte) (n int, err error) {
 		return 0, io.ErrUnexpectedEOF
 	}
 	return n, err
+}
+
+func (s *serialPort) Close() error {
+	if s.Port != nil {
+		return s.Port.Close()
+	}
+	return nil
 }
 
 func (s *serialPort) Reboot() {
