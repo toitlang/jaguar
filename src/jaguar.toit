@@ -121,8 +121,8 @@ main device/Device endpoints/List:
 run-installed-containers -> none:
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
     start-image image "started" name defines
-    if defines and defines.contains "jag.interval":
-      interval-monitor.add name (Duration.parse defines["jag.interval"]) defines
+    if defines and defines.contains JAG-INTERVAL:
+      interval-monitor.add name (Duration.parse defines[JAG-INTERVAL]) defines
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
@@ -240,8 +240,8 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
 
     if name:
       interval-monitor.remove name
-      if defines and defines.contains "jag.interval":
-        interval-monitor.add name (Duration.parse defines["jag.interval"]) defines --delay-first-check
+      if defines and defines.contains JAG-INTERVAL:
+        interval-monitor.add name (Duration.parse defines[JAG-INTERVAL]) defines --delay-first-check
 
     return image
   unreachable
@@ -351,8 +351,8 @@ start-image_ -> bool
   suffix := defines.is-empty ? "" : " with $defines"
 
   interval-info := ""
-  if name and defines and defines.contains "jag.interval":
-    interval-info = " (interval: $(Duration.parse defines["jag.interval"]))"
+  if name and defines and defines.contains JAG-INTERVAL:
+    interval-info = " (interval: $(Duration.parse defines[JAG-INTERVAL]))"
 
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
