@@ -356,6 +356,17 @@ func sendCodeFromFile(
 				default:
 					return fmt.Errorf("jag.timeout must be a string or an int")
 				}
+			} else if key == "jag.interval" {
+				switch converted := value.(type) {
+				case string:
+					_, err := time.ParseDuration(converted)
+					if err != nil {
+						return fmt.Errorf("cannot parse jag.interval ('%s') as a duration", converted)
+					}
+					headersMap[JaguarContainerIntervalHeader] = converted
+				default:
+					return fmt.Errorf("jag.interval must be a duration string (e.g., '30s', '5m', '1h')")
+				}
 			} else {
 				return fmt.Errorf("unsupported Jaguar define: %s", key)
 			}

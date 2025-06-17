@@ -29,6 +29,7 @@ interface Endpoint:
 // Defines recognized by Jaguar for /run and /install requests.
 JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
+JAG-INTERVAL ::= "jag.interval"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
 flash-mutex ::= monitor.Mutex
@@ -120,6 +121,8 @@ main device/Device endpoints/List:
 run-installed-containers -> none:
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
     start-image image "started" name defines
+    if defines and defines.contains "jag.interval":
+      interval-monitor.add name (Duration.parse defines["jag.interval"]) defines
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
@@ -234,6 +237,10 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
         throw "CRC32 mismatch"
       logger.debug "installing container image with $image-size bytes -> wrote $written-size bytes"
       writer.commit --data=(name != null ? JAGUAR-INSTALLED-MAGIC : 0)
+
+    if name and defines and defines.contains "jag.interval":
+      interval-monitor.add name (Duration.parse defines["jag.interval"]) defines --delay-first-check
+
     return image
   unreachable
 
@@ -242,6 +249,52 @@ Callbacks that are scheduled to run at a specific time.
 This is used to kill containers that have deadlines.
 */
 scheduled-callbacks := Schedule
+
+class IntervalMonitor:
+  monitored-containers_ / Map ::= {:}
+  running-containers_ / Set ::= {}
+
+  add name/string interval/Duration defines/Map --delay-first-check/bool=false -> none:
+    monitored-containers_[name] = MonitoredContainer name interval defines
+    first-check-delay := delay-first-check ? interval : (Duration --ms=100)
+    schedule-check_ name interval first-check-delay
+
+  remove name/string -> none:
+    monitored-containers_.remove name
+    running-containers_.remove name
+
+  mark-running name/string -> none:
+    running-containers_.add name
+
+  mark-stopped name/string -> none:
+    running-containers_.remove name
+
+  schedule-check_ name/string interval/Duration delay/Duration=interval -> none:
+    scheduled-callbacks.add delay --callback=::
+      check-and-restart_ name
+
+  check-and-restart_ name/string -> none:
+    container-info := monitored-containers_.get name --if-absent=:
+      return
+    container-id := registry_.id-by-name_.get name --if-absent=:
+      return
+
+    is-running := running-containers_.contains name
+
+    if not is-running:
+      logger.info "restarting container '$name' (interval check)"
+      start-image container-id "restarted" name container-info.defines
+
+    schedule-check_ name container-info.interval
+
+class MonitoredContainer:
+  name/string
+  interval/Duration
+  defines/Map
+
+  constructor .name .interval .defines:
+
+interval-monitor := IntervalMonitor
 
 /**
 Starts the given image.
@@ -295,11 +348,18 @@ start-image_ -> bool
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is-empty ? "" : " with $defines"
 
+  interval-info := ""
+  if name and defines and defines.contains "jag.interval":
+    interval-info = " (interval: $(Duration.parse defines["jag.interval"]))"
+
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
     return false
 
-  logger.info "$nick $cause$suffix"
+  logger.info "$nick $cause$suffix$interval-info"
+
+  if name:
+    interval-monitor.mark-running name
 
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
@@ -309,6 +369,9 @@ start-image_ -> bool
   container := containers.start image --on-stopped=:: | code/int |
     if cancelation-token:
       scheduled-callbacks.remove cancelation-token
+
+    if name:
+      interval-monitor.mark-stopped name
 
     if code == 0:
       logger.info "$nick stopped"
@@ -330,6 +393,7 @@ uninstall-image name/string -> none:
   with-timeout --ms=60_000: flash-mutex.do:
     if image := registry_.uninstall name:
       logger.info "container '$name' uninstalled"
+      interval-monitor.remove name
     else:
       logger.error "container '$name' not found"
 

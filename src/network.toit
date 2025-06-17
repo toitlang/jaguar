@@ -20,12 +20,13 @@ IDENTIFY-PORT    ::= 1990
 IDENTIFY-ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 STATUS-OK-JSON   ::= """{ "status": "OK" }"""
 
-HEADER-DEVICE-ID         ::= "X-Jaguar-Device-ID"
-HEADER-SDK-VERSION       ::= "X-Jaguar-SDK-Version"
-HEADER-WIFI-DISABLED     ::= "X-Jaguar-Wifi-Disabled"
-HEADER-CONTAINER-NAME    ::= "X-Jaguar-Container-Name"
-HEADER-CONTAINER-TIMEOUT ::= "X-Jaguar-Container-Timeout"
-HEADER-CRC32             ::= "X-Jaguar-CRC32"
+HEADER-DEVICE-ID          ::= "X-Jaguar-Device-ID"
+HEADER-SDK-VERSION        ::= "X-Jaguar-SDK-Version"
+HEADER-WIFI-DISABLED      ::= "X-Jaguar-Wifi-Disabled"
+HEADER-CONTAINER-NAME     ::= "X-Jaguar-Container-Name"
+HEADER-CONTAINER-TIMEOUT  ::= "X-Jaguar-Container-Timeout"
+HEADER-CONTAINER-INTERVAL ::= "X-Jaguar-Container-Interval"
+HEADER-CRC32              ::= "X-Jaguar-CRC32"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -234,6 +235,8 @@ class EndpointHttp implements Endpoint:
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
       timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout
+    if header := headers.single HEADER-CONTAINER-INTERVAL:
+      defines[JAG-INTERVAL] = header
     return defines
 
   respond-ok writer/http.ResponseWriter -> none:
