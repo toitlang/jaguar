@@ -74,16 +74,6 @@ func MonitorCmd() *cobra.Command {
 				<-signalChan
 				fmt.Printf("\nInterrupt received, shutting down gracefully...\n")
 				cancel()
-
-				if dev != nil {
-					dev.Close()
-				}
-
-				// Give the decoder a moment to detect the cancellation
-				// If it's still running, force exit
-				time.Sleep(250 * time.Millisecond)
-				fmt.Printf("Exiting...\n")
-				os.Exit(0)
 			}()
 
 			if !attach {
@@ -123,10 +113,6 @@ func MonitorCmd() *cobra.Command {
 			case err := <-done:
 				return err
 			case <-ctx.Done():
-				// Context was cancelled (by signal), clean up and exit
-				if dev != nil {
-					dev.Close()
-				}
 				return ctx.Err()
 			}
 		},
