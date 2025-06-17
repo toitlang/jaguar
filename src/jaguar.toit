@@ -238,8 +238,10 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
       logger.debug "installing container image with $image-size bytes -> wrote $written-size bytes"
       writer.commit --data=(name != null ? JAGUAR-INSTALLED-MAGIC : 0)
 
-    if name and defines and defines.contains "jag.interval":
-      interval-monitor.add name (Duration.parse defines["jag.interval"]) defines --delay-first-check
+    if name:
+      interval-monitor.remove name
+      if defines and defines.contains "jag.interval":
+        interval-monitor.add name (Duration.parse defines["jag.interval"]) defines --delay-first-check
 
     return image
   unreachable
