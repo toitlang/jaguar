@@ -69,7 +69,7 @@ func MonitorCmd() *cobra.Command {
 			signalChan := make(chan os.Signal, 1)
 			signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
-			// Handle signals in a separate goroutine
+			// Handle signals in a separate goroutine.
 			go func() {
 				<-signalChan
 				fmt.Printf("\nInterrupt received, shutting down gracefully...\n")
@@ -100,7 +100,7 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
-			// Create a context-aware decoder that can be interrupted
+			// Create a context-aware decoder that can be interrupted.
 			decoder := NewDecoder(scanner, ctx, envelope)
 			done := make(chan error, 1)
 			go func() {
@@ -108,7 +108,7 @@ func MonitorCmd() *cobra.Command {
 				done <- scanner.Err()
 			}()
 
-			// Wait for either completion or context cancellation
+			// Wait for either completion or context cancellation.
 			select {
 			case err := <-done:
 				return err
