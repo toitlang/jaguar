@@ -121,8 +121,6 @@ main device/Device endpoints/List:
 run-installed-containers -> none:
   registry_.do: | name/string image/uuid.Uuid defines/Map? |
     start-image image "started" name defines
-    if defines and defines.contains JAG-INTERVAL:
-      interval-monitor.add name (Duration.parse defines[JAG-INTERVAL]) defines
 
 serve device/Device endpoints/List -> none:
   lambdas := endpoints.map: | endpoint/Endpoint | ::
@@ -238,65 +236,14 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
       logger.debug "installing container image with $image-size bytes -> wrote $written-size bytes"
       writer.commit --data=(name != null ? JAGUAR-INSTALLED-MAGIC : 0)
 
-    if name:
-      interval-monitor.remove name
-      if defines and defines.contains JAG-INTERVAL:
-        interval-monitor.add name (Duration.parse defines[JAG-INTERVAL]) defines --delay-first-check
-
     return image
   unreachable
 
 /**
 Callbacks that are scheduled to run at a specific time.
-This is used to kill containers that have deadlines.
+This is used to kill containers that have deadlines and to restart containers with intervals.
 */
 scheduled-callbacks := Schedule
-
-class IntervalMonitor:
-  monitored-containers_ / Map ::= {:}
-  running-containers_ / Set ::= {}
-
-  add name/string interval/Duration defines/Map --delay-first-check/bool=false -> none:
-    monitored-containers_[name] = MonitoredContainer name interval defines
-    first-check-delay := delay-first-check ? interval : (Duration --ms=100)
-    schedule-check_ name interval first-check-delay
-
-  remove name/string -> none:
-    monitored-containers_.remove name
-    running-containers_.remove name
-
-  mark-running name/string -> none:
-    running-containers_.add name
-
-  mark-stopped name/string -> none:
-    running-containers_.remove name
-
-  schedule-check_ name/string interval/Duration delay/Duration=interval -> none:
-    scheduled-callbacks.add delay --callback=::
-      check-and-restart_ name
-
-  check-and-restart_ name/string -> none:
-    container-info := monitored-containers_.get name --if-absent=:
-      return
-    container-id := registry_.id-by-name_.get name --if-absent=:
-      return
-
-    is-running := running-containers_.contains name
-
-    if not is-running:
-      logger.info "restarting container '$name' (interval check)"
-      start-image container-id "restarted" name container-info.defines
-
-    schedule-check_ name container-info.interval
-
-class MonitoredContainer:
-  name/string
-  interval/Duration
-  defines/Map
-
-  constructor .name .interval .defines:
-
-interval-monitor := IntervalMonitor
 
 /**
 Starts the given image.
@@ -360,8 +307,14 @@ start-image_ -> bool
 
   logger.info "$nick $cause$suffix$interval-info"
 
+  start-time := Time.monotonic-us
+  run-number/int := 0
   if name:
-    interval-monitor.mark-running name
+    run-number = registry_.increment-run-counter name
+
+  interval/Duration? := null
+  if defines and defines.contains JAG-INTERVAL:
+    interval = Duration.parse defines[JAG-INTERVAL]
 
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
@@ -372,15 +325,22 @@ start-image_ -> bool
     if cancelation-token:
       scheduled-callbacks.remove cancelation-token
 
-    if name:
-      interval-monitor.mark-stopped name
-
     if code == 0:
       logger.info "$nick stopped"
     else:
       logger.error "$nick stopped - exit code $code"
 
     if on-stopped: on-stopped.call code
+
+    if interval:
+      remaining-us := interval.in-us - (Time.monotonic-us - start-time)
+      scheduled-callbacks.add (Duration --us=remaining-us+1) --callback=::
+        current-run-number := registry_.get-run-counter name
+        if current-run-number == run-number and registry_.id-by-name_.contains name:
+          current-entry := registry_.entry-by-id-string_.get "$image" --if-absent=: null
+          if current-entry:
+            logger.info "restarting container '$name' (interval restart)"
+            start-image image "restarted" name current-entry[1]
 
   if timeout:
     // We schedule a callback to kill the container if it doesn't
@@ -395,7 +355,6 @@ uninstall-image name/string -> none:
   with-timeout --ms=60_000: flash-mutex.do:
     if image := registry_.uninstall name:
       logger.info "container '$name' uninstalled"
-      interval-monitor.remove name
     else:
       logger.error "container '$name' not found"
 
