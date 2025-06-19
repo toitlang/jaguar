@@ -16,12 +16,13 @@ import (
 )
 
 const (
-	JaguarDeviceIDHeader         = "X-Jaguar-Device-ID"
-	JaguarSDKVersionHeader       = "X-Jaguar-SDK-Version"
-	JaguarWifiDisabledHeader     = "X-Jaguar-Wifi-Disabled"
-	JaguarContainerNameHeader    = "X-Jaguar-Container-Name"
-	JaguarContainerTimeoutHeader = "X-Jaguar-Container-Timeout"
-	JaguarCRC32Header            = "X-Jaguar-CRC32"
+	JaguarDeviceIDHeader          = "X-Jaguar-Device-ID"
+	JaguarSDKVersionHeader        = "X-Jaguar-SDK-Version"
+	JaguarWifiDisabledHeader      = "X-Jaguar-Wifi-Disabled"
+	JaguarContainerNameHeader     = "X-Jaguar-Container-Name"
+	JaguarContainerTimeoutHeader  = "X-Jaguar-Container-Timeout"
+	JaguarContainerIntervalHeader = "X-Jaguar-Container-Interval"
+	JaguarCRC32Header             = "X-Jaguar-CRC32"
 )
 
 type Device interface {
