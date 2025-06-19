@@ -14,7 +14,6 @@ jaguar_ / uuid.Uuid ::= containers.current
 
 class ContainerRegistry:
   static KEY_ /string ::= "containers"
-  static RUN-COUNTERS-KEY_ /string ::= "run-counters"
 
   id-by-name_         / Map ::= {:}  // Map<string, uuid.Uuid>
   name-by-id_         / Map ::= {:}  // Map<uuid.Uuid, string>
@@ -24,7 +23,6 @@ class ContainerRegistry:
   constructor:
     entries/Map := {:}
     catch: entries = flash_.get KEY_
-    catch: run-counters_ = flash_.get RUN-COUNTERS-KEY_
 
     // Run through the images actually installed in flash and update the
     // registry accordingly. This involves inventing names for unexpected
@@ -95,7 +93,6 @@ class ContainerRegistry:
     current := run-counters_.get name --if-absent=: 0
     new-count := current + 1
     run-counters_[name] = new-count
-    store_
     return new-count
 
   get-run-counter name/string -> int:
@@ -104,4 +101,3 @@ class ContainerRegistry:
   store_ -> none:
     entries := entry-by-id-string_.map: | _ entry/List | entry[0..2]
     flash_[KEY_] = entries
-    flash_[RUN-COUNTERS-KEY_] = run-counters_
