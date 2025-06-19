@@ -334,8 +334,8 @@ start-image_ -> bool
       remaining-us := interval.in-us - (Time.monotonic-us - start-time)
       scheduled-callbacks.add (Duration --us=remaining-us+1) --callback=::
         current-run-number := registry_.get-run-counter name
-        if current-run-number == run-number and registry_.id-by-name_.contains name:
-          current-entry := registry_.entry-by-id-string_.get "$image" --if-absent=: null
+        if current-run-number == run-number and registry_.contains name:
+          current-entry := registry_.get-entry-by-id image
           if current-entry:
             logger.info "restarting container '$name' (interval restart)"
             start-image image "restarted" name current-entry[1]

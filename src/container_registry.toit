@@ -89,6 +89,12 @@ class ContainerRegistry:
     store_
     return id
 
+  contains name/string -> bool:
+    return id-by-name_.contains name
+
+  get-entry-by-id id/uuid.Uuid -> List?:
+    return entry-by-id-string_.get "$id" --if-absent=: null
+
   increment-run-counter name/string -> int:
     current := run-counters_.get name --if-absent=: 0
     new-count := current + 1
