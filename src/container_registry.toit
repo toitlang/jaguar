@@ -18,7 +18,8 @@ class ContainerRegistry:
   id-by-name_         / Map ::= {:}  // Map<string, uuid.Uuid>
   name-by-id_         / Map ::= {:}  // Map<uuid.Uuid, string>
   entry-by-id-string_ / Map ::= {:}  // Map<string, List>
-  run-counters_       / Map ::= {:}  // Map<string, int> - container name to run counter
+  /** The current revision of the container. Reset to 0 at every boot. */
+  revisions_       / Map ::= {:}  // Map<string, int>
 
   constructor:
     entries/Map := {:}
@@ -96,13 +97,16 @@ class ContainerRegistry:
     return entry-by-id-string_.get "$id" --if-absent=: null
 
   increment-run-counter name/string -> int:
-    current := run-counters_.get name --if-absent=: 0
+    // We don't remove entries from revisions_ when containers are uninstalled,
+    // so that we guarantee that a newer revision of a program still has a newer
+    // revision-number, even if it was uninstalled at some point.
+    current := revisions_.get name --if-absent=: 0
     new-count := current + 1
-    run-counters_[name] = new-count
+    revisions_[name] = new-count
     return new-count
 
-  get-run-counter name/string -> int:
-    return run-counters_.get name --if-absent=: 0
+  revision name/string -> int:
+    return revisions_.get name --if-absent=: 0
 
   store_ -> none:
     entries := entry-by-id-string_.map: | _ entry/List | entry[0..2]

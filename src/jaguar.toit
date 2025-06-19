@@ -302,6 +302,7 @@ start-image_ -> bool
   if name and defines and defines.contains JAG-INTERVAL:
     interval = Duration.parse defines[JAG-INTERVAL]
     interval-info = " (interval: $interval)"
+  assert: not (not name and interval)
 
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
@@ -333,7 +334,7 @@ start-image_ -> bool
     if interval:
       remaining-us := interval.in-us - (Time.monotonic-us - start-time)
       scheduled-callbacks.add (Duration --us=remaining-us+1) --callback=::
-        current-run-number := registry_.get-run-counter name
+        current-run-number := registry_.revision name
         if current-run-number == run-number and registry_.contains name:
           current-entry := registry_.get-entry-by-id image
           if current-entry:
