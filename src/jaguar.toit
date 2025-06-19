@@ -302,7 +302,6 @@ start-image_ -> bool
   if name and defines and defines.contains JAG-INTERVAL:
     interval = Duration.parse defines[JAG-INTERVAL]
     interval-info = " (interval: $interval)"
-  if not name and interval: throw "intervals are only supported for named containers"
 
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
