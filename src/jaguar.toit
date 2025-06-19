@@ -297,9 +297,12 @@ start-image_ -> bool
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is-empty ? "" : " with $defines"
 
+  interval/Duration? := null
   interval-info := ""
   if name and defines and defines.contains JAG-INTERVAL:
-    interval-info = " (interval: $(Duration.parse defines[JAG-INTERVAL]))"
+    interval = Duration.parse defines[JAG-INTERVAL]
+    interval-info = " (interval: $interval)"
+  if not name and interval: throw "intervals are only supported for named containers"
 
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
@@ -311,10 +314,6 @@ start-image_ -> bool
   run-number/int := 0
   if name:
     run-number = registry_.increment-run-counter name
-
-  interval/Duration? := null
-  if defines and defines.contains JAG-INTERVAL:
-    interval = Duration.parse defines[JAG-INTERVAL]
 
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
