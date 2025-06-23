@@ -50,8 +50,7 @@ class ContainerRegistry:
       id-by-name_[name] = id
       name-by-id_[id] = name
       entry-by-id-string_[id-as-string] = [name, defines, id]
-      if name:
-        revisions_[name] = 0
+      if name: revisions_[name] = 0
 
   entries -> Map:
     return entry-by-id-string_.map: | _ entry/List | entry[0]
@@ -81,8 +80,7 @@ class ContainerRegistry:
     name-by-id_[id] = name
     entry-by-id-string_["$id"] = [name, defines, id]
     store_
-    if name:
-      revisions_[name] = (revisions_.get name --if-absent=: 0) + 1
+    if name: revisions_.update name --if-absent=0: it + 1
     return id
 
   uninstall name/string -> uuid.Uuid?:

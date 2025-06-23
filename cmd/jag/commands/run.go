@@ -365,7 +365,7 @@ func sendCodeFromFile(
 					}
 					headersMap[JaguarContainerIntervalHeader] = converted
 				default:
-					return fmt.Errorf("jag.interval must be a duration string (e.g., '30s', '5m', '1h')")
+					return fmt.Errorf("cannot parse jag.interval ('%s') as a duration", converted)
 				}
 			} else {
 				return fmt.Errorf("unsupported Jaguar define: %s", key)
