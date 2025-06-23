@@ -26,15 +26,17 @@ const (
 	// The URL for the style sheet.
 	styleURL = "https://toitlang.github.io/jaguar/device-files/style.css"
 
-	headerDeviceId         = "X-Jaguar-Device-ID"
-	headerSdkVersion       = "X-Jaguar-SDK-Version"
-	headerWifiDisabled     = "X-Jaguar-Wifi-Disabled"
-	headerContainerName    = "X-Jaguar-Container-Name"
-	headerContainerTimeout = "X-Jaguar-Container-Timeout"
+	headerDeviceId          = "X-Jaguar-Device-ID"
+	headerSdkVersion        = "X-Jaguar-SDK-Version"
+	headerWifiDisabled      = "X-Jaguar-Wifi-Disabled"
+	headerContainerName     = "X-Jaguar-Container-Name"
+	headerContainerTimeout  = "X-Jaguar-Container-Timeout"
+	headerContainerInterval = "X-Jaguar-Container-Interval"
 
 	defineJagDisabled = "jag.disabled"
 	defineJagWifi     = "jag.wifi"
 	defineJagTimeout  = "jag.timeout"
+	defineJagInterval = "jag.interval"
 
 	udpIdentifyPort = 1990
 	// Broadcast.
@@ -287,6 +289,11 @@ func extractDefines(r *http.Request) map[string]interface{} {
 		if timeout, err := strconv.Atoi(val); err == nil {
 			defines[defineJagTimeout] = timeout
 		}
+	}
+	if r.Header.Get(headerContainerInterval) != "" {
+		val := r.Header.Get(headerContainerInterval)
+		// Pass the interval string directly.
+		defines[defineJagInterval] = val
 	}
 	return defines
 }

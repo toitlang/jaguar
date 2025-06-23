@@ -18,10 +18,13 @@ class ContainerRegistry:
   id-by-name_         / Map ::= {:}  // Map<string, uuid.Uuid>
   name-by-id_         / Map ::= {:}  // Map<uuid.Uuid, string>
   entry-by-id-string_ / Map ::= {:}  // Map<string, List>
+  /** The current revision of the container. Reset to 0 at every boot. */
+  revisions_       / Map ::= {:}  // Map<string, int>
 
   constructor:
     entries/Map := {:}
     catch: entries = flash_.get KEY_
+
     // Run through the images actually installed in flash and update the
     // registry accordingly. This involves inventing names for unexpected
     // containers found in flash and pruning names for containers that
@@ -47,6 +50,7 @@ class ContainerRegistry:
       id-by-name_[name] = id
       name-by-id_[id] = name
       entry-by-id-string_[id-as-string] = [name, defines, id]
+      if name: revisions_[name] = 0
 
   entries -> Map:
     return entry-by-id-string_.map: | _ entry/List | entry[0]
@@ -76,6 +80,7 @@ class ContainerRegistry:
     name-by-id_[id] = name
     entry-by-id-string_["$id"] = [name, defines, id]
     store_
+    if name: revisions_.update name --if-absent=0: it + 1
     return id
 
   uninstall name/string -> uuid.Uuid?:
@@ -85,7 +90,20 @@ class ContainerRegistry:
     name-by-id_.remove id
     entry-by-id-string_.remove "$id"
     store_
+    // We don't remove entries from revisions_ when containers are uninstalled,
+    // so that we guarantee that a newer revision of a program still has a newer
+    // revision-number, even if it was uninstalled at some point.
     return id
+
+  contains name/string -> bool:
+    return id-by-name_.contains name
+
+  get-entry-by-id id/uuid.Uuid -> List?:
+    return entry-by-id-string_.get "$id" --if-absent=: null
+
+  revision name/string -> int:
+    if name == "": return 0
+    return revisions_.get name
 
   store_ -> none:
     entries := entry-by-id-string_.map: | _ entry/List | entry[0..2]

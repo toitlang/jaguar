@@ -29,6 +29,7 @@ interface Endpoint:
 // Defines recognized by Jaguar for /run and /install requests.
 JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
+JAG-INTERVAL ::= "jag.interval"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
 flash-mutex ::= monitor.Mutex
@@ -234,12 +235,13 @@ flash-image image-size/int reader/reader.Reader name/string? defines/Map --crc32
         throw "CRC32 mismatch"
       logger.debug "installing container image with $image-size bytes -> wrote $written-size bytes"
       writer.commit --data=(name != null ? JAGUAR-INSTALLED-MAGIC : 0)
+
     return image
   unreachable
 
 /**
 Callbacks that are scheduled to run at a specific time.
-This is used to kill containers that have deadlines.
+This is used to kill containers that have deadlines and to restart containers with intervals.
 */
 scheduled-callbacks := Schedule
 
@@ -295,11 +297,23 @@ start-image_ -> bool
   nick := name ? "container '$name'" : "program $image"
   suffix := defines.is-empty ? "" : " with $defines"
 
+  interval/Duration? := null
+  interval-info := ""
+  if name and defines and defines.contains JAG-INTERVAL:
+    interval = Duration.parse defines[JAG-INTERVAL]
+    interval-info = " (interval: $interval)"
+  assert: not (not name and interval)
+
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
     return false
 
-  logger.info "$nick $cause$suffix"
+  logger.info "$nick $cause$suffix$interval-info"
+
+  start-time := Time.monotonic-us
+  // Remember the revision of the container, to detect whether a container
+  // was changed while we were running.
+  revision := name ? (registry_.revision name) : 0
 
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
@@ -316,6 +330,16 @@ start-image_ -> bool
       logger.error "$nick stopped - exit code $code"
 
     if on-stopped: on-stopped.call code
+
+    if interval:
+      remaining-us := interval.in-us - (Time.monotonic-us - start-time)
+      scheduled-callbacks.add (Duration --us=remaining-us+1) --callback=::
+        current-revision := registry_.revision name
+        if current-revision == revision and registry_.contains name:
+          current-entry := registry_.get-entry-by-id image
+          if current-entry:
+            logger.info "restarting container '$name' (interval restart)"
+            start-image image "restarted" name current-entry[1]
 
   if timeout:
     // We schedule a callback to kill the container if it doesn't

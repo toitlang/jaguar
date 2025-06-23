@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -83,7 +84,10 @@ func ContainerInstallCmd() *cobra.Command {
 			"     Disables the HTTP server on the device.\n" +
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
-			"     If jag.disabled is enabled, then the default is 10 seconds.",
+			"     If jag.disabled is enabled, then the default is 10 seconds.\n" +
+			"	'-D jag.interval' (or --interval):Interval for container starts\n" +
+			"     (e.g., '30s', '5m', '1h'). When specified, Jaguar will start the\n" +
+			"     container at the specified interval if it has previously exited.",
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -132,6 +136,25 @@ func ContainerInstallCmd() *cobra.Command {
 				return err
 			}
 
+			if cmd.Flags().Changed("interval") {
+				intervalStr, err := cmd.Flags().GetString("interval")
+				if err != nil {
+					return err
+				}
+				if intervalStr != "" {
+					_, err := time.ParseDuration(intervalStr)
+					if err != nil {
+						return fmt.Errorf("invalid interval format '%s': %w", intervalStr, err)
+					}
+
+					if defines == nil {
+						defines = make(map[string]interface{})
+					}
+
+					defines["jag.interval"] = intervalStr
+				}
+			}
+
 			return InstallFile(cmd, device, sdk, name, entrypoint, defines, programAssetsPath, optimizationLevel)
 		},
 	}
@@ -140,6 +163,7 @@ func ContainerInstallCmd() *cobra.Command {
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control container on device")
 	cmd.Flags().String("assets", "", "attach assets to the container")
 	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
+	cmd.Flags().String("interval", "", "interval for container starts")
 	return cmd
 }
 
