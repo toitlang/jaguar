@@ -311,9 +311,9 @@ start-image_ -> bool
   logger.info "$nick $cause$suffix$interval-info"
 
   start-time := Time.monotonic-us
-  run-number/int := 0
-  if name:
-    run-number = registry_.increment-run-counter name
+  // Remember the revision of the container, to detect whether a container
+  // was changed while we were running.
+  revision := name ? (registry_.revision name) : 0
 
   // The token we get when registering a timeout callback.
   // Once the program has terminated we need to cancel the callback.
@@ -334,8 +334,8 @@ start-image_ -> bool
     if interval:
       remaining-us := interval.in-us - (Time.monotonic-us - start-time)
       scheduled-callbacks.add (Duration --us=remaining-us+1) --callback=::
-        current-run-number := registry_.revision name
-        if current-run-number == run-number and registry_.contains name:
+        current-revision := registry_.revision name
+        if current-revision == revision and registry_.contains name:
           current-entry := registry_.get-entry-by-id image
           if current-entry:
             logger.info "restarting container '$name' (interval restart)"

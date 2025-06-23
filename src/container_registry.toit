@@ -50,6 +50,8 @@ class ContainerRegistry:
       id-by-name_[name] = id
       name-by-id_[id] = name
       entry-by-id-string_[id-as-string] = [name, defines, id]
+      if name:
+        revisions_[name] = 0
 
   entries -> Map:
     return entry-by-id-string_.map: | _ entry/List | entry[0]
@@ -79,6 +81,8 @@ class ContainerRegistry:
     name-by-id_[id] = name
     entry-by-id-string_["$id"] = [name, defines, id]
     store_
+    if name:
+      revisions_[name] = (revisions_.get name --if-absent=: 0) + 1
     return id
 
   uninstall name/string -> uuid.Uuid?:
@@ -88,6 +92,9 @@ class ContainerRegistry:
     name-by-id_.remove id
     entry-by-id-string_.remove "$id"
     store_
+    // We don't remove entries from revisions_ when containers are uninstalled,
+    // so that we guarantee that a newer revision of a program still has a newer
+    // revision-number, even if it was uninstalled at some point.
     return id
 
   contains name/string -> bool:
@@ -96,17 +103,9 @@ class ContainerRegistry:
   get-entry-by-id id/uuid.Uuid -> List?:
     return entry-by-id-string_.get "$id" --if-absent=: null
 
-  increment-run-counter name/string -> int:
-    // We don't remove entries from revisions_ when containers are uninstalled,
-    // so that we guarantee that a newer revision of a program still has a newer
-    // revision-number, even if it was uninstalled at some point.
-    current := revisions_.get name --if-absent=: 0
-    new-count := current + 1
-    revisions_[name] = new-count
-    return new-count
-
   revision name/string -> int:
-    return revisions_.get name --if-absent=: 0
+    if name == "": return 0
+    return revisions_.get name
 
   store_ -> none:
     entries := entry-by-id-string_.map: | _ entry/List | entry[0..2]

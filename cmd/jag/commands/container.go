@@ -160,9 +160,8 @@ func ContainerInstallCmd() *cobra.Command {
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control container on device")
 	cmd.Flags().String("assets", "", "attach assets to the container")
 	cmd.Flags().IntP("optimization-level", "O", -1, "optimization level")
-	cmd.Flags().String("interval", "", "check interval for container monitoring (e.g., '30s', '5m', '1h'). "+
-		"When specified, Jaguar will periodically check if the container is running and restart it if it has stopped. "+
-		"Useful for services that should run continuously.")
+	cmd.Flags().String("interval", "", "check interval for container starts (e.g., '30s', '5m', '1h'). "+
+		"When specified, Jaguar will start the container at the specified interval if it has previously exited.")
 	return cmd
 }
 

@@ -292,7 +292,7 @@ func extractDefines(r *http.Request) map[string]interface{} {
 	}
 	if r.Header.Get(headerContainerInterval) != "" {
 		val := r.Header.Get(headerContainerInterval)
-		// Pass the interval string directly
+		// Pass the interval string directly.
 		defines[defineJagInterval] = val
 	}
 	return defines
