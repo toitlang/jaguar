@@ -283,6 +283,14 @@ start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
       wifi-manager.enable-network
 
 /**
+A map of started containers.
+We have this map, so that the containers aren't garbage collected, which would
+  make them stop receiving notifications (specifically, the on-stopped
+  notification) from the system.
+*/
+started-containers_/Map ::= {:}
+
+/**
 Starts the given image, unless a firmware upgrade is pending.
 
 Returns whether the image was started or not.
@@ -319,6 +327,7 @@ start-image_ -> bool
 
   // Start the image, but don't wait for it to run to completion.
   container := containers.start image --on-stopped=:: | code/int |
+    started-containers_.remove image
     if cancelation-token:
       scheduled-callbacks.remove cancelation-token
 
@@ -338,6 +347,7 @@ start-image_ -> bool
           if current-entry:
             logger.info "restarting container '$name' (interval restart)"
             start-image image "restarted" name current-entry[1]
+  started-containers_[image] = container
 
   if timeout:
     // We schedule a callback to kill the container if it doesn't
