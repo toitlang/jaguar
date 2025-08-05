@@ -298,17 +298,15 @@ start-image_ -> bool
   suffix := defines.is-empty ? "" : " with $defines"
 
   interval/Duration? := null
-  interval-info := ""
   if name and defines and defines.contains JAG-INTERVAL:
     interval = Duration.parse defines[JAG-INTERVAL]
-    interval-info = " (interval: $interval)"
   assert: not (not name and interval)
 
   if firmware-is-upgrade-pending:
     logger.info "Not running $nick because firmware is pending upgrade"
     return false
 
-  logger.info "$nick $cause$suffix$interval-info"
+  logger.info "$nick $cause$suffix"
 
   start-time := Time.monotonic-us
   // Remember the revision of the container, to detect whether a container
