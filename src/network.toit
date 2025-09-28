@@ -70,7 +70,7 @@ class EndpointHttp implements Endpoint:
             socket = null
       ]
 
-      if not (device.config.get JAG-DISABLE-UDP) == true:
+      if not device.config.get JAG-DISABLE-UDP:
         tasks.add (:: broadcast-identity network device address)
 
       Task.group --required=1 tasks
