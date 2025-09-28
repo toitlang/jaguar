@@ -30,6 +30,7 @@ interface Endpoint:
 JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
 JAG-INTERVAL ::= "jag.interval"
+JAG-DISABLE-UDP ::= "jag.disable-udp"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
 flash-mutex ::= monitor.Mutex
