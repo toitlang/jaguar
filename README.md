@@ -167,7 +167,7 @@ jag firmware update
 ```
 
 Updating the firmware will uninstall all containers and stop running applications, so those have to
-be transfered to the device again after the update.
+be transferred to the device again after the update.
 
 # Visual Studio Code
 The Toit SDK used by Jaguar comes with support for [Visual Studio Code](https://code.visualstudio.com/download).
