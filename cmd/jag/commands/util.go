@@ -469,61 +469,77 @@ func (s *shortEncoder) Encode(v interface{}) error {
 	return nil
 }
 
-func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
-	var wifiSSID string
-	var err error
-
+func getWifiCredentials(cmd *cobra.Command) ([]wifiCredential, error) {
 	cfg, err := directory.GetUserConfig()
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
+
+	stored := loadWifiCredentials(cfg)
 
 	if cmd.Flags().Changed("wifi-ssid") {
-		wifiSSID, err = cmd.Flags().GetString("wifi-ssid")
+		ssid, err := cmd.Flags().GetString("wifi-ssid")
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
-	} else if v, ok := os.LookupEnv(directory.WifiSSIDEnv); ok {
-		wifiSSID = v
-	} else if cfg.IsSet(WifiCfgKey + "." + WifiSSIDCfgKey) {
-		wifiSSID = cfg.GetString(WifiCfgKey + "." + WifiSSIDCfgKey)
-	} else {
-		fmt.Printf("Enter WiFi network (SSID): ")
-		wifiSSID, err = ReadLine()
+		password, err := cmd.Flags().GetString("wifi-password")
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
+		return []wifiCredential{{SSID: ssid, Password: password}}, nil
 	}
 
-	var wifiPassword string
-	if cmd.Flags().Changed("wifi-password") {
-		wifiPassword, err = cmd.Flags().GetString("wifi-password")
-		if err != nil {
-			return "", "", err
-		}
-	} else if v, ok := os.LookupEnv(directory.WifiPasswordEnv); ok {
-		wifiPassword = v
-	} else if cfg.IsSet(WifiCfgKey + "." + WifiPasswordCfgKey) {
-		wifiPassword = cfg.GetString(WifiCfgKey + "." + WifiPasswordCfgKey)
-	} else {
-		fmt.Printf("Enter WiFi password for '%s': ", wifiSSID)
-		pw := ""
-		pwBytes, err := ReadPassword()
-		if err == nil {
-			pw = string(pwBytes)
-			fmt.Printf("\n")
+	if ssid, ok := os.LookupEnv(directory.WifiSSIDEnv); ok {
+		password := ""
+		if pw, ok := os.LookupEnv(directory.WifiPasswordEnv); ok {
+			password = pw
+		} else if cred, found := findWifiCredential(stored, ssid); found {
+			password = cred.Password
 		} else {
-			// Fall back to reading the password without hiding it.
-			// On Windows git-bash, ReadPassword() might not work.
-			pw, err = ReadLine()
+			password, err = promptForWifiPassword(ssid)
 			if err != nil {
-				fmt.Printf("\n")
-				return "", "", err
+				return nil, err
 			}
 		}
-		wifiPassword = pw
+		return []wifiCredential{{SSID: ssid, Password: password}}, nil
 	}
-	return wifiSSID, wifiPassword, nil
+
+	if len(stored) > 0 {
+		return stored, nil
+	}
+
+	ssid, err := promptForWifiSSID()
+	if err != nil {
+		return nil, err
+	}
+	password, err := promptForWifiPassword(ssid)
+	if err != nil {
+		return nil, err
+	}
+	return []wifiCredential{{SSID: ssid, Password: password}}, nil
+}
+
+func promptForWifiSSID() (string, error) {
+	fmt.Printf("Enter WiFi network (SSID): ")
+	return ReadLine()
+}
+
+func promptForWifiPassword(ssid string) (string, error) {
+	fmt.Printf("Enter WiFi password for '%s': ", ssid)
+	pwBytes, err := ReadPassword()
+	if err == nil {
+		fmt.Printf("\n")
+		return string(pwBytes), nil
+	}
+
+	// Fall back to reading the password without hiding it.
+	// On Windows git-bash, ReadPassword() might not work.
+	pw, readErr := ReadLine()
+	fmt.Printf("\n")
+	if readErr != nil {
+		return "", readErr
+	}
+	return pw, nil
 }
 
 func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) {

@@ -7,6 +7,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
@@ -16,6 +17,7 @@ const (
 	WifiCfgKey         = "wifi"
 	WifiSSIDCfgKey     = "ssid"
 	WifiPasswordCfgKey = "password"
+	WifiNetworksCfgKey = "networks"
 )
 
 func ConfigCmd(info Info) *cobra.Command {
@@ -88,7 +90,10 @@ func ConfigWifiCmd() *cobra.Command {
 When Jaguar flashes a device ('jag flash'), or updates the firmware
 ('jag firmware update'), then it will use the stored credentials.
 
-Without any stored credentials, Jaguar will prompt for the WiFi
+You can store multiple WiFi networks. Jaguar will try them in the
+order they are listed.
+
+Without any stored credentials, Jaguar will prompt for WiFi
 credentials whenever necessary.`,
 		Args: cobra.NoArgs,
 	}
@@ -102,20 +107,52 @@ credentials whenever necessary.`,
 				if err != nil {
 					return err
 				}
-				if cfg.IsSet(WifiCfgKey + "." + WifiSSIDCfgKey) {
-					delete(cfg.Get(WifiCfgKey).(map[string]interface{}), WifiSSIDCfgKey)
-				}
-				if cfg.IsSet(WifiCfgKey + "." + WifiPasswordCfgKey) {
-					delete(cfg.Get(WifiCfgKey).(map[string]interface{}), WifiPasswordCfgKey)
-				}
+				saveWifiCredentials(cfg, nil)
 				return directory.WriteConfig(cfg)
 			},
 		},
 	)
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "list",
+			Short: "Lists stored WiFi credentials",
+			Args:  cobra.NoArgs,
+			RunE: func(_ *cobra.Command, _ []string) error {
+				cfg, err := directory.GetUserConfig()
+				if err != nil {
+					return err
+				}
+				creds := loadWifiCredentials(cfg)
+				if len(creds) == 0 {
+					fmt.Println("No stored WiFi credentials.")
+					return nil
+				}
+				for idx, cred := range creds {
+					password := "(empty)"
+					if cred.Password != "" {
+						maskedLength := len(cred.Password)
+						if maskedLength > 8 {
+							maskedLength = 8
+						}
+						password = strings.Repeat("*", maskedLength)
+					}
+					fmt.Printf("[%d] SSID: %s\tPassword: %s\n", idx+1, cred.SSID, password)
+				}
+				return nil
+			},
+		},
+	)
 
-	setCmd := &cobra.Command{
-		Use:   "set",
-		Short: "Sets the WiFi SSID and password",
+	addCmd := &cobra.Command{
+		Use:   "add",
+		Short: "Adds or updates WiFi credentials",
+		Long: `Adds a WiFi network to the stored credentials.
+
+If a network with the same SSID already exists, its password will be
+updated. Otherwise, the network is added to the list.
+
+Devices will try networks in the order they were added, prioritizing
+networks that are currently visible during WiFi scanning.`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := directory.GetUserConfig()
@@ -127,14 +164,79 @@ credentials whenever necessary.`,
 			if err != nil {
 				return err
 			}
-			cfg.Set(WifiCfgKey+"."+WifiSSIDCfgKey, ssid)
+
+			password, err := cmd.Flags().GetString("wifi-password")
+			if err != nil {
+				return err
+			}
+
+			creds := loadWifiCredentials(cfg)
+			creds = upsertWifiCredential(creds, wifiCredential{SSID: ssid, Password: password})
+			saveWifiCredentials(cfg, creds)
+			return directory.WriteConfig(cfg)
+		},
+	}
+	addCmd.Flags().String("wifi-ssid", os.Getenv(directory.WifiSSIDEnv), "WiFi network name")
+	addCmd.Flags().String("wifi-password", os.Getenv(directory.WifiPasswordEnv), "WiFi password")
+	addCmd.MarkFlagRequired("wifi-ssid")
+	addCmd.MarkFlagRequired("wifi-password")
+	cmd.AddCommand(addCmd)
+
+	removeCmd := &cobra.Command{
+		Use:   "remove",
+		Short: "Removes stored WiFi credentials",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := directory.GetUserConfig()
+			if err != nil {
+				return err
+			}
+
+			ssid, err := cmd.Flags().GetString("wifi-ssid")
+			if err != nil {
+				return err
+			}
+
+			creds := loadWifiCredentials(cfg)
+			updated, removed := removeWifiCredential(creds, ssid)
+			if !removed {
+				return fmt.Errorf("wifi network '%s' not found", strings.TrimSpace(ssid))
+			}
+			saveWifiCredentials(cfg, updated)
+			return directory.WriteConfig(cfg)
+		},
+	}
+	removeCmd.Flags().String("wifi-ssid", "", "WiFi network name to remove")
+	removeCmd.MarkFlagRequired("wifi-ssid")
+	cmd.AddCommand(removeCmd)
+
+	setCmd := &cobra.Command{
+		Use:   "set",
+		Short: "Sets a single WiFi network (replaces all existing entries)",
+		Long: `Sets WiFi credentials and replaces any previously stored networks.
+
+This command clears all existing WiFi networks and stores only the
+provided SSID and password. For backward compatibility, this matches
+the behavior of the previous WiFi configuration system.
+
+To add a network without removing existing ones, use 'jag config wifi add'.`,
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := directory.GetUserConfig()
+			if err != nil {
+				return err
+			}
+
+			ssid, err := cmd.Flags().GetString("wifi-ssid")
+			if err != nil {
+				return err
+			}
 
 			pass, err := cmd.Flags().GetString("wifi-password")
 			if err != nil {
 				return err
 			}
-			cfg.Set(WifiCfgKey+"."+WifiPasswordCfgKey, pass)
-
+			saveWifiCredentials(cfg, []wifiCredential{{SSID: ssid, Password: pass}})
 			return directory.WriteConfig(cfg)
 		},
 	}
