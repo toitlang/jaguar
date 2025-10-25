@@ -74,7 +74,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 
 			// We get a new ID for the device, so entries in the device flash stored
 			// by an older version are invalidated.
-			return withFirmware(cmd, args, device, func(newID string, envelopeFile *os.File, config map[string]interface{}) error {
+			return withFirmware(cmd, args, nil, device, func(newID string, envelopeFile *os.File, config map[string]interface{}) error {
 
 				firmwareBin, err := ExtractFirmwareBin(ctx, sdk, envelopeFile.Name(), config)
 				if err != nil {
@@ -109,13 +109,13 @@ func FirmwareUpdateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
-	addFirmwareFlashFlags(cmd, "", "new name of the device, if given")
+	addFirmwareFlashFlags(cmd, "new name of the device, if given")
 	return cmd
 }
 
 func FirmwareExtractCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "extract [envelope]",
+		Use:   "extract <envelope>",
 		Short: "Build the firmware image of a Jaguar device",
 		Long: "Build the firmware image of a Jaguar device, for flashing, Wokwi, or QEMU." +
 			"\n" +
@@ -127,7 +127,7 @@ func FirmwareExtractCmd() *cobra.Command {
 			"\n" +
 			"To run the image go to https://wokwi.com/projects/new/esp32, then\n" +
 			"press F1 and run the command \"Upload Firmware and Start Simulation\".\n",
-		Args:         cobra.MaximumNArgs(1),
+		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -140,7 +140,7 @@ func FirmwareExtractCmd() *cobra.Command {
 				return fmt.Errorf("missing output file")
 			}
 
-			return withFirmware(cmd, args, nil, func(newID string, envelopeFile *os.File, config map[string]interface{}) error {
+			return withFirmware(cmd, args, nil, nil, func(newID string, envelopeFile *os.File, config map[string]interface{}) error {
 
 				sdk, err := GetSDK(ctx)
 				if err != nil {
@@ -164,7 +164,7 @@ func FirmwareExtractCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
-	addFirmwareFlashFlags(cmd, "esp32", "name of the device")
+	addFirmwareFlashFlags(cmd, "name of the device")
 	cmd.Flags().StringP("output", "o", "", "write the firmware image to a file")
 	return cmd
 }

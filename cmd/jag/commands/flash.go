@@ -5,9 +5,11 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -43,7 +45,10 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			return withFirmware(cmd, args, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
+			probeChipType := func(ctx context.Context, sdk *SDK) (string, error) {
+				return ProbeChipType(ctx, port, sdk)
+			}
+			return withFirmware(cmd, args, probeChipType, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
 
 				sdk, err := GetSDK(ctx)
 				if err != nil {
@@ -83,6 +88,38 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
 	cmd.Flags().Bool("skip-port-check", false, "accept the given port without checking")
-	addFirmwareFlashFlags(cmd, "esp32", "name for the device, if not set a name will be auto generated")
+	addFirmwareFlashFlags(cmd, "name for the device, if not set a name will be auto generated")
 	return cmd
+}
+
+func ProbeChipType(ctx context.Context, port string, sdk *SDK) (string, error) {
+	// Get the esptool from the SDK.
+	cmd := sdk.EspTool(ctx, "--port", port, "chip-id")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to probe chip type: %w: %s", err, string(output))
+	}
+	// Parse the output to find the chip type.
+	// There should be a string "Connected to ESP32 on ..."
+	outputStr := string(output)
+	if len(outputStr) == 0 {
+		return "", fmt.Errorf("failed to probe chip type: empty output")
+	}
+	// Find the "Connected to ".
+	prefix := "Connected to "
+	start := strings.Index(outputStr, prefix)
+	if start >= 0 {
+		// Find the " on ".
+		start += len(prefix)
+		end := strings.Index(outputStr[start:], " on ")
+		if end >= 0 {
+			// Extract the chip type.
+			chip := outputStr[start : start+end]
+			// Lower case, and remove '-'.
+			chip = strings.ToLower(strings.ReplaceAll(chip, "-", ""))
+			return chip, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to probe chip type: unexpected output: %s", outputStr)
 }
