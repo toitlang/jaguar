@@ -46,7 +46,17 @@ func FlashCmd() *cobra.Command {
 			}
 
 			probeChipType := func(ctx context.Context, sdk *SDK) (string, error) {
-				return ProbeChipType(ctx, port, sdk)
+				result, err := ProbeChipType(ctx, port, sdk)
+				if err == nil {
+					if exists, err := PortExists(port); err != nil || !exists {
+						// Some boards leave flash mode and require manual intervention after
+						// ever interaction. Tell the user how to work around this.
+						fmt.Println("Note: Your board disappeared after probing the chip type.\n" +
+							"This can happen on some boards that require manual intervention to enter flash mode.\n" +
+							"Use '--chip=" + result + "' to avoid this probe step in the future.")
+					}
+				}
+				return result, err
 			}
 			return withFirmware(cmd, args, probeChipType, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
 
