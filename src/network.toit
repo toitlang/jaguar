@@ -236,7 +236,7 @@ class EndpointHttp implements Endpoint:
     if headers.single HEADER-DISABLE-UDP:
       defines[JAG-DISABLE-UDP] = true
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
-      timeout := int.parse header --on-error=: null
+      timeout := int.parse header --if-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout
     if header := headers.single HEADER-CONTAINER-INTERVAL:
       defines[JAG-INTERVAL] = header
