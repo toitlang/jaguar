@@ -129,7 +129,7 @@ func ProbeChipType(ctx context.Context, port string, sdk *SDK) (string, error) {
 		}
 		// Find the space or newline following the chip type.
 		start += len(prefix)
-		end := strings.IndexAny(outputStr[start:], " \n")
+		end := strings.IndexAny(outputStr[start:], " \n\r")
 		if end >= 0 {
 			// Extract the chip type.
 			chip := outputStr[start : start+end]
