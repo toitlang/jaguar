@@ -170,29 +170,31 @@ func (s *SDK) FirmwareTool(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "firmware"}, args...)...)
 }
 
+type EspToolOutput struct {
+	Command []string `json:"command"`
+	Version string   `json:"version"`
+}
+
 func (s *SDK) EspToolCommand(ctx context.Context) ([]string, error) {
 	args := []string{"--output-format", "json", "tool", "firmware", "tool", "esptool", "-e", "unused"}
 	out, err := exec.CommandContext(ctx, s.ToitPath(), args...).Output()
 	if err != nil {
 		return nil, err
 	}
-	var result map[string]interface{}
+	var result EspToolOutput
 	if err := json.Unmarshal(out, &result); err != nil {
 		return nil, err
 	}
-	command, ok := result["command"].([]string)
-	if !ok {
-		return nil, fmt.Errorf("esptool path not found in output")
-	}
+	command := result.Command
 	return command, nil
 }
 
-func (s *SDK) EspTool(ctx context.Context, args ...string) *exec.Cmd {
+func (s *SDK) EspTool(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	esptool_command, err := s.EspToolCommand(ctx)
 	if err != nil {
-		return exec.CommandContext(ctx, "esptool.py", args...)
+		return nil, err
 	}
-	return exec.CommandContext(ctx, esptool_command[0], append(esptool_command[1:], args...)...)
+	return exec.CommandContext(ctx, esptool_command[0], append(esptool_command[1:], args...)...), nil
 }
 
 func (s *SDK) SnapshotToImage(ctx context.Context, args ...string) *exec.Cmd {

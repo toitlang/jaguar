@@ -104,7 +104,10 @@ func FlashCmd() *cobra.Command {
 
 func ProbeChipType(ctx context.Context, port string, sdk *SDK) (string, error) {
 	// Get the esptool from the SDK.
-	cmd := sdk.EspTool(ctx, "--port", port, "chip-id")
+	cmd, err := sdk.EspTool(ctx, "--port", port, "chip_id")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve esptool command: %w", err)
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to probe chip type: %w: %s", err, string(output))
@@ -115,21 +118,38 @@ func ProbeChipType(ctx context.Context, port string, sdk *SDK) (string, error) {
 	if len(outputStr) == 0 {
 		return "", fmt.Errorf("failed to probe chip type: empty output")
 	}
-	// Find the "Connected to ".
-	prefix := "Connected to "
+	// The esptool emits a line like "Chip is ESP32-C3 (...)".
+	// After updating the esptool, the line will be slightly different
+	//   ("Connected to ESP32-C3 on ...").
+	prefix := "Detecting chip type... "
 	start := strings.Index(outputStr, prefix)
-	if start >= 0 {
-		// Find the " on ".
+	for {
+		if start < 0 {
+			break
+		}
+		// Find the space or newline following the chip type.
 		start += len(prefix)
-		end := strings.Index(outputStr[start:], " on ")
+		end := strings.IndexAny(outputStr[start:], " \n")
 		if end >= 0 {
 			// Extract the chip type.
 			chip := outputStr[start : start+end]
 			// Lower case, and remove '-'.
 			chip = strings.ToLower(strings.ReplaceAll(chip, "-", ""))
+			if chip == "unsupported" {
+				// The esptool might first hit the "Unsupported detection protocol", but it
+				// will switch to a different protocol and then manage to extract the chip type.
+				// Just try again from this position.
+				nextPos := strings.Index(outputStr[start+end:], prefix)
+				if nextPos < 0 {
+					break
+				}
+				start += end + nextPos
+				continue
+			}
+
 			return chip, nil
 		}
 	}
 
-	return "", fmt.Errorf("failed to probe chip type: unexpected output: %s", outputStr)
+	return "", fmt.Errorf("failed to probe chip type: unexpected output: %s\nYou can use '--chip=<chip>' to skip this probe step in the future.", outputStr)
 }
