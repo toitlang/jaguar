@@ -1,0 +1,17 @@
+Source: jaguar
+Section: devel
+Priority: optional
+Maintainer: Toitware ApS <contact@toit.io>
+Build-Depends: debhelper-compat (= 13), golang-go (>= 1.16)
+Standards-Version: 4.5.0
+Homepage: https://github.com/toitlang/jaguar
+
+Package: jaguar
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates
+Description: Live reloading for your ESP32
+ Jaguar enables live reloading of Toit code when developing for the
+ ESP32, a popular microcontroller.
+ .
+ Develop, update, and restart your code in less than two seconds via WiFi.
+ Use the really fast development cycle to iterate quickly and learn fast!
