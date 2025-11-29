@@ -210,7 +210,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: jag-deb
-          path: ../jag_*.deb
+          path: ../jaguar_*.deb
 
       - name: Upload Deb release file
         if: github.event_name == 'release'
