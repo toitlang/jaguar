@@ -195,6 +195,34 @@ jobs:
           tag: ${{ github.event.release.tag_name }}
           overwrite: true
 
+  build_deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build Deb Package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential debhelper golang git
+          dpkg-buildpackage -b -us -uc
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: jag-deb
+          path: ../jag_*.deb
+
+      - name: Upload Deb release file
+        if: github.event_name == 'release'
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ../jag_*.deb
+          file_glob: true
+          tag: ${{ github.event.release.tag_name }}
+          overwrite: true
+
+
   sign_jag_macos:
     runs-on: macos-latest
     needs: [build_jag]
