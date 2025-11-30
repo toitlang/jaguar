@@ -9,9 +9,8 @@ Homepage: https://github.com/toitlang/jaguar
 Package: jaguar
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates
-Description: Live reloading for your ESP32
- Jaguar enables live reloading of Toit code when developing for the
- ESP32, a popular microcontroller.
- .
- Develop, update, and restart your code in less than two seconds via WiFi.
- Use the really fast development cycle to iterate quickly and learn fast!
+Description: Live-update runtime for Toit programs on ESP32 devices
+ A runtime service for ESP32 microcontrollers that enables
+ wireless deployment of Toit applications. Jaguar provides an HTTP-based
+ mechanism for pushing new versions of programs directly to the device,
+ eliminating the need for re-flashing firmware via serial.
