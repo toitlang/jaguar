@@ -60,7 +60,6 @@ yay install jaguar-bin
 For Debian/Ubuntu based systems, you can download the `.deb` package from the [releases page](https://github.com/toitlang/jaguar/releases) and install it:
 ``` sh
 sudo dpkg -i jaguar_*.deb
-sudo apt-get install -f # To install dependencies if needed
 ```
 
 As alternative to these package managers, we also offer precompiled binaries for download:
