@@ -200,10 +200,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Build Deb Package
-        run: |
+      - name: Install dependencies
           sudo apt-get update
           sudo apt-get install -y build-essential debhelper golang git
+
+      - name: Build Debian package
+        run: |
           dpkg-buildpackage -b -us -uc
 
       - name: Upload artifacts
