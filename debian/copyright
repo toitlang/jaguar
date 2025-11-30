@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Jaguar
-Upstream-Contact: Toit Team <contact@toit.io>
+Upstream-Contact: Toit contributors <contact@toit.io>
 Source: https://github.com/toitlang/jaguar
 
 Files: *
