@@ -209,6 +209,10 @@ jobs:
         run: |
           dpkg-buildpackage -b -us -uc
 
+      - name: Move .deb file
+        run: |
+          mv ../jaguar_*.deb .
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
