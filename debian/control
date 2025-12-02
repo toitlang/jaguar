@@ -1,0 +1,16 @@
+Source: jaguar
+Section: devel
+Priority: optional
+Maintainer: Toit contributors <contact@toit.io>
+Build-Depends: debhelper-compat (= 13), golang-go (>= 1.16)
+Standards-Version: 4.5.0
+Homepage: https://github.com/toitlang/jaguar
+
+Package: jaguar
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates
+Description: Live-update runtime for Toit programs on ESP32 devices
+ A runtime service for ESP32 microcontrollers that enables
+ wireless deployment of Toit applications. Jaguar provides an HTTP-based
+ mechanism for pushing new versions of programs directly to the device,
+ eliminating the need for re-flashing firmware via serial.
