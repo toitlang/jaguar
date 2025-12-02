@@ -201,6 +201,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install dependencies
+        run: |
           sudo apt-get update
           sudo apt-get install -y build-essential debhelper golang git
 
@@ -208,18 +209,22 @@ jobs:
         run: |
           dpkg-buildpackage -b -us -uc
 
+      - name: Move .deb file
+        run: |
+          mv ../jaguar_*.deb .
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
           name: jag-deb
-          path: ../jaguar_*.deb
+          path: jaguar_*.deb
 
       - name: Upload Deb release file
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ../jag_*.deb
+          file: jaguar_*.deb
           file_glob: true
           tag: ${{ github.event.release.tag_name }}
           overwrite: true
