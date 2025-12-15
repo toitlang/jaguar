@@ -253,7 +253,7 @@ jobs:
           chmod +x build/macos/jag
 
       - name: Sign and notarize
-        uses: toitlang/action-macos-sign-notarize@v1.2.1
+        uses: toitlang/action-macos-sign-notarize@v1.3.0
         with:
           certificate: ${{ secrets.MACOS_CERTIFICATE }}
           certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -275,7 +275,7 @@ jobs:
               empty
 
       - name: Sign DMG
-        uses: toitlang/action-macos-sign-notarize@v1.2.1
+        uses: toitlang/action-macos-sign-notarize@v1.3.0
         with:
           certificate: ${{ secrets.MACOS_CERTIFICATE }}
           certificate-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
