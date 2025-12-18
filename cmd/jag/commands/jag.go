@@ -88,7 +88,7 @@ func JagCmd(info Info, isReleaseBuild bool) *cobra.Command {
 		WatchCmd(),
 		PortCmd(),
 		ToitCmd(),
-		PkgCmd(info),
+		PkgCmd(),
 		configCmd,
 		VersionCmd(info, isReleaseBuild),
 	)
