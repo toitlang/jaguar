@@ -5,31 +5,71 @@
 package commands
 
 import (
-	"context"
+	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/toitlang/jaguar/cmd/jag/directory"
-	"github.com/toitlang/tpkg/commands"
-	"github.com/toitlang/tpkg/config/store"
-	"github.com/toitlang/tpkg/pkg/tracking"
 )
 
-func PkgCmd(info Info) *cobra.Command {
-	track := func(ctx context.Context, te *tracking.Event) error {
-		// We've already handled the necessary Jaguar analytics, so we take
-		// care to ignore any additional attempts to track usage.
-		return nil
+func PkgCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pkg",
+		Short: "Run 'toit pkg' commands through Jaguar",
+		Long: "Run 'toit pkg' of the downloaded 'toit' executable with the given arguments.\n\n" +
+			"Calling 'jag pkg --help' provides the help of 'toit pkg'.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
+			ctx := cmd.Context()
+			sdk, err := GetSDK(ctx)
+			if err != nil {
+				return err
+			}
+
+			pkgArgs := append([]string{"pkg"}, args...)
+			passThrough := sdk.PassThrough(ctx, pkgArgs)
+			passThrough.Stdin = os.Stdin
+			passThrough.Stdout = os.Stdout
+			passThrough.Stderr = os.Stderr
+			return passThrough.Run()
+		},
+		// Don't print usage on error since we're passing through.
+		SilenceUsage: true,
+		// Disable Cobra's flag parsing entirely to pass all flags through
+		DisableFlagParsing: true,
+		// Disable help flag so it gets passed through to the underlying command
+		DisableAutoGenTag: true,
 	}
 
-	configStore := store.NewViper("", info.SDKVersion, false, false)
-	cobra.OnInitialize(func() {
-		cfgFile, _ := directory.GetToitUserConfigPath()
-		configStore.Init(cfgFile)
+	// Add custom help function that passes through to the underlying command
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		// Check if we have a valid context
+		ctx := cmd.Context()
+		if ctx == nil {
+			// Fall back to showing our own help if context is nil
+			// This happens when using `jag help toit` instead of `jag toit --help`
+			cmd.Println(cmd.Long)
+			return
+		}
+
+		// Get the SDK only if we have a valid context
+		sdk, err := GetSDK(ctx)
+		if err != nil {
+			cmd.PrintErr(err)
+			return
+		}
+
+		// Combine the command args with the help flag
+		pkgArgs := append([]string{"pkg"}, append(args, "-h")...)
+		passThrough := sdk.PassThrough(ctx, pkgArgs)
+		passThrough.Stdin = os.Stdin
+		passThrough.Stdout = os.Stdout
+		passThrough.Stderr = os.Stderr
+		if err := passThrough.Run(); err != nil {
+			cmd.PrintErr(err)
+		}
 	})
 
-	pkg, err := commands.Pkg(commands.DefaultRunWrapper, track, configStore, nil)
-	if err != nil {
-		panic(err)
-	}
-	return pkg
+	return cmd
 }
