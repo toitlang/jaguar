@@ -683,7 +683,7 @@ func (p *ProgressReader) update() {
 	fmt.Print("\r")
 	// The strings must contain characters with the same UTF-8 length so that
 	// they can be chopped up.  The emoji generally are 4-byte characters.
-	// Braille are 3-byte characters, and or course ASCII is 1-byte characters.
+	// Braille are 3-byte characters, and of course ASCII is 1-byte characters.
 	spin := "⠁⠂⠄⡀⢀⠠⠐⠈"
 	done := "🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱"
 	todo := "--------------------------------------------------"
