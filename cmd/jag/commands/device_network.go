@@ -177,7 +177,7 @@ func (d DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name st
 }
 
 func (d DeviceNetwork) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
-	var reader = NewProgressReader(b)
+	var reader = NewProgressReader(bytes.NewReader(b), int64(len(b)))
 	req, err := d.newRequest(ctx, "PUT", "/firmware", reader)
 	if err != nil {
 		return err
