@@ -140,11 +140,20 @@ func SetupCmd(info Info) *cobra.Command {
 
 			fmt.Printf("Successfully setup Jaguar %s with Toit SDK %s.\n", info.Version, info.SDKVersion)
 
-			removeOthers, err := cmd.Flags().GetBool("remove-others")
+			cfg, err := directory.GetUserConfig()
 			if err != nil {
 				return err
 			}
-			if removeOthers {
+			keepOld := false
+			if cmd.Flags().Changed("keep-old") {
+				keepOld, err = cmd.Flags().GetBool("keep-old")
+				if err != nil {
+					return err
+				}
+			} else if cfg.IsSet(CacheCfgKey + "." + CacheKeepOldCfgKey) {
+				keepOld = cfg.GetBool(CacheCfgKey + "." + CacheKeepOldCfgKey)
+			}
+			if !keepOld {
 				jagCacheDir, err := directory.GetJagCachePath("")
 				if err != nil {
 					return err
@@ -172,7 +181,7 @@ func SetupCmd(info Info) *cobra.Command {
 	cmd.Flags().MarkHidden("skip-assets")
 	cmd.Flags().String("print-path", "", "if set to assets|sdk, will print the assets|sdk path")
 	cmd.Flags().MarkHidden("print-path")
-	cmd.Flags().Bool("remove-others", true, "if set, will remove other versions of the SDK")
+	cmd.Flags().Bool("keep-old", true, "if set, will keep other versions of the SDK")
 	return cmd
 }
 
