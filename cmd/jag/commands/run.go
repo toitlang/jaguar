@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blakesmith/ar"
 	"github.com/google/uuid"
-	"github.com/setanta314/ar"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
