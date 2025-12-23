@@ -17,16 +17,16 @@ import (
 
 // GetCachedFirmwareEnvelopePath returns the path to the cached firmware envelope.
 // If necessary, downloads the envelope from the server first.
-func GetCachedFirmwareEnvelopePath(ctx context.Context, version string, model string) (string, error) {
+func GetCachedFirmwareEnvelopePath(ctx context.Context, jagVersion string, version string, model string) (string, error) {
 	// Envelopes published in the Toit envelope repository are always lowercase.
 	model = strings.ToLower(model)
-	path, err := getFirmwareEnvelopePath(version, model)
+	path, err := getFirmwareEnvelopePath(jagVersion, version, model)
 	if err != nil && err != os.ErrNotExist {
 		return "", err
 	}
 	if err == os.ErrNotExist {
 		// Download the envelope from the server.
-		if err := downloadPublishedFirmware(ctx, version, model); err != nil {
+		if err := downloadPublishedFirmware(ctx, jagVersion, version, model); err != nil {
 			fmt.Printf("Failed to download firmware: %v\n", err)
 			switch model {
 			case "esp32", "esp32c3", "esp32c6", "esp32s2", "esp32s3":
@@ -87,7 +87,7 @@ func storeGzipped(bundle io.ReadCloser, path string) error {
 	return nil
 }
 
-func DownloadEnvelope(ctx context.Context, path string, version string, tmpDir string) (string, error) {
+func DownloadEnvelope(ctx context.Context, path string, jagVersion string, version string, tmpDir string) (string, error) {
 	// Check if the envelopes file exists. If yes, then we already have the envelope.
 	if _, err := os.Stat(path); err == nil {
 		fileReader, err := os.Open(path)
@@ -124,14 +124,14 @@ func DownloadEnvelope(ctx context.Context, path string, version string, tmpDir s
 
 	if !strings.ContainsAny(path, "/.") {
 		// Try to read it as if it was a published envelope.
-		return GetCachedFirmwareEnvelopePath(ctx, version, path)
+		return GetCachedFirmwareEnvelopePath(ctx, jagVersion, version, path)
 	}
 	// Return the original path. This will yield an "Failed to open" error later.
 	return path, nil
 }
 
-func downloadPublishedFirmware(ctx context.Context, version string, model string) error {
-	envelopesDir, err := directory.GetEnvelopesCachePath(version)
+func downloadPublishedFirmware(ctx context.Context, jagVersion string, version string, model string) error {
+	envelopesDir, err := directory.GetEnvelopesCachePath(jagVersion)
 	if err != nil {
 		return err
 	}
@@ -168,13 +168,13 @@ func GetFirmwareEnvelopeFileName(model string) string {
 
 // getFirmwareEnvelopePath returns the firmware envelope path for the given model.
 // If the file doesn't exist returns the correct path but sets err to `os.ErrNotExist`.
-func getFirmwareEnvelopePath(version string, model string) (string, error) {
+func getFirmwareEnvelopePath(jagVersion string, version string, model string) (string, error) {
 	repoPath, ok := directory.GetRepoPath()
 	if ok {
 		return filepath.Join(repoPath, "build", model, "firmware.envelope"), nil
 	}
 
-	envelopesPath, err := directory.GetEnvelopesCachePath(version)
+	envelopesPath, err := directory.GetEnvelopesCachePath(jagVersion)
 	if err != nil {
 		return "", nil
 	}
