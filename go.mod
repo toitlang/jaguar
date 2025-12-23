@@ -26,7 +26,6 @@ require (
 	github.com/spf13/viper v1.17.0
 	github.com/toitlang/tpkg v0.0.0-20240919112017-273e738f33d0
 	github.com/toitware/ubjson v0.0.0-20231002110407-71c8fab5e607
-	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.6.1
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
