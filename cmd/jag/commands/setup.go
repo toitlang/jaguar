@@ -64,12 +64,14 @@ func SetupCmd(info Info) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			jagVersion := info.Version
+
 			printPath, err := cmd.Flags().GetString("print-path")
 			if err != nil {
 				return err
 			}
 			if printPath == "assets" {
-				assetsPath, err := directory.GetAssetsCachePath()
+				assetsPath, err := directory.GetAssetsCachePath(jagVersion)
 				if err != nil {
 					return err
 				}
@@ -77,7 +79,7 @@ func SetupCmd(info Info) *cobra.Command {
 				return nil
 			}
 			if printPath == "sdk" {
-				sdkPath, err := directory.GetSDKCachePath()
+				sdkPath, err := directory.GetSDKCachePath(jagVersion)
 				if err != nil {
 					return err
 				}
@@ -98,7 +100,7 @@ func SetupCmd(info Info) *cobra.Command {
 					return err
 				}
 
-				if _, err := directory.GetJaguarSnapshotPath(); err != nil {
+				if _, err := directory.GetJaguarSnapshotPath(jagVersion); err != nil {
 					return err
 				}
 
@@ -106,14 +108,14 @@ func SetupCmd(info Info) *cobra.Command {
 				return nil
 			}
 
-			sdkPath, err := directory.GetSDKCachePath()
+			sdkPath, err := directory.GetSDKCachePath(info.Version)
 			if err != nil {
 				return err
 			}
 			downloaderPath := filepath.Join(sdkPath, "JAGUAR")
 			os.Remove(downloaderPath)
 
-			if err := downloadSdk(ctx, info.SDKVersion); err != nil {
+			if err := downloadSdk(ctx, info.Version, info.SDKVersion); err != nil {
 				return err
 			}
 
@@ -138,6 +140,29 @@ func SetupCmd(info Info) *cobra.Command {
 
 			fmt.Printf("Successfully setup Jaguar %s with Toit SDK %s.\n", info.Version, info.SDKVersion)
 
+			removeOthers, err := cmd.Flags().GetBool("remove-others")
+			if err != nil {
+				return err
+			}
+			if removeOthers {
+				jagCacheDir, err := directory.GetJagCachePath("")
+				if err != nil {
+					return err
+				}
+				entries, err := os.ReadDir(jagCacheDir)
+				if err != nil {
+					return err
+				}
+				for _, entry := range entries {
+					if entry.IsDir() && entry.Name() != jagVersion {
+						toRemove := filepath.Join(jagCacheDir, entry.Name())
+						fmt.Printf("Removing old Jaguar cache at %s\n", toRemove)
+						if err := os.RemoveAll(toRemove); err != nil {
+							return err
+						}
+					}
+				}
+			}
 			return nil
 		},
 	}
@@ -147,6 +172,7 @@ func SetupCmd(info Info) *cobra.Command {
 	cmd.Flags().MarkHidden("skip-assets")
 	cmd.Flags().String("print-path", "", "if set to assets|sdk, will print the assets|sdk path")
 	cmd.Flags().MarkHidden("print-path")
+	cmd.Flags().Bool("remove-others", true, "if set, will remove other versions of the SDK")
 	return cmd
 }
 
@@ -170,7 +196,7 @@ func SetupSdkCmd(info Info) *cobra.Command {
 }
 
 func downloadAssets(ctx context.Context, version string) error {
-	assetsPath, err := directory.GetAssetsCachePath()
+	assetsPath, err := directory.GetAssetsCachePath(version)
 	if err != nil {
 		return err
 	}
@@ -205,8 +231,8 @@ func downloadAssets(ctx context.Context, version string) error {
 	return nil
 }
 
-func downloadSdk(ctx context.Context, version string) error {
-	sdkPath, err := directory.GetSDKCachePath()
+func downloadSdk(ctx context.Context, jagVersion string, version string) error {
+	sdkPath, err := directory.GetSDKCachePath(jagVersion)
 	if err != nil {
 		return err
 	}

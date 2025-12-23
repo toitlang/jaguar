@@ -38,7 +38,9 @@ type SDK struct {
 }
 
 func GetSDK(ctx context.Context) (*SDK, error) {
-	sdkPath, err := directory.GetSDKPath()
+	info := GetInfo(ctx)
+
+	sdkPath, err := directory.GetSDKPath(info.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +57,6 @@ func GetSDK(ctx context.Context) (*SDK, error) {
 		Path:    sdkPath,
 		Version: version,
 	}
-	info := GetInfo(ctx)
 	// If we're running a development build, we skip the SDK version checks
 	// if the SDK is pulled in through the JAG_TOIT_REPO_PATH environment
 	// variable. This make it much easier to work with. For release builds,

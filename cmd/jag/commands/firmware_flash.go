@@ -37,6 +37,9 @@ func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device Device, fun callback) error {
 	ctx := cmd.Context()
 
+	info := GetInfo(ctx)
+	jagVersion := info.Version
+
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return err
@@ -94,9 +97,9 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 			return err
 		}
 		defer os.RemoveAll(tmpDir)
-		envelopePath, err = DownloadEnvelope(ctx, args[0], sdk.Version, tmpDir)
+		envelopePath, err = DownloadEnvelope(ctx, args[0], jagVersion, sdk.Version, tmpDir)
 	} else {
-		envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, chip)
+		envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, jagVersion, sdk.Version, chip)
 		if err != nil {
 			return err
 		}
@@ -172,6 +175,9 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 }
 
 func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions, uartEndpointOptions map[string]interface{}) (*os.File, error) {
+	info := GetInfo(ctx)
+	jagVersion := info.Version
+
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return nil, err
@@ -194,7 +200,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			return nil, err
 		}
 	} else {
-		jaguarSnapshot, err := directory.GetJaguarSnapshotPath()
+		jaguarSnapshot, err := directory.GetJaguarSnapshotPath(jagVersion)
 		if err != nil {
 			return nil, err
 		}

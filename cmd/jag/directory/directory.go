@@ -136,7 +136,7 @@ func GetSnapshotsPaths() ([]string, error) {
 	paths = append(paths, cachePath)
 	if cachePath != homeCachePath {
 		// For backwards compatibility add the home cache path as well.
-		paths = append(paths, filepath.Join(home, ".cache", "jaguar", "snapshots"))
+		paths = append(paths, homeCachePath)
 	}
 	return paths, nil
 }
@@ -162,12 +162,12 @@ func GetRepoPath() (string, bool) {
 	return os.LookupEnv(ToitRepoPathEnv)
 }
 
-func GetSDKPath() (string, error) {
+func GetSDKPath(jagVersion string) (string, error) {
 	repoPath, ok := GetRepoPath()
 	if ok {
 		return filepath.Join(repoPath, "build", "host", "sdk"), nil
 	}
-	sdkCachePath, err := GetSDKCachePath()
+	sdkCachePath, err := GetSDKCachePath(jagVersion)
 	if err != nil {
 		return "", err
 	}
@@ -181,31 +181,39 @@ func GetToitPath(sdkPath string) string {
 	return filepath.Join(sdkPath, "bin", Executable("toit"))
 }
 
-func GetSDKCachePath() (string, error) {
+func GetJagCachePath(jagVersion string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "jaguar", "sdk"), nil
+	return filepath.Join(home, ".cache", "jaguar", jagVersion), nil
 }
 
-func GetEnvelopesCachePath(version string) (string, error) {
-	home, err := os.UserHomeDir()
+func GetSDKCachePath(jagVersion string) (string, error) {
+	jagCachePath, err := GetJagCachePath(jagVersion)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "jaguar", version, "envelopes"), nil
+	return filepath.Join(jagCachePath, "sdk"), nil
 }
 
-func GetAssetsCachePath() (string, error) {
-	home, err := os.UserHomeDir()
+func GetEnvelopesCachePath(jagVersion string) (string, error) {
+	jagCachePath, err := GetJagCachePath(jagVersion)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "jaguar", "assets"), nil
+	return filepath.Join(jagCachePath, "envelopes"), nil
 }
 
-func GetAssetsPath() (string, error) {
+func GetAssetsCachePath(jagVersion string) (string, error) {
+	jagCachePath, err := GetJagCachePath(jagVersion)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(jagCachePath, "assets"), nil
+}
+
+func GetAssetsPath(jagVersion string) (string, error) {
 	_, ok := GetRepoPath()
 	if ok {
 		// We assume that the jag executable is inside the build directory of
@@ -218,7 +226,7 @@ func GetAssetsPath() (string, error) {
 		return filepath.Join(dir, "assets"), nil
 	}
 
-	assetsPath, err := GetAssetsCachePath()
+	assetsPath, err := GetAssetsCachePath(jagVersion)
 	if err != nil {
 		return "", err
 	}
@@ -228,8 +236,8 @@ func GetAssetsPath() (string, error) {
 	return assetsPath, nil
 }
 
-func GetJaguarSnapshotPath() (string, error) {
-	assetsPath, err := GetAssetsPath()
+func GetJaguarSnapshotPath(jagVersion string) (string, error) {
+	assetsPath, err := GetAssetsPath(jagVersion)
 	if err != nil {
 		return "", nil
 	}
@@ -240,24 +248,6 @@ func GetJaguarSnapshotPath() (string, error) {
 		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", assetsPath, name)
 	}
 	return path, nil
-}
-
-func GetEsptoolPath() (string, error) {
-	repoPath, ok := GetRepoPath()
-	if ok {
-		return filepath.Join(repoPath, "third_party", "esp-idf", "components", "esptool_py", "esptool", "esptool.py"), nil
-	}
-
-	sdkCachePath, err := GetSDKCachePath()
-	if err != nil {
-		return "", err
-	}
-	esptoolPath := filepath.Join(sdkCachePath, "tools", Executable("esptool"))
-
-	if stat, err := os.Stat(esptoolPath); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' did not hold the esptool.\nYou must setup the SDK using 'jag setup'", esptoolPath)
-	}
-	return esptoolPath, nil
 }
 
 func ensureDirectory(dir string, err error) (string, error) {
