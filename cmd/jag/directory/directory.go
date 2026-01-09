@@ -229,16 +229,25 @@ func GetAssetsPath() (string, error) {
 }
 
 func GetJaguarSnapshotPath() (string, error) {
-	assetsPath, err := GetAssetsPath()
+	// Always use the user-specific cache directory for assets/snapshot
+	// This works reliably whether jag is run from build/ or installed to /usr/local/bin
+	assetsPath, err := GetAssetsCachePath()
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	name := "jaguar.snapshot"
 	path := filepath.Join(assetsPath, name)
-	if stat, err := os.Stat(path); err != nil || stat.IsDir() {
-		return "", fmt.Errorf("the path '%s' does not hold the asset '%s'.\nYou must setup the Jaguar assets using 'jag setup'", assetsPath, name)
+
+	// Optional: check existence — but return the path anyway if missing
+	// (better for --check to report "MISSING" than fail to determine path)
+	if stat, err := os.Stat(path); err != nil {
+		// File doesn't exist or other error — caller can handle
+		return path, nil
+	} else if stat.IsDir() {
+		return "", fmt.Errorf("expected file but found directory at %s", path)
 	}
+
 	return path, nil
 }
 
