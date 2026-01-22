@@ -30,7 +30,7 @@ jobs:
         # Use macos-13, since it's still intel based.
         # When changing to a different macos-version, also update the
         # signing job below.
-        container: [ ubuntu-latest, ubuntu-22.04, macos-13, windows-latest ]
+        container: [ windows-latest ]
 
     runs-on: ${{ matrix.container }}
     steps:
