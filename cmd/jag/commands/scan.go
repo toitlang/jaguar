@@ -19,7 +19,7 @@ import (
 
 const (
 	scanTimeout     = 600 * time.Millisecond
-	identifyTimeout = 1000 * time.Millisecond
+	identifyTimeout = 5000 * time.Millisecond
 	scanPort        = 1990
 	scanHttpPort    = 9000
 )
