@@ -118,6 +118,13 @@ jobs:
         run: |
           powershell Compress-Archive -Force jag.exe jag.zip
 
+      - name: Upload zip
+        uses: actions/upload-artifact@v5
+        with:
+          name: jag-build-${{ matrix.container }}-signed
+          path: |
+            build/windows/jag.exe
+
       - name: Version number
         if: (github.event_name == 'release') && (runner.os == 'Windows')
         id: version
