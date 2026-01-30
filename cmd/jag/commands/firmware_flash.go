@@ -158,21 +158,21 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 		// Add WiFi configuration to the asset config so Jaguar can read it
 		if len(device.WifiNetworks) > 0 {
 			wifiConfig := make(map[string]interface{})
-			// Add the first network as the default using full dotted keys
+			// Add the first network as the default for backward compatibility
 			first := device.WifiNetworks[0]
-			wifiConfig["wifi.ssid"] = first.SSID
-			wifiConfig["wifi.password"] = first.Password
+			wifiConfig[WifiSSIDCfgKey] = first.SSID
+			wifiConfig[WifiPasswordCfgKey] = first.Password
 
 			// Add all networks in the networks list
 			networks := make([]map[string]string, 0, len(device.WifiNetworks))
 			for _, cred := range device.WifiNetworks {
 				networks = append(networks, map[string]string{
-					"ssid":     cred.SSID,
-					"password": cred.Password,
+					WifiSSIDCfgKey:     cred.SSID,
+					WifiPasswordCfgKey: cred.Password,
 				})
 			}
-			wifiConfig["networks"] = networks
-			configAssetMap["wifi"] = wifiConfig
+			wifiConfig[WifiNetworksCfgKey] = networks
+			configAssetMap[WifiCfgKey] = wifiConfig
 		}
 		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {
