@@ -30,6 +30,7 @@ HEADER-CONTAINER-NAME     ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT  ::= "X-Jaguar-Container-Timeout"
 HEADER-CONTAINER-INTERVAL ::= "X-Jaguar-Container-Interval"
 HEADER-CRC32              ::= "X-Jaguar-CRC32"
+HEADER-DISABLE-UDP       ::= "X-Jaguar-Disable-UDP"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -158,12 +159,7 @@ class EndpointHttp implements Endpoint:
 
       request-mutex := monitor.Mutex
 
-      // A task that broadcasts the device identity via UDP and one that
-      // serves incoming HTTP requests.
-      // We run the tasks in a group so if one of them terminates, we take the other
-      // one down and clean up nicely.
-      Task.group --required=1 [
-        :: broadcast-identity network device address,
+      tasks := [
         :: serve-incoming-requests socket device address request-mutex,
         // If the call to the network-manager monitor returns, it will terminate the
         // task and thus shut down the whole group.
@@ -174,6 +170,11 @@ class EndpointHttp implements Endpoint:
             socket.close
             socket = null
       ]
+
+      if not device.config.get JAG-DISABLE-UDP:
+        tasks.add (:: broadcast-identity network device address)
+
+      Task.group --required=1 tasks
     finally:
       if socket: socket.close
       network.close
@@ -333,6 +334,8 @@ class EndpointHttp implements Endpoint:
     defines := {:}
     if headers.single HEADER-WIFI-DISABLED:
       defines[JAG-WIFI] = false
+    if headers.single HEADER-DISABLE-UDP:
+      defines[JAG-DISABLE-UDP] = true
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
       timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout

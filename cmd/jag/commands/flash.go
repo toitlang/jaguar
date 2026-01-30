@@ -5,9 +5,11 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -43,7 +45,20 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 
-			return withFirmware(cmd, args, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
+			probeChipType := func(ctx context.Context, sdk *SDK) (string, error) {
+				result, err := ProbeChipType(ctx, port, sdk)
+				if err == nil {
+					if exists, err := PortExists(port); err != nil || !exists {
+						// Some boards leave flash mode and require manual intervention after
+						// ever interaction. Tell the user how to work around this.
+						fmt.Println("Note: Your board disappeared after probing the chip type.\n" +
+							"This can happen on some boards that require manual intervention to enter flash mode.\n" +
+							"Use '--chip=" + result + "' to avoid this probe step in the future.")
+					}
+				}
+				return result, err
+			}
+			return withFirmware(cmd, args, probeChipType, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
 
 				sdk, err := GetSDK(ctx)
 				if err != nil {
@@ -83,6 +98,58 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
 	cmd.Flags().Bool("skip-port-check", false, "accept the given port without checking")
-	addFirmwareFlashFlags(cmd, "esp32", "name for the device, if not set a name will be auto generated")
+	addFirmwareFlashFlags(cmd, "name for the device, if not set a name will be auto generated")
 	return cmd
+}
+
+func ProbeChipType(ctx context.Context, port string, sdk *SDK) (string, error) {
+	// Get the esptool from the SDK.
+	cmd, err := sdk.EspTool(ctx, "--port", port, "chip_id")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve esptool command: %w", err)
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to probe chip type: %w: %s", err, string(output))
+	}
+	// Parse the output to find the chip type.
+	// There should be a string "Connected to ESP32 on ..."
+	outputStr := string(output)
+	if len(outputStr) == 0 {
+		return "", fmt.Errorf("failed to probe chip type: empty output")
+	}
+	// The esptool emits a line like "Chip is ESP32-C3 (...)".
+	// After updating the esptool, the line will be slightly different
+	//   ("Connected to ESP32-C3 on ...").
+	prefix := "Detecting chip type... "
+	start := strings.Index(outputStr, prefix)
+	for {
+		if start < 0 {
+			break
+		}
+		// Find the space or newline following the chip type.
+		start += len(prefix)
+		end := strings.IndexAny(outputStr[start:], " \n\r")
+		if end >= 0 {
+			// Extract the chip type.
+			chip := outputStr[start : start+end]
+			// Lower case, and remove '-'.
+			chip = strings.ToLower(strings.ReplaceAll(chip, "-", ""))
+			if chip == "unsupported" {
+				// The esptool might first hit the "Unsupported detection protocol", but it
+				// will switch to a different protocol and then manage to extract the chip type.
+				// Just try again from this position.
+				nextPos := strings.Index(outputStr[start+end:], prefix)
+				if nextPos < 0 {
+					break
+				}
+				start += end + nextPos
+				continue
+			}
+
+			return chip, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to probe chip type: unexpected output: %s\nYou can use '--chip=<chip>' to skip this probe step in the future.", outputStr)
 }

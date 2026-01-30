@@ -12,16 +12,19 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/go-version"
+
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
 type callback func(id string, envelopeFile *os.File, config map[string]interface{}) error
+type probeChip func(ctx context.Context, sdk *SDK) (string, error)
 
-func addFirmwareFlashFlags(cmd *cobra.Command, defaultChip string, nameHelp string) {
+func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 	cmd.Flags().String("name", "", nameHelp)
-	cmd.Flags().StringP("chip", "c", defaultChip, "chip of the target device")
+	cmd.Flags().StringP("chip", "c", "auto", "chip of the target device")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
@@ -31,7 +34,7 @@ func addFirmwareFlashFlags(cmd *cobra.Command, defaultChip string, nameHelp stri
 	cmd.Flags().MarkHidden("uart-endpoint-baud")
 }
 
-func withFirmware(cmd *cobra.Command, args []string, device Device, fun callback) error {
+func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device Device, fun callback) error {
 	ctx := cmd.Context()
 
 	sdk, err := GetSDK(ctx)
@@ -47,8 +50,21 @@ func withFirmware(cmd *cobra.Command, args []string, device Device, fun callback
 	if chip == "auto" || chip == "" {
 		if device != nil {
 			chip = device.Chip()
+		} else if probeChip != nil {
+			// Run the esptool to probe the chip type.
+			probedChip, err := probeChip(ctx, sdk)
+			if err != nil {
+				return fmt.Errorf("failed to probe chip type: %w", err)
+			} else {
+				fmt.Printf("Probed chip type: %s\n", probedChip)
+			}
+			chip = probedChip
 		} else {
-			return fmt.Errorf("chip type must be specified")
+			chip = ""
+			// We must have an envelope path to get the chip type from.
+			if len(args) != 1 {
+				return fmt.Errorf("chip type must be specified when no envelope is given")
+			}
 		}
 	}
 
@@ -70,13 +86,6 @@ func withFirmware(cmd *cobra.Command, args []string, device Device, fun callback
 		name = GetRandomName(id[:])
 	}
 
-	deviceOptions := DeviceOptions{
-		Id:           id.String(),
-		Name:         name,
-		Chip:         chip,
-		WifiNetworks: wifiNetworks,
-	}
-
 	var envelopePath string
 	if len(args) == 1 {
 		// Make a temporary directory for the downloaded envelope.
@@ -91,6 +100,48 @@ func withFirmware(cmd *cobra.Command, args []string, device Device, fun callback
 		if err != nil {
 			return err
 		}
+	}
+
+	envelopeChip, err := GetFirmwareChip(ctx, sdk, envelopePath)
+	if err != nil {
+		return fmt.Errorf("failed to get chip type from envelope: %w", err)
+	}
+
+	if chip != "" {
+		if chip != envelopeChip {
+			isError := true
+			if device != nil {
+				// Older versions of Jaguar (using SDK versions prior to v2.0.0-alpha.189) didn't
+				// set the chip type correctly (and used "esp32" for all ESP32 variants). We allow
+				// firmware updating in that case, but warn the user.
+				deviceVersion, err := version.NewVersion(device.SDKVersion())
+				if err != nil {
+					return fmt.Errorf("failed to parse device SDK version '%s': %w", device.SDKVersion(), err)
+				}
+				correctedVersion, err := version.NewVersion("v2.0.0-alpha.189")
+				if err != nil {
+					return fmt.Errorf("failed to parse corrected version: %w", err)
+				}
+				if chip == "esp32" && deviceVersion.LessThan(correctedVersion) {
+					fmt.Fprintf(os.Stderr, "warning: device chip type is 'esp32', assuming it is compatible with envelope chip '%s'\n", envelopeChip)
+					// Set the chip to the envelope chip to fix the mistake on the device.
+					chip = envelopeChip
+					isError = false
+				}
+			}
+			if isError {
+				return fmt.Errorf("chip type mismatch: expected '%s', but envelope is for '%s'", chip, envelopeChip)
+			}
+		}
+	} else {
+		chip = envelopeChip
+	}
+
+	deviceOptions := DeviceOptions{
+		Id:           id.String(),
+		Name:         name,
+		Chip:         chip,
+		WifiNetworks: wifiNetworks,
 	}
 
 	excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
@@ -221,6 +272,29 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 	}
 
 	return envelopeFile, nil
+}
+
+func GetFirmwareChip(ctx context.Context, sdk *SDK, envelopePath string) (string, error) {
+	// Run the firmware tool with `show -e <envelopePath> --output-format json` and parse the
+	// output ("chip" field).
+
+	execCmd := sdk.FirmwareTool(ctx, "show", "-e", envelopePath, "--output-format", "json")
+	output, err := execCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get firmware chip type: %w: %s", err, string(output))
+	}
+
+	var info map[string]interface{}
+	if err := json.Unmarshal(output, &info); err != nil {
+		return "", fmt.Errorf("failed to parse firmware info: %w", err)
+	}
+
+	chip, ok := info["chip"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed to get chip type from firmware info")
+	}
+
+	return chip, nil
 }
 
 type DeviceOptions struct {

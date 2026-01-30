@@ -21,11 +21,13 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cheggaaa/pb/v3"
+	"time"
+	"unicode/utf8"
+
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
-	"github.com/xtgo/uuid"
 	"golang.org/x/term"
 	"gopkg.in/yaml.v2"
 )
@@ -168,6 +170,33 @@ func (s *SDK) AssetsTool(ctx context.Context, args ...string) *exec.Cmd {
 
 func (s *SDK) FirmwareTool(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "firmware"}, args...)...)
+}
+
+type EspToolOutput struct {
+	Command []string `json:"command"`
+	Version string   `json:"version"`
+}
+
+func (s *SDK) EspToolCommand(ctx context.Context) ([]string, error) {
+	args := []string{"--output-format", "json", "tool", "firmware", "tool", "esptool", "-e", "unused"}
+	out, err := exec.CommandContext(ctx, s.ToitPath(), args...).Output()
+	if err != nil {
+		return nil, err
+	}
+	var result EspToolOutput
+	if err := json.Unmarshal(out, &result); err != nil {
+		return nil, err
+	}
+	command := result.Command
+	return command, nil
+}
+
+func (s *SDK) EspTool(ctx context.Context, args ...string) (*exec.Cmd, error) {
+	esptool_command, err := s.EspToolCommand(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return exec.CommandContext(ctx, esptool_command[0], append(esptool_command[1:], args...)...), nil
 }
 
 func (s *SDK) SnapshotToImage(ctx context.Context, args ...string) *exec.Cmd {
@@ -600,8 +629,123 @@ func download(ctx context.Context, url string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("received nil response body from %s", url)
 	}
 
-	progress := pb.New64(resp.ContentLength)
-	return progress.Start().NewProxyReader(resp.Body), nil
+	progress := NewProgressReader(resp.Body, resp.ContentLength)
+	return progress, nil
+}
+
+// ProgressReader prints a progress bar while reading from an io.Reader.
+type ProgressReader struct {
+	reader      io.Reader
+	size        int64
+	current     int64
+	spinState   int
+	startTime   time.Time
+	lastTime    time.Time
+	lastCurrent int64
+	speed       float64 // Bytes per second (EWMA)
+}
+
+func NewProgressReader(r io.Reader, size int64) *ProgressReader {
+	return &ProgressReader{
+		reader:    r,
+		size:      size,
+		startTime: time.Now(),
+		lastTime:  time.Now(),
+	}
+}
+
+func (p *ProgressReader) Read(buffer []byte) (n int, err error) {
+	n, err = p.reader.Read(buffer)
+	if n > 0 {
+		p.current += int64(n)
+		p.update()
+	}
+	return n, err
+}
+
+func (p *ProgressReader) Close() error {
+	if closer, ok := p.reader.(io.ReadCloser); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
+func (p *ProgressReader) update() {
+	now := time.Now()
+	// Update every 100ms or if finished
+	if p.current < p.size && now.Sub(p.lastTime) < 100*time.Millisecond {
+		return
+	}
+
+	// EWMA Calculation for Speed
+	// alpha = 0.9 (smoothing factor)
+	alpha := 0.1
+	instantSpeed := float64(p.current-p.lastCurrent) / now.Sub(p.lastTime).Seconds()
+	if instantSpeed == 0 {
+		// keep previous speed if stopped? or decay?
+	} else if p.speed == 0 {
+		p.speed = instantSpeed
+	} else {
+		p.speed = p.speed*(1-alpha) + instantSpeed*alpha
+	}
+
+	p.lastTime = now
+	p.lastCurrent = p.current
+
+	percent := int64(0)
+	if p.size > 0 {
+		percent = (p.current * 100) / p.size
+	}
+	fmt.Print("\r")
+	// The strings must contain characters with the same UTF-8 length so that
+	// they can be chopped up.  The emoji generally are 4-byte characters.
+	// Braille are 3-byte characters, and of course ASCII is 1-byte characters.
+	spin := "⠁⠂⠄⡀⢀⠠⠐⠈"
+	done := "🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱🐱"
+	todo := "--------------------------------------------------"
+	if os.PathSeparator == '\\' { // Windows.
+		spin = "/-\\|"
+		done = "################### Jaguar #######################"
+	}
+
+	parts := utf8.RuneCountInString(done)
+	todoParts := utf8.RuneCountInString(todo)
+	if todoParts < parts {
+		parts = todoParts
+	}
+	spinStates := utf8.RuneCountInString(spin)
+	doneBytesPerPart := len(done) / parts
+	todoBytesPerPart := len(todo) / parts
+	spinBytesPerPart := len(spin) / spinStates
+
+	pos := int(percent) / (100 / parts)
+	if pos >= parts {
+		pos = parts - 1
+	}
+	p.spinState += spinBytesPerPart
+	if p.spinState >= len(spin) {
+		p.spinState = 0
+	}
+	spinChar := spin[p.spinState : p.spinState+spinBytesPerPart]
+	fmt.Printf("   %3d%%  %s  [", percent, spinChar)
+	fmt.Print(done[len(done)-(pos+1)*doneBytesPerPart:])
+	fmt.Print(todo[:len(todo)-(pos+1)*todoBytesPerPart])
+	fmt.Print("] ")
+
+	// Speed display
+	speedStr := fmt.Sprintf("%.1f MB/s", p.speed/1024/1024)
+	if p.speed < 1024*1024 {
+		speedStr = fmt.Sprintf("%.1f KB/s", p.speed/1024)
+	}
+	if p.speed < 1024 {
+		speedStr = fmt.Sprintf("%.0f B/s", p.speed)
+	}
+
+	fmt.Printf("%s   ", speedStr)
+
+	if p.current == p.size {
+		fmt.Println()
+	}
 }
 
 func getLanIp() (string, error) {
