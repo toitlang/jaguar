@@ -57,6 +57,11 @@ For Archlinux you can install the AUR package [jaguar-bin](https://aur.archlinux
 yay install jaguar-bin
 ```
 
+For Debian/Ubuntu based systems, you can download the `.deb` package from the [releases page](https://github.com/toitlang/jaguar/releases) and install it:
+``` sh
+sudo dpkg -i jaguar_*.deb
+```
+
 As alternative to these package managers, we also offer precompiled binaries for download:
 
 - [Download Jaguar for macOS](https://github.com/toitlang/jaguar/releases/latest/download/jag.dmg)
