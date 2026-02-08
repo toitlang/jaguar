@@ -8,6 +8,7 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/alexflint/go-filemutex v1.2.0 // indirect
+	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cloudflare/circl v1.3.6 // indirect
 	github.com/coreos/go-semver v0.3.1
@@ -20,13 +21,11 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
-	github.com/setanta314/ar v0.0.0-20190524173558-797cd0c6714c
 	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.17.0
 	github.com/toitlang/tpkg v0.0.0-20240919112017-273e738f33d0
 	github.com/toitware/ubjson v0.0.0-20231002110407-71c8fab5e607
-	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	go.bug.st/serial v1.6.1
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect

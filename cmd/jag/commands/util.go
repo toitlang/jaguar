@@ -24,10 +24,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
-	"github.com/xtgo/uuid"
 	"golang.org/x/term"
 	"gopkg.in/yaml.v2"
 )
