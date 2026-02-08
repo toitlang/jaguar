@@ -7,6 +7,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/directory"
@@ -27,6 +28,7 @@ func ConfigCmd(info Info) *cobra.Command {
 
 	cmd.AddCommand(
 		ConfigAnalyticsCmd(),
+		ConfigIdentifyCmd(),
 		ConfigUpToDateCmd(info),
 		ConfigWifiCmd(),
 	)
@@ -194,4 +196,39 @@ func configUpToDate(info Info, disable bool) func(*cobra.Command, []string) erro
 		}
 		return nil
 	}
+}
+
+const (
+	IdentifyTimeoutCfgKey = "identify.timeout"
+)
+
+func ConfigIdentifyCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "identify",
+		Short: "Configure device identification settings",
+		Args:  cobra.NoArgs,
+	}
+
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "timeout",
+			Short: "Set the timeout for device identification",
+			Args:  cobra.ExactArgs(1),
+			RunE: func(cmd *cobra.Command, args []string) error {
+				cfg, err := directory.GetUserConfig()
+				if err != nil {
+					return err
+				}
+
+				timeout, err := time.ParseDuration(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid duration: %w", err)
+				}
+
+				cfg.Set(IdentifyTimeoutCfgKey, timeout)
+				return directory.WriteConfig(cfg)
+			},
+		},
+	)
+	return cmd
 }

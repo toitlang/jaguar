@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
@@ -180,7 +181,15 @@ func GetDevice(ctx context.Context, sdk *SDK, checkPing bool, deviceSelect devic
 		}
 	}
 
-	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, scanPort, deviceSelect, manualPick)
+	identifyTimeout := identifyTimeout
+	if userCfg, err := directory.GetUserConfig(); err == nil && userCfg.IsSet(IdentifyTimeoutCfgKey) {
+		timeout := userCfg.GetString(IdentifyTimeoutCfgKey)
+		if d, err := time.ParseDuration(timeout); err == nil {
+			identifyTimeout = d
+		}
+	}
+
+	d, autoSelected, err := scanAndPickDevice(ctx, scanTimeout, identifyTimeout, scanPort, deviceSelect, manualPick)
 	if err != nil {
 		return nil, err
 	}
