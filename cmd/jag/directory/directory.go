@@ -182,11 +182,11 @@ func GetToitPath(sdkPath string) string {
 }
 
 func GetJagCachePath(jagVersion string) (string, error) {
-	home, err := os.UserHomeDir()
+	cachePath, err := getCacheDirPath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".cache", "jaguar", jagVersion), nil
+	return filepath.Join(cachePath, "jaguar", jagVersion), nil
 }
 
 func GetSDKCachePath(jagVersion string) (string, error) {

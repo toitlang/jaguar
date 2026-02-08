@@ -176,7 +176,7 @@ func getFirmwareEnvelopePath(jagVersion string, version string, model string) (s
 
 	envelopesPath, err := directory.GetEnvelopesCachePath(jagVersion)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	name := GetFirmwareEnvelopeFileName(model)
