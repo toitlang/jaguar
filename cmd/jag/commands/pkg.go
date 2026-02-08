@@ -48,7 +48,7 @@ func PkgCmd() *cobra.Command {
 		ctx := cmd.Context()
 		if ctx == nil {
 			// Fall back to showing our own help if context is nil
-			// This happens when using `jag help toit` instead of `jag toit --help`
+			// This happens when using `jag pkg toit` instead of `jag pkg toit --help`
 			cmd.Println(cmd.Long)
 			return
 		}
