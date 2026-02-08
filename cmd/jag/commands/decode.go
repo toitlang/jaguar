@@ -260,6 +260,13 @@ func (d *Decoder) decode(forcePretty bool, forcePlain bool) {
 	postponed := []string{}
 
 	for d.scanner.Scan() {
+		// Check if context has been canceled (e.g., by Ctrl+C signal handler)
+		select {
+		case <-d.context.Done():
+			return
+		default:
+		}
+
 		// Get next line from device (or simulator) console.
 		line := d.scanner.Text()
 		versionPrefix := "[toit] INFO: starting <v"
