@@ -58,9 +58,7 @@ func MonitorCmd() *cobra.Command {
 			}
 
 			fmt.Printf("Starting serial monitor of port '%s' ...\n", port)
-			dev, err := serialOpen(port, &serial.Mode{
-				BaudRate: int(baud),
-			})
+			dev, err := serialOpen(port, int(baud))
 			if err != nil {
 				return err
 			}
@@ -128,8 +126,15 @@ func MonitorCmd() *cobra.Command {
 	return cmd
 }
 
-func serialOpen(port string, mode *serial.Mode) (*serialPort, error) {
-	dev, err := serial.Open(port, mode)
+func serialOpen(port string, baud int) (*serialPort, error) {
+	dev, err := serial.Open(port, &serial.Mode{
+		BaudRate: baud,
+		// Make sure we don't accidentally reset the device on open.
+		InitialStatusBits: &serial.ModemOutputBits{
+			RTS: true,
+			DTR: true,
+		},
+	})
 	if os.IsNotExist(err) {
 		return nil, fmt.Errorf("the port '%s' was not found", port)
 	}
