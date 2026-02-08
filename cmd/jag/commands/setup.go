@@ -181,7 +181,7 @@ func SetupCmd(info Info) *cobra.Command {
 	cmd.Flags().MarkHidden("skip-assets")
 	cmd.Flags().String("print-path", "", "if set to assets|sdk, will print the assets|sdk path")
 	cmd.Flags().MarkHidden("print-path")
-	cmd.Flags().Bool("keep-old", true, "if set, will keep other versions of the SDK")
+	cmd.Flags().Bool("keep-old", false, "if set, will keep other versions of the SDK")
 	return cmd
 }
 
