@@ -80,8 +80,8 @@ func ScanCmd() *cobra.Command {
 			}
 
 			identifyTimeout := identifyTimeout
-			if cfg.IsSet(IdentifyTimeoutCfgKey) {
-				timeout := cfg.GetString(IdentifyTimeoutCfgKey)
+			if userCfg, err := directory.GetUserConfig(); err == nil && userCfg.IsSet(IdentifyTimeoutCfgKey) {
+				timeout := userCfg.GetString(IdentifyTimeoutCfgKey)
 				if d, err := time.ParseDuration(timeout); err == nil {
 					identifyTimeout = d
 				}

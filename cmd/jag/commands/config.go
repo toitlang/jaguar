@@ -7,6 +7,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -209,26 +210,50 @@ func ConfigIdentifyCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
-	cmd.AddCommand(
-		&cobra.Command{
-			Use:   "timeout",
-			Short: "Set the timeout for device identification",
-			Args:  cobra.ExactArgs(1),
-			RunE: func(cmd *cobra.Command, args []string) error {
-				cfg, err := directory.GetUserConfig()
-				if err != nil {
-					return err
-				}
+	timeoutCmd := &cobra.Command{
+		Use:   "timeout [duration]",
+		Short: "Set the timeout for device identification",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := directory.GetUserConfig()
+			if err != nil {
+				return err
+			}
 
-				timeout, err := time.ParseDuration(args[0])
-				if err != nil {
-					return fmt.Errorf("invalid duration: %w", err)
-				}
+			clear, err := cmd.Flags().GetBool("clear")
+			if err != nil {
+				return err
+			}
 
-				cfg.Set(IdentifyTimeoutCfgKey, timeout)
+			if clear {
+				if len(args) > 0 {
+					return fmt.Errorf("cannot use --clear with an argument")
+				}
+				if cfg.IsSet(IdentifyTimeoutCfgKey) {
+					delete(cfg.Get(strings.Split(IdentifyTimeoutCfgKey, ".")[0]).(map[string]interface{}), strings.Split(IdentifyTimeoutCfgKey, ".")[1])
+				}
 				return directory.WriteConfig(cfg)
-			},
+			}
+
+			if len(args) == 0 {
+				if cfg.IsSet(IdentifyTimeoutCfgKey) {
+					fmt.Println(cfg.GetString(IdentifyTimeoutCfgKey))
+				} else {
+					fmt.Printf("Default: %s\n", identifyTimeout)
+				}
+				return nil
+			}
+
+			timeout, err := time.ParseDuration(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid duration: %w", err)
+			}
+
+			cfg.Set(IdentifyTimeoutCfgKey, timeout.String())
+			return directory.WriteConfig(cfg)
 		},
-	)
+	}
+	timeoutCmd.Flags().Bool("clear", false, "Clear the configuration")
+	cmd.AddCommand(timeoutCmd)
 	return cmd
 }
