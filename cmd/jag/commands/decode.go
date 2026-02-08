@@ -196,6 +196,7 @@ func jagDecode(ctx context.Context, base64Message string, forcePretty bool, forc
 }
 
 func crashDecode(ctx context.Context, envelope string, backtrace string) error {
+	info := GetInfo(ctx)
 	sdk, err := GetSDK(ctx)
 	if err != nil {
 		return err
@@ -210,7 +211,7 @@ func crashDecode(ctx context.Context, envelope string, backtrace string) error {
 	if _, err := os.Stat(envelope); err == nil {
 		envelopePath = envelope
 	} else {
-		envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, sdk.Version, envelope)
+		envelopePath, err = GetCachedFirmwareEnvelopePath(ctx, info.Version, sdk.Version, envelope)
 		if err != nil {
 			return err
 		}

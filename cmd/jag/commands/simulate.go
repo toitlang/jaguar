@@ -25,6 +25,9 @@ func SimulateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			info := GetInfo(ctx)
+			jagVersion := info.Version
+
 			port, err := cmd.Flags().GetUint("port")
 			if err != nil {
 				return err
@@ -46,7 +49,7 @@ func SimulateCmd() *cobra.Command {
 				return err
 			}
 
-			snapshot, err := directory.GetJaguarSnapshotPath()
+			snapshot, err := directory.GetJaguarSnapshotPath(jagVersion)
 			if err != nil {
 				return err
 			}
