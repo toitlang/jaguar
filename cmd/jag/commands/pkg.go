@@ -38,7 +38,7 @@ func PkgCmd() *cobra.Command {
 		SilenceUsage: true,
 		// Disable Cobra's flag parsing entirely to pass all flags through
 		DisableFlagParsing: true,
-		// Disable help flag so it gets passed through to the underlying command
+		// Disable the auto-generated tag in documentation output.
 		DisableAutoGenTag: true,
 	}
 
@@ -48,7 +48,7 @@ func PkgCmd() *cobra.Command {
 		ctx := cmd.Context()
 		if ctx == nil {
 			// Fall back to showing our own help if context is nil
-			// This happens when using `jag pkg toit` instead of `jag pkg toit --help`
+			// This happens when using `jag help pkg` instead of `jag pkg --help`
 			cmd.Println(cmd.Long)
 			return
 		}

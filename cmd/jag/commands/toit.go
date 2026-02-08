@@ -42,7 +42,7 @@ func ToitCmd() *cobra.Command {
 		SilenceUsage: true,
 		// Disable Cobra's flag parsing entirely to pass all flags through
 		DisableFlagParsing: true,
-		// Disable help flag so it gets passed through to the underlying command
+		// Disable the auto-generated tag in documentation output.
 		DisableAutoGenTag: true,
 	}
 
