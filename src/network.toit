@@ -7,6 +7,7 @@ import http
 import log
 import monitor
 import net
+import net.wifi as wifi
 import net.udp
 import net.tcp
 import system
@@ -19,6 +20,8 @@ HTTP-PORT        ::= 9000
 IDENTIFY-PORT    ::= 1990
 IDENTIFY-ADDRESS ::= net.IpAddress.parse "255.255.255.255"
 STATUS-OK-JSON   ::= """{ "status": "OK" }"""
+
+WIFI-NETWORKS-CFG-KEY ::= "networks"
 
 HEADER-DEVICE-ID          ::= "X-Jaguar-Device-ID"
 HEADER-SDK-VERSION        ::= "X-Jaguar-SDK-Version"
@@ -42,9 +45,107 @@ class EndpointHttp implements Endpoint:
   uses-network -> bool:
     return true
 
+  open-network_ device/Device -> net.Interface:
+    credentials/List := wifi-credentials_ device.config
+    logger.info "found $(credentials.size) WiFi credential(s) in configuration"
+    if credentials.is-empty:
+      return net.open
+
+    // Scan for available networks to optimize connection order.
+    available-ssids/Set := {}
+    scan-exception := catch --trace:
+      channels := #[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+      scan-results := wifi.scan channels --period-per-channel-ms=120
+      scan-results.do: | ap/wifi.AccessPoint |
+        available-ssids.add ap.ssid
+
+    if scan-exception:
+      logger.warn "WiFi scan failed"
+
+    // Try configured networks that are available first, then try all others.
+    ordered-credentials := []
+    if not available-ssids.is-empty:
+      credentials.do: | credential/Map |
+        ssid := credential.get "ssid"
+        if available-ssids.contains ssid:
+          ordered-credentials.add credential
+      // Add networks we didn't find in the scan as fallback.
+      credentials.do: | credential/Map |
+        ssid := credential.get "ssid"
+        if not available-ssids.contains ssid:
+          ordered-credentials.add credential
+    else:
+      ordered-credentials = credentials
+
+    ordered-credentials.do: | credential/Map |
+      ssid/string := credential.get "ssid"
+      password/string := credential.get "password" --if-absent=: ""
+
+      network/net.Interface? := null
+      failure := catch:
+        network = wifi.open --ssid=ssid --password=password
+
+      if not failure:
+        logger.info "connected to '$ssid'"
+        return network
+    return net.open
+
+  wifi-credentials_ config/Map -> List:
+    wifi-config/Map? := config.get "wifi"
+    if not wifi-config:
+      return []
+
+    credentials/List := []
+
+    configured-networks := wifi-config.get WIFI-NETWORKS-CFG-KEY
+    if configured-networks is List:
+      configured-networks.do: | entry |
+        add-wifi-credential-from-entry_ credentials entry
+    else if configured-networks is Map:
+      add-wifi-credential-from-entry_ credentials configured-networks
+
+    default-ssid := wifi-config.get wifi.CONFIG-SSID
+    default-password := wifi-config.get wifi.CONFIG-PASSWORD --if-absent=: ""
+    add-wifi-credential-values_ credentials default-ssid default-password
+    return credentials
+
+  add-wifi-credential-from-entry_ credentials/List entry -> none:
+    entry-map/Map? := entry
+    if not entry-map:
+      return
+
+    ssid := entry-map.get "ssid"
+    if not ssid:
+      ssid = entry-map.get wifi.CONFIG-SSID
+    password := entry-map.get "password"
+    if not password:
+      password = entry-map.get wifi.CONFIG-PASSWORD
+
+    add-wifi-credential-values_ credentials ssid password
+
+  add-wifi-credential-values_ credentials/List ssid password -> none:
+    candidate/string? := ssid
+    if not candidate or candidate.is-empty:
+      return
+
+    pass/string? := password
+    sanitized/string := pass or ""
+
+    credentials.do: | existing/Map |
+      existing-ssid/string? := existing.get "ssid"
+      if existing-ssid == candidate:
+        if sanitized != "" and (existing.get "password" --if-absent=: "") == "":
+          existing["password"] = sanitized
+        return
+
+    credentials.add {
+      "ssid": candidate,
+      "password": sanitized,
+    }
+
   run device/Device:
     logger.debug "starting endpoint"
-    network ::= net.open
+    network ::= open-network_ device
     socket/tcp.ServerSocket? := null
     try:
       socket = network.tcp-listen device.port
@@ -236,7 +337,7 @@ class EndpointHttp implements Endpoint:
     if headers.single HEADER-DISABLE-UDP:
       defines[JAG-DISABLE-UDP] = true
     if header := headers.single HEADER-CONTAINER-TIMEOUT:
-      timeout := int.parse header --if-error=: null
+      timeout := int.parse header --on-error=: null
       if timeout: defines[JAG-TIMEOUT] = timeout
     if header := headers.single HEADER-CONTAINER-INTERVAL:
       defines[JAG-INTERVAL] = header

@@ -93,11 +93,14 @@ jag flash
 ```
 
 If you want to avoid typing the WiFi credentials every time you flash, you can store
-them in Jaguar's config file with:
+one or more networks in Jaguar's config file:
 
 ``` sh
-jag config wifi set --wifi-ssid SSID --wifi-password PASSWORD
+jag config wifi add --wifi-ssid SSID --wifi-password PASSWORD
 ```
+
+You can review or remove stored entries later using `jag config wifi list` and
+`jag config wifi remove --wifi-ssid SSID`.
 
 After flashing it is possible to monitor the serial output from the device:
 

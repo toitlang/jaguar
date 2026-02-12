@@ -71,7 +71,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 		}
 	}
 
-	wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
+	wifiNetworks, err := getWifiCredentials(cmd)
 	if err != nil {
 		return err
 	}
@@ -144,8 +144,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 		Id:           id.String(),
 		Name:         name,
 		Chip:         chip,
-		WifiSsid:     wifiSSID,
-		WifiPassword: wifiPassword,
+		WifiNetworks: wifiNetworks,
 	}
 
 	excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
@@ -212,6 +211,25 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 		}
 		if uartEndpointOptions != nil {
 			configAssetMap["endpointUart"] = uartEndpointOptions
+		}
+		// Add WiFi configuration to the asset config so Jaguar can read it
+		if len(device.WifiNetworks) > 0 {
+			wifiConfig := make(map[string]interface{})
+			// Add the first network as the default for backward compatibility
+			first := device.WifiNetworks[0]
+			wifiConfig[WifiSSIDCfgKey] = first.SSID
+			wifiConfig[WifiPasswordCfgKey] = first.Password
+
+			// Add all networks in the networks list
+			networks := make([]map[string]string, 0, len(device.WifiNetworks))
+			for _, cred := range device.WifiNetworks {
+				networks = append(networks, map[string]string{
+					WifiSSIDCfgKey:     cred.SSID,
+					WifiPasswordCfgKey: cred.Password,
+				})
+			}
+			wifiConfig[WifiNetworksCfgKey] = networks
+			configAssetMap[WifiCfgKey] = wifiConfig
 		}
 		configAssetJson, err := json.Marshal(configAssetMap)
 		if err != nil {
@@ -289,8 +307,7 @@ type DeviceOptions struct {
 	Id           string
 	Name         string
 	Chip         string
-	WifiSsid     string
-	WifiPassword string
+	WifiNetworks []wifiCredential
 }
 
 type EnvelopeOptions struct {
@@ -299,11 +316,29 @@ type EnvelopeOptions struct {
 }
 
 func (d DeviceOptions) GetConfig() map[string]interface{} {
+	if len(d.WifiNetworks) == 0 {
+		return nil
+	}
+
+	first := d.WifiNetworks[0]
+	wifiConfig := map[string]interface{}{
+		// Legacy format for backward compatibility
+		WifiSSIDCfgKey:     first.SSID,
+		WifiPasswordCfgKey: first.Password,
+	}
+
+	// Always include the networks array for new firmware
+	networks := make([]map[string]string, 0, len(d.WifiNetworks))
+	for _, cred := range d.WifiNetworks {
+		networks = append(networks, map[string]string{
+			WifiSSIDCfgKey:     cred.SSID,
+			WifiPasswordCfgKey: cred.Password,
+		})
+	}
+	wifiConfig[WifiNetworksCfgKey] = networks
+
 	return map[string]interface{}{
-		"wifi": map[string]string{
-			"wifi.ssid":     d.WifiSsid,
-			"wifi.password": d.WifiPassword,
-		},
+		WifiCfgKey: wifiConfig,
 	}
 }
 
