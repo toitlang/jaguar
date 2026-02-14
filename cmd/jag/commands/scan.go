@@ -69,7 +69,7 @@ func ScanCmd() *cobra.Command {
 			if outputter != nil {
 				var devices []Device
 				var err error
-				scanCtx, cancel := context.WithTimeout(ctx, scanTimeout)
+				scanCtx, cancel := context.WithTimeout(ctx, timeout)
 				devices, err = ScanNetwork(scanCtx, autoSelect, port)
 				cancel()
 				if err != nil {
@@ -79,7 +79,15 @@ func ScanCmd() *cobra.Command {
 				return outputter.Encode(Devices{devices})
 			}
 
-			device, _, err := scanAndPickDevice(ctx, timeout, port, autoSelect, false)
+			identifyTimeout := identifyTimeout
+			if userCfg, err := directory.GetUserConfig(); err == nil && userCfg.IsSet(IdentifyTimeoutCfgKey) {
+				timeout := userCfg.GetString(IdentifyTimeoutCfgKey)
+				if d, err := time.ParseDuration(timeout); err == nil {
+					identifyTimeout = d
+				}
+			}
+
+			device, _, err := scanAndPickDevice(ctx, timeout, identifyTimeout, port, autoSelect, false)
 			if err != nil {
 				return err
 			}
@@ -164,7 +172,7 @@ func (s deviceAddressSelect) String() string {
 	return fmt.Sprintf("device with address: '%s'", string(s))
 }
 
-func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (Device, bool, error) {
+func scanAndPickDevice(ctx context.Context, scanTimeout time.Duration, identifyTimeout time.Duration, port uint, autoSelect deviceSelect, manualPick bool) (Device, bool, error) {
 	if autoSelect == nil {
 		fmt.Println("Scanning ...")
 	} else {
