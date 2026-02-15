@@ -18,6 +18,8 @@ const (
 	WifiCfgKey         = "wifi"
 	WifiSSIDCfgKey     = "ssid"
 	WifiPasswordCfgKey = "password"
+	CacheCfgKey        = "cache"
+	CacheKeepOldCfgKey = "keep_old"
 )
 
 func ConfigCmd(info Info) *cobra.Command {
@@ -32,6 +34,7 @@ func ConfigCmd(info Info) *cobra.Command {
 		ConfigIdentifyCmd(),
 		ConfigUpToDateCmd(info),
 		ConfigWifiCmd(),
+		ConfigCacheCmd(),
 	)
 	return cmd
 }
@@ -145,6 +148,50 @@ credentials whenever necessary.`,
 	setCmd.Flags().String("wifi-password", os.Getenv(directory.WifiPasswordEnv), "default WiFi password")
 	setCmd.MarkFlagRequired("wifi-ssid")
 	setCmd.MarkFlagRequired("wifi-password")
+	cmd.AddCommand(setCmd)
+	return cmd
+}
+
+func ConfigCacheCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "cache",
+		Short: "Configure the cache settings for Jaguar",
+		Long:  `Sets cache settings for Jaguar.`,
+		Args:  cobra.NoArgs,
+	}
+	cmd.AddCommand(
+		&cobra.Command{
+			Use:   "clear-keep-old",
+			Short: "Clears the setting and restores the default behavior of removing old cached files",
+			Args:  cobra.NoArgs,
+			RunE: func(_ *cobra.Command, _ []string) error {
+				cfg, err := directory.GetUserConfig()
+				if err != nil {
+					return err
+				}
+				if cfg.IsSet(CacheCfgKey + "." + CacheKeepOldCfgKey) {
+					delete(cfg.Get(CacheCfgKey).(map[string]interface{}), CacheKeepOldCfgKey)
+				}
+				return directory.WriteConfig(cfg)
+			},
+		},
+	)
+
+	setCmd := &cobra.Command{
+		Use:   "set-keep-old",
+		Short: "Sets the behavior to keeping old cached files",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := directory.GetUserConfig()
+			if err != nil {
+				return err
+			}
+			cfg.Set(CacheCfgKey+"."+CacheKeepOldCfgKey, true)
+
+			return directory.WriteConfig(cfg)
+		},
+	}
+
 	cmd.AddCommand(setCmd)
 	return cmd
 }
