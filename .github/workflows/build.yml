@@ -55,6 +55,11 @@ jobs:
 
           if [[ $RUNNER_OS = "windows" ]]; then
             make JAG_BINARY=$RUNNER_OS/jag.exe jag
+          elif [[ $RUNNER_OS = "macos" ]]; then
+            GOOS=darwin GOARCH=amd64 make JAG_BINARY=$RUNNER_OS/jag_amd64 jag
+            GOOS=darwin GOARCH=arm64 make JAG_BINARY=$RUNNER_OS/jag_arm64 jag
+            lipo -create -output build/$RUNNER_OS/jag build/$RUNNER_OS/jag_amd64 build/$RUNNER_OS/jag_arm64
+            rm build/$RUNNER_OS/jag_amd64 build/$RUNNER_OS/jag_arm64
           else
             make JAG_BINARY=$RUNNER_OS/jag jag
           fi
