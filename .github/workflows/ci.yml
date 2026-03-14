@@ -6,7 +6,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,9 +28,13 @@ jobs:
 
       - name: Setup
         run: |
-          build/jag setup --skip-assets
-          SDK_PATH="$(build/jag setup --print-path sdk)"
-          ASSETS_PATH="$(build/jag setup --print-path assets)"
+          JAG_BINARY=build/jag
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            JAG_BINARY=build/jag.exe
+          fi
+          $JAG_BINARY setup --skip-assets
+          SDK_PATH="$($JAG_BINARY setup --print-path sdk)"
+          ASSETS_PATH="$($JAG_BINARY setup --print-path assets)"
           mkdir -p "$ASSETS_PATH"
           make SDK_PATH="$SDK_PATH" assets
           cp -r build/assets/* "$ASSETS_PATH"
