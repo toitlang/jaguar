@@ -21,13 +21,7 @@ func getToitSDKURL(version string) (string, error) {
 	currARCH := runtime.GOARCH
 	selector := ""
 	if currOS == "darwin" {
-		if currARCH == "amd64" {
-			selector = "macos-x64"
-		} else if currARCH == "arm64" {
-			selector = "macos-aarch64"
-		} else {
-			return "", fmt.Errorf("unsupported architecture %s for macOS", currARCH)
-		}
+		selector = "macos"
 	} else if currOS == "linux" {
 		if currARCH == "amd64" {
 			selector = "linux-x64"
