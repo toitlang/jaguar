@@ -14,7 +14,7 @@ import (
 
 var (
 	// When updating the version here, also update it in debian/changelog.
-	version    = "v1.61.0"
+	version    = "v1.62.0"
 	sdkVersion = "v2.0.0-alpha.190"
 )
 
