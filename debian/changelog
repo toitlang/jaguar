@@ -1,5 +1,48 @@
+jaguar (1.63.0-1) unstable; urgency=medium
+
+  * Update SDK to v2.0.0-alpha.191.
+
+ -- Toit contributors <contact@toit.io>  Wed, 02 Apr 2026 12:00:00 +0200
+
+jaguar (1.62.0-1) unstable; urgency=medium
+
+  * Fix setup on macos.
+  * SDK: v2.0.0-alpha.190.
+
+ -- Toit contributors <contact@toit.io>  Sat, 14 Mar 2026 14:29:48 +0100
+
+jaguar (1.61.0-1) unstable; urgency=medium
+
+  * Update SDK to v2.0.0-alpha.190.
+
+ -- Toit contributors <contact@toit.io>  Sun, 01 Mar 2026 20:14:39 +0100
+
+jaguar (1.60.0-1) unstable; urgency=medium
+
+  * Create a fat binary for macOS.
+  * SDK: v2.0.0-alpha.189.
+
+ -- Toit contributors <contact@toit.io>  Sun, 22 Feb 2026 16:31:17 +0100
+
+jaguar (1.59.0-1) unstable; urgency=medium
+
+  * Add config option for keeping old cache.
+  * Add a way to set the identify timeout.
+  * Create separate cache dir for each jag version.
+  * Use the SDK's package manager.
+  * Set the reset pins before connecting to the serial port.
+  * Fix decoder to respect context cancellation for clean Ctrl+C exit.
+  * Replace xtgo/uuid with google/uuid.
+  * Switch ar dependency to github.com/blakesmith/ar.
+  * Replace external progress bar with custom implementation.
+  * Deb packaging.
+  * SDK: v2.0.0-alpha.189.
+
+ -- Toit contributors <contact@toit.io>  Sun, 15 Feb 2026 21:35:55 +0100
+
 jaguar (1.58.0-1) unstable; urgency=medium
 
   * Initial release of the package.
+  * SDK: v2.0.0-alpha.189.
 
  -- Toit contributors <contact@toit.io>  Fri, 28 Nov 2025 19:59:00 -0500
