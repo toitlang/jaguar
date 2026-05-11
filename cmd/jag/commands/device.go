@@ -46,7 +46,7 @@ type Device interface {
 }
 
 type Devices struct {
-	Devices []Device
+	Devices []Device `json:"devices" yaml:"devices"`
 }
 
 func (d Devices) Elements() []Short {

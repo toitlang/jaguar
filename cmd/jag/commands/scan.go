@@ -75,6 +75,9 @@ func ScanCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				if devices == nil {
+					devices = []Device{}
+				}
 
 				return outputter.Encode(Devices{devices})
 			}
