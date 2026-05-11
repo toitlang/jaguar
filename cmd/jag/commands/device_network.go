@@ -61,6 +61,14 @@ func (d DeviceNetwork) ToJson() map[string]interface{} {
 	}
 }
 
+func (d DeviceNetwork) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.ToJson())
+}
+
+func (d DeviceNetwork) MarshalYAML() (interface{}, error) {
+	return d.ToJson(), nil
+}
+
 const (
 	pingTimeout = 3000 * time.Millisecond
 )
