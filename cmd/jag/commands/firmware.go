@@ -74,9 +74,9 @@ func FirmwareUpdateCmd() *cobra.Command {
 
 			// We get a new ID for the device, so entries in the device flash stored
 			// by an older version are invalidated.
-			return withFirmware(cmd, args, nil, device, func(newID string, envelopeFile *os.File, config map[string]interface{}) error {
+			return withFirmware(cmd, args, nil, device, func(newID string, envelopeFile *os.File, config map[string]interface{}, partitionArgs []string) error {
 
-				firmwareBin, err := ExtractFirmwareBin(ctx, sdk, envelopeFile.Name(), config)
+				firmwareBin, err := ExtractFirmwareBin(ctx, sdk, envelopeFile.Name(), config, partitionArgs...)
 				if err != nil {
 					return err
 				}
@@ -140,14 +140,14 @@ func FirmwareExtractCmd() *cobra.Command {
 				return fmt.Errorf("missing output file")
 			}
 
-			return withFirmware(cmd, args, nil, nil, func(newID string, envelopeFile *os.File, config map[string]interface{}) error {
+			return withFirmware(cmd, args, nil, nil, func(newID string, envelopeFile *os.File, config map[string]interface{}, partitionArgs []string) error {
 
 				sdk, err := GetSDK(ctx)
 				if err != nil {
 					return err
 				}
 
-				imageFile, err := ExtractFirmware(ctx, sdk, envelopeFile.Name(), "image", config)
+				imageFile, err := ExtractFirmware(ctx, sdk, envelopeFile.Name(), "image", config, partitionArgs...)
 				if err != nil {
 					return err
 				}

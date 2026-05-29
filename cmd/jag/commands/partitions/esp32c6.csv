@@ -1,0 +1,25 @@
+# Copyright (C) 2026 Toit contributors.
+#
+# Use of this source code is governed by an MIT-style license that can be
+# found in the LICENSE file.
+
+# Jaguar partition table for the ESP32-C6.
+#
+# Workaround for SDK v2.0.0-alpha.194, where the firmware image for the C6
+# (1781232 bytes) no longer fits in the 0x1b0000 OTA partitions of the
+# envelope's default table. We grow each OTA partition to 0x1c0000 and shrink
+# the (Jaguar-unused) 'programs' partition to keep the total at 4MB.
+#
+# This override should be removed once the envelopes/SDK ship a C6 table with
+# large enough OTA partitions.
+
+# Name,   Type, SubType,  Offset,    Size
+# bootloader,,  ,         0x001000,  0x007000
+# partitions,,  ,         0x008000,  0x000c00
+secure,   0x42, 0x00,     0x009000,  0x004000,
+otadata,  data, ota,              ,  0x002000,
+phy_init, data, phy,              ,  0x001000,
+ota_0,    app,  ota_0,            ,  0x1c0000,
+ota_1,    app,  ota_1,            ,  0x1c0000,
+nvs,      data, nvs,              ,  0x010000,
+programs, 0x40, 0x00,             ,  0x060000, encrypted

@@ -58,7 +58,7 @@ func FlashCmd() *cobra.Command {
 				}
 				return result, err
 			}
-			return withFirmware(cmd, args, probeChipType, nil, func(id string, envelopeFile *os.File, config map[string]interface{}) error {
+			return withFirmware(cmd, args, probeChipType, nil, func(id string, envelopeFile *os.File, config map[string]interface{}, partitionArgs []string) error {
 
 				sdk, err := GetSDK(ctx)
 				if err != nil {
@@ -70,6 +70,7 @@ func FlashCmd() *cobra.Command {
 					"--port", port,
 					"--baud", strconv.Itoa(int(baud)),
 				}
+				flashArguments = append(flashArguments, partitionArgs...)
 
 				// Golang equivalent of #ifdef Windows.  We skip this
 				// because the whole uucp group issue does not affect
