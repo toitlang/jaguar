@@ -14,8 +14,8 @@ import (
 
 var (
 	// When updating the version here, also update it in debian/changelog.
-	version    = "v1.65.0"
-	sdkVersion = "v2.0.0-alpha.193"
+	version    = "v1.66.0"
+	sdkVersion = "v2.0.0-alpha.194"
 )
 
 var buildDate = "unknown"
