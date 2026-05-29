@@ -19,7 +19,7 @@ import (
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
 
-type callback func(id string, envelopeFile *os.File, config map[string]interface{}) error
+type callback func(id string, envelopeFile *os.File, config map[string]interface{}, partitionArgs []string) error
 type probeChip func(ctx context.Context, sdk *SDK) (string, error)
 
 func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
@@ -171,7 +171,13 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 
 	config := deviceOptions.GetConfig()
 
-	return fun(id.String(), envelopeFile, config)
+	partitionArgs, cleanupPartitions, err := partitionOverrideArgs(chip)
+	if err != nil {
+		return err
+	}
+	defer cleanupPartitions()
+
+	return fun(id.String(), envelopeFile, config, partitionArgs)
 }
 
 func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device DeviceOptions, uartEndpointOptions map[string]interface{}) (*os.File, error) {
@@ -307,7 +313,7 @@ func (d DeviceOptions) GetConfig() map[string]interface{} {
 	}
 }
 
-func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}) (*os.File, error) {
+func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}, extraArgs ...string) (*os.File, error) {
 	binaryFile, err := os.CreateTemp("", "firmware.bin.*")
 	if err != nil {
 		return nil, err
@@ -318,6 +324,7 @@ func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, conf
 		"--format=binary",
 		"-o", binaryFile.Name(),
 	}
+	arguments = append(arguments, extraArgs...)
 
 	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, arguments...); err != nil {
 		binaryFile.Close()
@@ -326,12 +333,14 @@ func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, conf
 	return binaryFile, nil
 }
 
-func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format string, config map[string]interface{}) (*os.File, error) {
+func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format string, config map[string]interface{}, extraArgs ...string) (*os.File, error) {
 	outputFile, err := os.CreateTemp("", "firmware-"+format+".*")
 	if err != nil {
 		return nil, err
 	}
-	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, "extract", "--format", format, "-o", outputFile.Name()); err != nil {
+	arguments := []string{"extract", "--format", format, "-o", outputFile.Name()}
+	arguments = append(arguments, extraArgs...)
+	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, arguments...); err != nil {
 		outputFile.Close()
 		return nil, err
 	}
