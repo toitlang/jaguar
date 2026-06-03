@@ -113,6 +113,10 @@ class UartClient:
         reader.skip (reader.index-of '\n') + 1
         continue
       handle data
+      // Stop serving once a firmware upgrade is pending so the endpoint
+      // returns and jaguar.toit can trigger the upgrade (the HTTP endpoint
+      // achieves the same by closing the server socket).
+      if firmware-is-upgrade-pending: return
 
   /**
   Announces this endpoint.
@@ -233,6 +237,10 @@ class UartClient:
     // Signal that we are ready to receive the firmware.
     send-response COMMAND-FIRMWARE_ #[]
     install-firmware firmware-size acking-reader
+    // Mark the firmware as having a pending upgrade. The run loop stops
+    // serving on the next iteration so the endpoint returns and jaguar.toit
+    // performs the upgrade (mirrors the HTTP endpoint in network.toit).
+    firmware-is-upgrade-pending = true
 
   handle-install-run data/ByteArray --run/bool=false --install/bool=false -> none:
     action := run ? "run" : "install"

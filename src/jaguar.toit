@@ -95,11 +95,12 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
   device := Device.parse arguments
-  endpoints := [
-    EndpointHttp logger,
-  ]
+  // When a UART endpoint is configured, serve UART-only and do
+  // not bring up the (cellular) network.
   uart := device.config.get "endpointUart"
-  if uart: endpoints.add (EndpointUart --config=uart --logger=logger)
+  endpoints := uart
+      ? [EndpointUart --config=uart --logger=logger]
+      : [EndpointHttp logger]
   main device endpoints
 
 main device/Device endpoints/List:
