@@ -90,11 +90,11 @@ func (d DeviceBase) Address() string {
 	return d.address
 }
 
-func (d DeviceBase) SetID(id string) {
+func (d *DeviceBase) SetID(id string) {
 	d.id = id
 }
 
-func (d DeviceBase) SetSDKVersion(version string) {
+func (d *DeviceBase) SetSDKVersion(version string) {
 	d.sdkVersion = version
 }
 
