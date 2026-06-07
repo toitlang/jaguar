@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import encoding.json
 import encoding.ubjson
 import http
 import log
@@ -18,7 +19,9 @@ import .jaguar
 HTTP-PORT        ::= 9000
 IDENTIFY-PORT    ::= 1990
 IDENTIFY-ADDRESS ::= net.IpAddress.parse "255.255.255.255"
-STATUS-OK-JSON   ::= """{ "status": "OK" }"""
+
+CONTENT-TYPE-JSON   ::= "application/json"
+CONTENT-TYPE-UBJSON ::= "application/ubjson"
 
 HEADER-DEVICE-ID          ::= "X-Jaguar-Device-ID"
 HEADER-SDK-VERSION        ::= "X-Jaguar-SDK-Version"
@@ -27,7 +30,7 @@ HEADER-CONTAINER-NAME     ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT  ::= "X-Jaguar-Container-Timeout"
 HEADER-CONTAINER-INTERVAL ::= "X-Jaguar-Container-Interval"
 HEADER-CRC32              ::= "X-Jaguar-CRC32"
-HEADER-DISABLE-UDP       ::= "X-Jaguar-Disable-UDP"
+HEADER-DISABLE-UDP        ::= "X-Jaguar-Disable-UDP"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -78,23 +81,21 @@ class EndpointHttp implements Endpoint:
       if socket: socket.close
       network.close
 
-  identity-payload device/Device address/string -> ByteArray:
-    identity := """
-      { "method": "jaguar.identify",
-        "payload": {
-          "name": "$device.name",
-          "id": "$device.id",
-          "chip": "$device.chip",
-          "sdkVersion": "$system.vm-sdk-version",
-          "address": "$address",
-          "wordSize": $system.BYTES-PER-WORD
-        }
-      }
-    """
-    return identity.to-byte-array
+  identity-map device/Device address/string -> Map:
+    return {
+      "method": "jaguar.identify",
+      "payload": {
+        "name": device.name,
+        "id": "$device.id",
+        "chip": device.chip,
+        "sdkVersion": system.vm-sdk-version,
+        "address": address,
+        "wordSize": system.BYTES-PER-WORD,
+      },
+    }
 
   broadcast-identity network/net.Interface device/Device address/string -> none:
-    payload ::= identity-payload device address
+    payload ::= json.encode (identity-map device address)
     datagram ::= udp.Datagram
         payload
         net.SocketAddress IDENTIFY-ADDRESS IDENTIFY-PORT
@@ -167,10 +168,7 @@ class EndpointHttp implements Endpoint:
 
       // Handle identification requests before validation, as the caller doesn't know that information yet.
       if path == "/identify" and request.method == http.GET:
-        writer.headers.set "Content-Type" "application/json"
-        result := identity-payload device address
-        writer.headers.set "Content-Length" result.size.stringify
-        writer.out.write result
+        respond writer headers (identity-map device address)
 
       else if path == "/" or path.ends-with ".html" or path.ends-with ".css" or path.ends-with ".ico":
         handle-browser-request device.name request writer
@@ -182,27 +180,24 @@ class EndpointHttp implements Endpoint:
 
       // Handle pings.
       else if path == "/ping" and request.method == http.GET:
-        respond-ok writer
+        respond-ok writer headers
 
       // Handle listing containers.
       else if path == "/list" and request.method == http.GET:
-        result := ubjson.encode registry_.entries
-        writer.headers.set "Content-Type" "application/ubjson"
-        writer.headers.set "Content-Length" result.size.stringify
-        writer.out.write result
+        respond writer headers registry_.entries --default-content-type=CONTENT-TYPE-UBJSON
 
       // Handle uninstalling containers.
       else if path == "/uninstall" and request.method == http.PUT:
         request-mutex.do:
           container-name ::= headers.single HEADER-CONTAINER-NAME
           uninstall-image container-name
-          respond-ok writer
+          respond-ok writer headers
 
       // Handle firmware updates.
       else if path == "/firmware" and request.method == http.PUT:
         request-mutex.do:
           install-firmware request.content-length request.body
-          respond-ok writer
+          respond-ok writer headers
           // Mark the firmware as having a pending upgrade and close
           // the server socket to force the HTTP server loop to stop.
           firmware-is-upgrade-pending = true
@@ -225,7 +220,7 @@ class EndpointHttp implements Endpoint:
           crc32 := int.parse (headers.single HEADER-CRC32)
           defines = extract-defines headers
           image = flash-image request.content-length request.body container-name defines --crc32=crc32
-          respond-ok writer
+          respond-ok writer headers
         run-message := path == "/install" ? "installed and started" : "started"
         start-image image run-message container-name defines
 
@@ -242,10 +237,29 @@ class EndpointHttp implements Endpoint:
       defines[JAG-INTERVAL] = header
     return defines
 
-  respond-ok writer/http.ResponseWriter -> none:
-    writer.headers.set "Content-Type" "application/json"
-    writer.headers.set "Content-Length" STATUS-OK-JSON.size.stringify
-    writer.out.write STATUS-OK-JSON
+  /**
+  Writes $result as the response body, picking the encoding from the request's
+    `Accept` header, falling back to $default-content-type argument.
+
+  This allows using either easy to read and debug JSON or more compact ubjson
+  encoding.
+  */
+  respond writer/http.ResponseWriter headers/http.Headers result/any
+      --default-content-type/string=CONTENT-TYPE-JSON -> none:
+    accept := headers.single "Accept"
+    content-type/string := default-content-type
+    if accept:
+      if accept.contains CONTENT-TYPE-UBJSON: content-type = CONTENT-TYPE-UBJSON
+      else if accept.contains CONTENT-TYPE-JSON: content-type = CONTENT-TYPE-JSON
+    encoded/ByteArray := content-type == CONTENT-TYPE-UBJSON
+        ? ubjson.encode result
+        : json.encode result
+    writer.headers.set "Content-Type" content-type
+    writer.headers.set "Content-Length" encoded.size.stringify
+    writer.out.write encoded
+
+  respond-ok writer/http.ResponseWriter headers/http.Headers -> none:
+    respond writer headers { "status": "OK" }
 
   name -> string:
     return "HTTP"
