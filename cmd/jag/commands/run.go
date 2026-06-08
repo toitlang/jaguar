@@ -113,6 +113,23 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
+			// `-m` streams this run's output; `-p` reads it from a serial port
+			// (and implies `-m`), otherwise monitoring happens over the network.
+			monitor, _ := cmd.Flags().GetBool("monitor")
+			monitorSerial := cmd.Flags().Changed("monitor-port")
+			if monitorSerial {
+				monitor = true
+
+				// The log buffer (and thus its size and min level) only exists on the
+				// network path; serial reads the UART directly.
+				if cmd.Flags().Changed("log-buffer-size") {
+					return fmt.Errorf("--log-buffer-size is not supported when monitoring over serial (the log buffer is only used over the network)")
+				}
+				if cmd.Flags().Changed("min-log-level") {
+					return fmt.Errorf("--min-log-level is not supported when monitoring over serial (the log buffer is only used over the network)")
+				}
+			}
+
 			optimizationLevel := -1
 			if cmd.Flags().Changed("optimization-level") {
 				optimizationLevel, err = cmd.Flags().GetInt("optimization-level")
@@ -122,6 +139,9 @@ func RunCmd() *cobra.Command {
 			}
 
 			if name, ok := deviceSelect.(deviceNameSelect); ok && string(name) == "host" {
+				if monitor {
+					return fmt.Errorf("--monitor/-m is not supported with '-d host' (output already goes to this terminal)")
+				}
 				if cmd.Flags().Changed("define") {
 					return fmt.Errorf("--define/-D is not yet supported when running on host")
 				}
@@ -168,6 +188,17 @@ func RunCmd() *cobra.Command {
 				return err
 			}
 
+			if monitor {
+				if monitorSerial {
+					return RunFileAndMonitorSerial(cmd, device, sdk, entrypoint, defines, programAssetsPath, optimizationLevel)
+				}
+				// Network monitoring is unreachable if the run tears down WiFi.
+				if wifi, ok := defines["jag.wifi"].(bool); ok && !wifi {
+					return fmt.Errorf("can't monitor over the network with -D jag.wifi=false; attach over serial with 'jag run -m -p <port>'")
+				}
+				return RunFileAndMonitorNetwork(cmd, device, sdk, entrypoint, defines, programAssetsPath, optimizationLevel)
+			}
+
 			return RunFile(cmd, device, sdk, entrypoint, defines, programAssetsPath, optimizationLevel)
 		},
 	}
@@ -177,6 +208,14 @@ func RunCmd() *cobra.Command {
 	cmd.Flags().StringArrayP("define", "D", nil, "define settings to control run on device")
 	cmd.Flags().String("assets", "", "attach assets to the program")
 	cmd.Flags().IntP("optimization-level", "O", 1, "optimization level")
+	cmd.Flags().BoolP("monitor", "m", false, "after starting, stream this run's output until it exits or Ctrl-C is pressed")
+	cmd.Flags().StringP("monitor-port", "p", "", "read the run's output from this serial port instead of the network (implies -m)")
+	cmd.Flags().Uint("monitor-baud", 115200, "the baud rate when monitoring over serial")
+	cmd.Flags().Bool("force-pretty", false, "force monitor output to use terminal graphics")
+	cmd.Flags().Bool("force-plain", false, "force monitor output to use plain ASCII text")
+	cmd.Flags().String("envelope", "", "firmware envelope used to decode native crashes while monitoring")
+	cmd.Flags().Uint("log-buffer-size", 4096, "size in bytes of the device log buffer used when monitoring over the network")
+	cmd.Flags().String("min-log-level", "INFO", "minimum level captured in the device log buffer (TRACE, DEBUG, INFO, WARN, ERROR, FATAL); network monitoring only")
 	return cmd
 }
 
@@ -219,7 +258,79 @@ func RunFile(
 	assetsPath string,
 	optimizationLevel int) error {
 	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name())
-	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel)
+	return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel, "")
+}
+
+// RunFileAndMonitorNetwork runs the file with capture enabled and then streams
+// this run's output (filtered to its container, which for a `/run` is the
+// anonymous empty name) through the decoder until the program exits or the user
+// detaches with Ctrl-C.
+func RunFileAndMonitorNetwork(
+	cmd *cobra.Command,
+	device Device,
+	sdk *SDK,
+	path string,
+	defines map[string]interface{},
+	assetsPath string,
+	optimizationLevel int) error {
+	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name())
+	// Capture the current log head before starting so the monitor shows only
+	// this run's output instead of replaying whatever is already buffered on the
+	// device.
+	startCursor, err := logHead(cmd.Context(), device)
+	if err != nil {
+		return err
+	}
+	// `run` always pins the capture config so the device sizes its log ring and
+	// sets the min level before this run's first print.
+	bufferSize, err := cmd.Flags().GetUint("log-buffer-size")
+	if err != nil {
+		return err
+	}
+	minLevel, err := cmd.Flags().GetString("min-log-level")
+	if err != nil {
+		return err
+	}
+	logConfig, err := json.Marshal(map[string]interface{}{
+		"enabled":     true,
+		"buffer_size": bufferSize,
+		"min_level":   minLevel,
+	})
+	if err != nil {
+		return err
+	}
+	if err := sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel, string(logConfig)); err != nil {
+		return err
+	}
+	// A `/run` container is captured under the empty name, so filter on that.
+	return monitorRunNetwork(cmd, device, []string{""}, startCursor)
+}
+
+// RunFileAndMonitorSerial runs the file and then attaches to the serial port to
+// stream output. Serial shows everything from the attach point (it can't filter
+// by container) and never reboots the device.
+func RunFileAndMonitorSerial(
+	cmd *cobra.Command,
+	device Device,
+	sdk *SDK,
+	path string,
+	defines map[string]interface{},
+	assetsPath string,
+	optimizationLevel int) error {
+	fmt.Printf("Running '%s' on '%s' ...\n", path, device.Name())
+	// `run` reads the port from --monitor-port and has no --attach: the program
+	// was just started, so stream from the attach point without rebooting.
+	opts, err := parseSerialMonitorFlags(cmd, "monitor-port", "monitor-baud", false, false)
+	if err != nil {
+		return err
+	}
+	// Open the serial port first, then send the program: opening it before the
+	// upload means the program's first lines are already buffered by the OS when
+	// it starts printing, instead of being lost during the ~1s upload window.
+	// Serial reads the UART directly, so no capture header is needed.
+	return monitorSerialPort(cmd.Context(), opts, func() error {
+		return sendCodeFromFile(cmd, device, sdk, "/run", path, "", defines, assetsPath, optimizationLevel, "")
+	})
 }
 
 func InstallFile(
@@ -232,7 +343,7 @@ func InstallFile(
 	assetsPath string,
 	optimizationLevel int) error {
 	fmt.Printf("Installing container '%s' from '%s' on '%s' ...\n", name, path, device.Name())
-	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath, optimizationLevel)
+	return sendCodeFromFile(cmd, device, sdk, "/install", path, name, defines, assetsPath, optimizationLevel, "")
 }
 
 func sendCodeFromFile(
@@ -244,7 +355,8 @@ func sendCodeFromFile(
 	name string,
 	defines map[string]interface{},
 	assetsPath string,
-	optimizationLevel int) error {
+	optimizationLevel int,
+	logConfig string) error {
 
 	ctx := cmd.Context()
 	snapshotsStateDir, err := directory.GetSnapshotsStatePath()
@@ -328,6 +440,9 @@ func sendCodeFromFile(
 	// and the ones we send along as assets.
 	headersMap := make(map[string]string)
 	headersMap[JaguarContainerNameHeader] = name
+	if logConfig != "" {
+		headersMap[JaguarLogConfigHeader] = logConfig
+	}
 	assetsMap := make(map[string]interface{})
 	for key, value := range defines {
 		if strings.HasPrefix(key, "jag.") {
@@ -395,7 +510,8 @@ func sendCodeFromFile(
 		return err
 	}
 	startSend := time.Now()
-	if err := device.SendCode(ctx, sdk, request, b, headersMap); err != nil {
+	err = device.SendCode(ctx, sdk, request, b, headersMap)
+	if err != nil {
 		fmt.Println("Error:", err)
 		// We just printed the error.
 		// Mark the command as silent to avoid printing the error twice.
