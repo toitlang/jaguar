@@ -4,6 +4,7 @@
 
 import encoding.json
 import encoding.ubjson
+import encoding.url
 import http
 import log
 import monitor
@@ -31,6 +32,7 @@ HEADER-CONTAINER-TIMEOUT  ::= "X-Jaguar-Container-Timeout"
 HEADER-CONTAINER-INTERVAL ::= "X-Jaguar-Container-Interval"
 HEADER-CRC32              ::= "X-Jaguar-CRC32"
 HEADER-DISABLE-UDP        ::= "X-Jaguar-Disable-UDP"
+HEADER-LOG-CONFIG         ::= "X-Jaguar-Log-Config"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -164,7 +166,10 @@ class EndpointHttp implements Endpoint:
       device-id := "$device.id"
       device-id-header := headers.single HEADER-DEVICE-ID
       sdk-version-header := headers.single HEADER-SDK-VERSION
-      path := request.path
+      // Use the resource (the path without any query string) for routing, so
+      // that e.g. '/log?cursor=5' still matches '/log'.
+      query := url.QueryString.parse request.path
+      path := query.resource
 
       // Handle identification requests before validation, as the caller doesn't know that information yet.
       if path == "/identify" and request.method == http.GET:
@@ -203,6 +208,17 @@ class EndpointHttp implements Endpoint:
           firmware-is-upgrade-pending = true
           socket.close
 
+      // Handle draining the log ring buffer.
+      else if path == "/log" and request.method == http.GET:
+        request-mutex.do:
+          respond writer headers (drain-log query)
+
+      // Handle configuring the log ring buffer.
+      else if path == "/log/configure" and request.method == http.PUT:
+        request-mutex.do:
+          log-buffer_.apply-config (json.decode request.body.read-all)
+          respond-ok writer headers
+
       // Validate SDK version before attempting to install containers or run code.
       else if sdk-version-header != system.vm-sdk-version:
         logger.info "denied request, header: '$HEADER-SDK-VERSION' was '$sdk-version-header' not '$system.vm-sdk-version'"
@@ -210,6 +226,17 @@ class EndpointHttp implements Endpoint:
 
       // Handle installing containers and code running.
       else if (path == "/install" or path == "/run") and request.method == "PUT":
+        // The optional log-config header carries a JSON object configuring log
+        // capture for this run (same structure as /log/configure), e.g.
+        // {"enabled": true, "buffer_size": 4096, "min_level": "INFO"}. Missing
+        // fields leave the matching setting unchanged. Applying it before the
+        // container starts lets it bind to our providers from its first print.
+        log-config-header := headers.single HEADER-LOG-CONFIG
+        if log-config-header:
+          log-config := json.parse log-config-header
+          // Configure capture before starting, so the container binds to our
+          // providers from its first print.
+          log-buffer_.apply-config log-config
         image/Uuid? := null
         defines/Map? := null
         container-name/string? := null
@@ -236,6 +263,24 @@ class EndpointHttp implements Endpoint:
     if header := headers.single HEADER-CONTAINER-INTERVAL:
       defines[JAG-INTERVAL] = header
     return defines
+
+  /**
+  Parses the cursor and container filter out of a `GET /log` query and drains
+  the ring buffer accordingly.
+  */
+  drain-log query/url.QueryString -> Map:
+    parameters := query.parameters
+    cursor := int.parse (parameters.get "cursor" --if-absent=: "0")
+    // Repeat the "containers" parameter to filter to several names at once.
+    // Absent (empty list) means no filter. Anonymous `/run` output is under the
+    // empty name; clients pass the "_run_" sentinel for it, which
+    // LogBuffer.drain maps back to "". The url parser yields a single value as a
+    // string and repeats as a List.
+    containers-parameter := parameters.get "containers"
+    containers/List := containers-parameter == null
+        ? []
+        : (containers-parameter is List ? containers-parameter : [containers-parameter])
+    return log-buffer_.drain --cursor=cursor --containers=containers
 
   /**
   Writes $result as the response body, picking the encoding from the request's

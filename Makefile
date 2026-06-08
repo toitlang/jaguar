@@ -110,6 +110,7 @@ download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
 	$(BUILD_DIR)/$(JAG_BINARY) --no-analytics setup sdk $(BUILD_SDK_DIR)
 
 .PHONY: test
+test: test-toit
 test: $(BUILD_DIR)/$(JAG_BINARY)
 	@# For now just try to extract images for all chips.
 	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
@@ -121,4 +122,14 @@ test: $(BUILD_DIR)/$(JAG_BINARY)
 				firmware extract $$chip \
 				-o $$tmp_dir/$$chip.snapshot; \
 		rm -rf $$tmp_dir; \
+	done
+
+####################################
+# Rules for the Toit-side unit tests
+####################################
+.PHONY: test-toit
+test-toit: install-dependencies
+	@for test in $$(find tests -name '*-test.toit'); do \
+		echo "Running $$test"; \
+		$(SDK_PATH)/bin/toit$(EXE_SUFFIX) run "$$test" || exit 1; \
 	done
