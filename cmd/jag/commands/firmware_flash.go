@@ -34,6 +34,14 @@ func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 	cmd.Flags().MarkHidden("uart-endpoint-baud")
 }
 
+// addPartitionTableFlag adds the '--partition-table' flag. It is only meaningful
+// for commands that produce a full flashable image ('flash' and 'firmware
+// extract'); an over-the-air 'firmware update' cannot repartition the device, so
+// it deliberately doesn't offer this flag.
+func addPartitionTableFlag(cmd *cobra.Command) {
+	cmd.Flags().String("partition-table", "", "partition table to use; either a path, a URL, or the name of a published partition table (e.g. 'esp32-ota-1c0000-16mb')")
+}
+
 func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device Device, fun callback) error {
 	ctx := cmd.Context()
 
@@ -171,7 +179,18 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 
 	config := deviceOptions.GetConfig()
 
-	partitionArgs, cleanupPartitions, err := partitionOverrideArgs(chip)
+	// The '--partition-table' flag is only registered for commands that produce
+	// a full flashable image ('flash' and 'firmware extract'). For others (e.g.
+	// 'firmware update') we fall back to the automatic per-chip override only.
+	partitionTable := ""
+	if cmd.Flags().Lookup("partition-table") != nil {
+		partitionTable, err = cmd.Flags().GetString("partition-table")
+		if err != nil {
+			return err
+		}
+	}
+
+	partitionArgs, cleanupPartitions, err := partitionOverrideArgs(ctx, chip, partitionTable, jagVersion, sdk.Version)
 	if err != nil {
 		return err
 	}

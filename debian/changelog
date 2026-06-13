@@ -1,4 +1,10 @@
-jaguar (1.66.0-1) unstable; urgency=medium
+jaguar (1.67.0-1) unstable; urgency=medium
+
+  * Add a --partition-table flag for flashing.
+
+ -- Toit contributors <contact@toit.io>  Sat, 13 Jun 2026 16:26:00 +0200
+
+ jaguar (1.66.0-1) unstable; urgency=medium
 
   * Update SDK to v2.0.0-alpha.194.
 
