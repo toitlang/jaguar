@@ -165,6 +165,7 @@ func FirmwareExtractCmd() *cobra.Command {
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	addFirmwareFlashFlags(cmd, "name of the device")
+	addPartitionTableFlag(cmd)
 	cmd.Flags().StringP("output", "o", "", "write the firmware image to a file")
 	return cmd
 }

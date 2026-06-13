@@ -213,6 +213,14 @@ func GetAssetsCachePath(jagVersion string) (string, error) {
 	return filepath.Join(jagCachePath, "assets"), nil
 }
 
+func GetPartitionTablesCachePath(jagVersion string) (string, error) {
+	jagCachePath, err := GetJagCachePath(jagVersion)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(jagCachePath, "partition-tables"), nil
+}
+
 func GetAssetsPath(jagVersion string) (string, error) {
 	_, ok := GetRepoPath()
 	if ok {
