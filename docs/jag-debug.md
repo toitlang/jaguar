@@ -115,8 +115,15 @@ your program's `print`s — verbatim. A program line that happens to begin with
 
 ## Notes & limitations
 
+- **Program exit:** when the program runs to completion, the debugger prints
+  `program exited` and the session ends; further commands are ignored rather
+  than failing against the gone VM.
 - **Quitting:** `q` (or end-of-input) detaches and terminates the VM, even when
   paused at a breakpoint — the debugged program does not keep running.
+- **Breakpoints vs. entry:** the program starts *paused at entry*
+  (`#-1` / `__entry__main`). Set your breakpoints, then `c` (continue) to reach
+  them — stepping (`s`) from the entry point walks the runtime's entry stub, not
+  your `main`.
 - **Settling:** after a `continue` that runs the program to completion there is
   a brief (~0.5s) pause before the prompt returns; the debug VM does not exit on
   its own, so the driver waits for output to go quiet.

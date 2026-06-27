@@ -275,10 +275,38 @@ func TestDoContinueToProgramExit(t *testing.T) {
 	// No pause; program prints and the channel closes (VM exits).
 	ch.feed("result=10")
 	close(ch.lines)
-	if _, err := s.Do("c"); err != nil {
+	stop, err := s.Do("c")
+	if err != nil {
 		t.Fatalf("continue to exit should be nil err, got %v", err)
+	}
+	if !stop {
+		t.Errorf("continue that ends the program should stop the session")
 	}
 	if !strings.Contains(out.String(), "result=10") {
 		t.Errorf("expected program output, got %q", out.String())
+	}
+	if !strings.Contains(out.String(), "program exited") {
+		t.Errorf("expected 'program exited' notice, got %q", out.String())
+	}
+}
+
+func TestDoAfterExitStopsWithoutPipeError(t *testing.T) {
+	s, ch, _ := methodsReady(t)
+	ch.feed("result=10")
+	close(ch.lines)
+	if _, err := s.Do("c"); err != nil { // program runs to completion -> exited
+		t.Fatal(err)
+	}
+	ch.sent = nil
+	// A further command must not be sent to the dead VM; it stops cleanly.
+	stop, err := s.Do("i")
+	if err != nil {
+		t.Fatalf("post-exit command should not error, got %v", err)
+	}
+	if !stop {
+		t.Errorf("post-exit command should stop the session")
+	}
+	if len(ch.sent) != 0 {
+		t.Errorf("nothing should be sent after exit, got %v", ch.sent)
 	}
 }

@@ -23,6 +23,7 @@ type Session struct {
 
 	reg      map[int]Method
 	resolver *Resolver
+	exited   bool // the debugged program has finished and the VM is gone
 }
 
 // NewSession creates a relay over ch. names is the offline name map built from
@@ -34,6 +35,30 @@ func NewSession(ch Channel, names NameMap, out io.Writer) *Session {
 
 // Registry returns the parsed method registry (populated by Methods).
 func (s *Session) Registry() map[int]Method { return s.reg }
+
+// markExited records that the program finished (the VM exited / its stream
+// closed) and announces it once, so further commands end the session cleanly
+// instead of failing against a closed pipe.
+func (s *Session) markExited() {
+	if !s.exited {
+		s.exited = true
+		fmt.Fprintln(s.out, "program exited")
+	}
+}
+
+// send writes a wire command, treating a write failure — the VM has exited and
+// closed its stdin — as program exit rather than a raw broken-pipe error.
+// Returns true if the program has exited (caller should stop).
+func (s *Session) send(wire string) (exited bool) {
+	if s.exited {
+		return true
+	}
+	if err := s.ch.Send(wire); err != nil {
+		s.markExited()
+		return true
+	}
+	return false
+}
 
 // nameOf resolves a method id to its name, or "#<id>" if unknown.
 func (s *Session) nameOf(id int) string {
@@ -91,6 +116,7 @@ func (s *Session) drainUntil(done func(Event) bool) error {
 			return nil
 		}
 	}
+	s.markExited()
 	return io.EOF
 }
 
@@ -217,29 +243,32 @@ func (s *Session) Do(input string) (stop bool, err error) {
 			}
 		}
 		wire := fmt.Sprintf("dbg:%s %d %d", wireVerb, id, off)
-		if err := s.ch.Send(wire); err != nil {
-			return false, err
+		if s.send(wire) {
+			return true, nil
 		}
-		return false, s.drainOrExit(ackDone(wireVerb))
+		err := s.drainOrExit(ackDone(wireVerb))
+		return s.exited, err
 
 	case "inspect":
 		wire := "dbg:inspect"
 		if len(parts) > 1 {
 			wire += " " + parts[1]
 		}
-		if err := s.ch.Send(wire); err != nil {
-			return false, err
+		if s.send(wire) {
+			return true, nil
 		}
 		inspectDone := func(e Event) bool {
 			return e.Kind == KindStack || e.Kind == KindError
 		}
-		return false, s.drainOrExit(inspectDone)
+		err := s.drainOrExit(inspectDone)
+		return s.exited, err
 
 	case "continue", "step", "over", "out":
-		if err := s.ch.Send("dbg:" + wireVerb); err != nil {
-			return false, err
+		if s.send("dbg:" + wireVerb) {
+			return true, nil
 		}
-		return false, s.drainOrSettle(resumeDone)
+		err := s.drainOrSettle(resumeDone)
+		return s.exited, err
 	}
 	return false, nil
 }
@@ -270,7 +299,8 @@ func (s *Session) drainOrSettle(done func(Event) bool) error {
 		select {
 		case line, ok := <-s.ch.Lines():
 			if !ok {
-				return nil // EOF: VM exited
+				s.markExited() // EOF: VM exited
+				return nil
 			}
 			e := ParseLine(line)
 			s.print(e)
