@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/toitlang/jaguar/cmd/jag/dbg"
@@ -200,6 +201,12 @@ func (c *stdioChannel) Send(cmd string) error {
 
 func (c *stdioChannel) Lines() <-chan string { return c.lines }
 
+// detachGrace is how long Close waits for the VM to exit on its own after
+// stdin is closed before it force-terminates. A VM running to completion exits
+// well within this window; a VM still parked at a breakpoint never exits on
+// stdin EOF, so it must be killed.
+const detachGrace = 500 * time.Millisecond
+
 func (c *stdioChannel) Close() error {
 	c.stdin.Close()
 	// Drain any buffered/late output so the scanner goroutine can reach EOF
@@ -208,5 +215,18 @@ func (c *stdioChannel) Close() error {
 		for range c.lines {
 		}
 	}()
-	return c.cmd.Wait()
+	// Closing stdin lets a completed program's VM exit. A VM still paused at a
+	// breakpoint (the user quit mid-session) does not exit on stdin EOF, so
+	// after a short grace we terminate it — "detach and exit" means the
+	// debugged program does not keep running.
+	done := make(chan error, 1)
+	go func() { done <- c.cmd.Wait() }()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(detachGrace):
+		c.cmd.Process.Kill()
+		<-done // reap; the kill is intentional, so its error is not surfaced.
+		return nil
+	}
 }
