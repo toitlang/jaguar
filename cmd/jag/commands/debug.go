@@ -172,11 +172,14 @@ func newStdioChannel(cmd *exec.Cmd) (*stdioChannel, error) {
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		stdin.Close()
 		return nil, err
 	}
 	cmd.Stderr = os.Stderr
 	ch := &stdioChannel{cmd: cmd, stdin: stdin, lines: make(chan string, 256)}
 	if err := cmd.Start(); err != nil {
+		stdin.Close()
+		stdout.Close()
 		return nil, err
 	}
 	go func() {
@@ -199,5 +202,11 @@ func (c *stdioChannel) Lines() <-chan string { return c.lines }
 
 func (c *stdioChannel) Close() error {
 	c.stdin.Close()
+	// Drain any buffered/late output so the scanner goroutine can reach EOF
+	// and the child VM is never blocked writing to a full pipe.
+	go func() {
+		for range c.lines {
+		}
+	}()
 	return c.cmd.Wait()
 }
