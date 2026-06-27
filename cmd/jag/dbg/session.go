@@ -195,7 +195,8 @@ func (s *Session) Do(input string) (stop bool, err error) {
 
 	switch wireVerb {
 	case "methods":
-		s.printRegistry()
+		showAll := len(parts) > 1 && parts[1] == "all"
+		s.printRegistry(showAll)
 		return false, nil
 
 	case "break", "clear":
@@ -290,14 +291,35 @@ func (s *Session) drainOrSettle(done func(Event) bool) error {
 	}
 }
 
-// printRegistry prints the method registry with resolved names (local `m`).
-func (s *Session) printRegistry() {
+// isUserMethod reports whether method id belongs to the user's program (it
+// resolves to a name and is not defined in the SDK). The registry contains the
+// whole image — hundreds of SDK methods — so `m` shows only these by default.
+func (s *Session) isUserMethod(id int) bool {
+	if s.resolver == nil {
+		return false
+	}
+	if _, named := s.resolver.IDToName[id]; !named {
+		return false
+	}
+	return !s.names.EntrySDK[s.reg[id].EntryBci]
+}
+
+// printRegistry prints the method registry with resolved names (local `m`). By
+// default it lists only the user's own methods; showAll (`m all`) lists every
+// method in the image, including the SDK.
+func (s *Session) printRegistry(showAll bool) {
 	ids := make([]int, 0, len(s.reg))
 	for id := range s.reg {
-		ids = append(ids, id)
+		if showAll || s.isUserMethod(id) {
+			ids = append(ids, id)
+		}
 	}
 	sort.Ints(ids)
-	fmt.Fprintf(s.out, "Methods (%d registered):\n", len(s.reg))
+	if showAll {
+		fmt.Fprintf(s.out, "Methods (%d registered):\n", len(s.reg))
+	} else {
+		fmt.Fprintf(s.out, "Your methods (%d of %d; 'm all' for every method incl. SDK):\n", len(ids), len(s.reg))
+	}
 	for _, id := range ids {
 		m := s.reg[id]
 		fmt.Fprintf(s.out, "  %4d  entry_bci=%d  arity=%d  %s\n", id, m.EntryBci, m.Arity, s.nameOf(id))
@@ -314,7 +336,7 @@ Commands (full name or alias):
   n|over                    step over
   f|fin|out                 run until current frame returns
   i|inspect [frame]         inspect a stack frame (default 0)
-  m|methods                 list methods
+  m|methods [all]           list your methods (m all: include SDK)
   help                      this help
   q|quit                    detach and exit`))
 }

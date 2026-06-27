@@ -115,6 +115,43 @@ func methodsReady(t *testing.T) (*Session, *fakeChannel, *strings.Builder) {
 	return s, ch, out
 }
 
+func TestDoMethodsFiltersSDK(t *testing.T) {
+	ch := newFakeChannel()
+	out := &strings.Builder{}
+	// count-to is user code (entry 285); print_ is SDK (entry 999).
+	nm := NameMap{
+		NameToEntry: map[string]int{"count-to": 285, "print_": 999},
+		EntryToName: map[int]string{285: "count-to", 999: "print_"},
+		EntrySDK:    map[int]bool{285: false, 999: true},
+	}
+	s := NewSession(ch, nm, out)
+	ch.feed("281 285 1", "42 999 1", "dbg:ok methods")
+	if err := s.Methods(); err != nil {
+		t.Fatal(err)
+	}
+
+	out.Reset()
+	if _, err := s.Do("m"); err != nil {
+		t.Fatal(err)
+	}
+	def := out.String()
+	if !strings.Contains(def, "count-to") {
+		t.Errorf("default `m` should list user method count-to: %q", def)
+	}
+	if strings.Contains(def, "print_") {
+		t.Errorf("default `m` should hide SDK method print_: %q", def)
+	}
+
+	out.Reset()
+	if _, err := s.Do("m all"); err != nil {
+		t.Fatal(err)
+	}
+	all := out.String()
+	if !strings.Contains(all, "count-to") || !strings.Contains(all, "print_") {
+		t.Errorf("`m all` should list both user and SDK methods: %q", all)
+	}
+}
+
 func TestDoBreakByName(t *testing.T) {
 	s, ch, _ := methodsReady(t)
 	ch.feed("dbg:ok break")

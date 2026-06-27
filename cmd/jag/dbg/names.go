@@ -15,6 +15,10 @@ import (
 type NameMap struct {
 	NameToEntry map[string]int
 	EntryToName map[int]string
+	// EntrySDK[entry_bci] is true when the method is defined in the Toit SDK
+	// (its source path is reported as "<sdk>/..."), as opposed to the user's
+	// program or its packages. Used to filter the noisy `m` listing.
+	EntrySDK map[int]bool
 }
 
 var (
@@ -31,18 +35,21 @@ var (
 // output. Pure: callers shell out and pass the captured stdout. Port of the
 // Python driver's build_name_map.
 func ParseBytecodes(output string) NameMap {
-	nm := NameMap{NameToEntry: map[string]int{}, EntryToName: map[int]string{}}
+	nm := NameMap{NameToEntry: map[string]int{}, EntryToName: map[int]string{}, EntrySDK: map[int]bool{}}
 	current := ""
+	currentSDK := false
 	have := false
 	for _, line := range strings.Split(output, "\n") {
 		if m := headerRe.FindStringSubmatch(line); m != nil {
 			rest := m[1]
 			fields := strings.Fields(rest)
 			if len(fields) >= 1 && locRe.MatchString(fields[len(fields)-1]) {
+				loc := fields[len(fields)-1]
 				// Strip only the last whitespace token (the source location);
 				// names themselves may contain spaces.
-				name := strings.TrimSpace(strings.TrimSuffix(rest, fields[len(fields)-1]))
+				name := strings.TrimSpace(strings.TrimSuffix(rest, loc))
 				current = name
+				currentSDK = strings.HasPrefix(loc, "<sdk>")
 				have = true
 				continue
 			}
@@ -52,6 +59,7 @@ func ParseBytecodes(output string) NameMap {
 				entry, _ := strconv.Atoi(bm[1])
 				nm.NameToEntry[current] = entry
 				nm.EntryToName[entry] = current
+				nm.EntrySDK[entry] = currentSDK
 				have = false
 			}
 		}

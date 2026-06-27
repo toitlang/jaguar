@@ -28,6 +28,10 @@ func TestParseBytecodes(t *testing.T) {
 	if got := nm.EntryToName[285]; got != "count-to" {
 		t.Errorf("entry 285 = %q, want count-to", got)
 	}
+	// count-to/main are in the user's file, not the SDK.
+	if nm.EntrySDK[285] {
+		t.Errorf("count-to (285) should not be marked SDK")
+	}
 }
 
 func TestParseBytecodesNameWithSpaces(t *testing.T) {
@@ -36,6 +40,10 @@ func TestParseBytecodesNameWithSpaces(t *testing.T) {
 	nm := ParseBytecodes(in)
 	if got := nm.NameToEntry["[block] in service_"]; got != 53 {
 		t.Errorf("block name entry = %d (names=%v), want 53", got, nm.NameToEntry)
+	}
+	// The "<sdk>/..." source path marks this as an SDK method.
+	if !nm.EntrySDK[53] {
+		t.Errorf("entry 53 with <sdk> path should be marked SDK")
 	}
 }
 
