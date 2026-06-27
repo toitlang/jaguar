@@ -161,6 +161,29 @@ func (s *SDK) ToitRunSnapshot(ctx context.Context, args ...string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), args...)
 }
 
+// InnerToitRunPath is the path to the inner snapshot runner
+// (<sdk>/lib/toit/bin/toit.run), launched directly for debugging. The `toit`
+// multiplexer's `run` command does not accept --debug; the inner runner does
+// (it translates --debug to OEVM_DEBUG, activating the VM debugger).
+func (s *SDK) InnerToitRunPath() string {
+	return filepath.Join(s.Path, "lib", "toit", "bin", directory.Executable("toit.run"))
+}
+
+// ToitRunDebug launches the snapshot under the VM debugger:
+// `toit.run --debug <snapshot>`. Unlike ToitRun it does NOT insert a `--`
+// separator (which would pass --debug to the program instead of the VM), and it
+// targets the inner runner directly so the debugger activates in exactly one VM.
+func (s *SDK) ToitRunDebug(ctx context.Context, snapshot string) *exec.Cmd {
+	return exec.CommandContext(ctx, s.InnerToitRunPath(), "--debug", snapshot)
+}
+
+// SnapshotBytecodes returns the output of `toit tool snapshot bytecodes
+// <snapshot>`, used for offline method-name resolution (see dbg.ParseBytecodes).
+func (s *SDK) SnapshotBytecodes(ctx context.Context, snapshot string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, s.ToitPath(), "tool", "snapshot", "bytecodes", snapshot)
+	return cmd.Output()
+}
+
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "lsp"}, args...)...)
 }
