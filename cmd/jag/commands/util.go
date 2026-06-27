@@ -184,6 +184,15 @@ func (s *SDK) SnapshotBytecodes(ctx context.Context, snapshot string) ([]byte, e
 	return cmd.Output()
 }
 
+// SnapshotPositions returns the output of `toit tool snapshot positions
+// <snapshot>`: one line per bytecode, "<absolute_bci> <file> <line> <col>",
+// used for offline source-position resolution (see dbg.ParsePositions). Fails
+// on an SDK that lacks the subcommand (old SDK) — surfaced by --web at startup.
+func (s *SDK) SnapshotPositions(ctx context.Context, snapshot string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, s.ToitPath(), "tool", "snapshot", "positions", snapshot)
+	return cmd.Output()
+}
+
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "lsp"}, args...)...)
 }
