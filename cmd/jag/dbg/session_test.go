@@ -310,3 +310,51 @@ func TestDoAfterExitStopsWithoutPipeError(t *testing.T) {
 		t.Errorf("nothing should be sent after exit, got %v", ch.sent)
 	}
 }
+
+func TestObserverAndAccessors(t *testing.T) {
+	s, ch, _ := methodsReady(t)
+	var seen []Kind
+	s.SetObserver(func(e Event) { seen = append(seen, e.Kind) })
+
+	// Step: program prints, then pauses; the observer sees both events.
+	ch.feed("tick", "dbg:paused step 281 2")
+	if _, err := s.Do("s"); err != nil {
+		t.Fatal(err)
+	}
+	id, off, ok := s.LastPause()
+	if !ok || id != 281 || off != 2 {
+		t.Errorf("LastPause = %d,%d,%v, want 281,2,true", id, off, ok)
+	}
+	if len(seen) < 2 || seen[len(seen)-1] != KindPaused {
+		t.Errorf("observer should have seen app+paused, got %v", seen)
+	}
+
+	// Inspect: a stack event updates LastStack.
+	ch.feed("dbg:stack off=287 r0=3266 r1=<obj>")
+	if _, err := s.Do("i"); err != nil {
+		t.Fatal(err)
+	}
+	st, ok := s.LastStack()
+	if !ok || st.Regs[0] != "3266" || st.Regs[1] != "<obj>" {
+		t.Errorf("LastStack = %+v,%v", st, ok)
+	}
+
+	if s.Exited() {
+		t.Errorf("Exited should be false mid-session")
+	}
+	if s.MethodName(281) != "count-to" {
+		t.Errorf("MethodName(281) = %q, want count-to", s.MethodName(281))
+	}
+}
+
+func TestExitedAccessorTrueAfterProgramEnd(t *testing.T) {
+	s, ch, _ := methodsReady(t)
+	ch.feed("done")
+	close(ch.lines)
+	if _, err := s.Do("c"); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Exited() {
+		t.Errorf("Exited should be true after the program ends")
+	}
+}

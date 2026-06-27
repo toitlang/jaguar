@@ -24,6 +24,12 @@ type Session struct {
 	reg      map[int]Method
 	resolver *Resolver
 	exited   bool // the debugged program has finished and the VM is gone
+
+	observer  func(Event) // optional structured sink (the web driver); nil for text modes
+	lastPause Event       // most recent KindPaused event
+	havePause bool
+	lastStack Event // most recent KindStack event
+	haveStack bool
 }
 
 // NewSession creates a relay over ch. names is the offline name map built from
@@ -101,10 +107,38 @@ func (s *Session) format(e Event) string {
 	}
 }
 
-// print pretty-prints a protocol event (or forwards app output verbatim).
+// print pretty-prints a protocol event (or forwards app output verbatim), and
+// feeds the structured observer / state accessors used by non-text drivers.
 func (s *Session) print(e Event) {
+	switch e.Kind {
+	case KindPaused:
+		s.lastPause, s.havePause = e, true
+	case KindStack:
+		s.lastStack, s.haveStack = e, true
+	}
+	if s.observer != nil {
+		s.observer(e)
+	}
 	fmt.Fprintln(s.out, s.format(e))
 }
+
+// SetObserver installs a structured sink called for every parsed event, in
+// addition to text output. Used by the web driver; unset in REPL/script modes.
+func (s *Session) SetObserver(fn func(Event)) { s.observer = fn }
+
+// LastPause returns the method id and offset of the most recent pause.
+func (s *Session) LastPause() (id, off int, ok bool) {
+	return s.lastPause.ID, s.lastPause.Off, s.havePause
+}
+
+// LastStack returns the most recent dbg:stack event (frame registers).
+func (s *Session) LastStack() (Event, bool) { return s.lastStack, s.haveStack }
+
+// Exited reports whether the debugged program has finished and the VM is gone.
+func (s *Session) Exited() bool { return s.exited }
+
+// MethodName resolves a method id to its name, or "#<id>" if unknown.
+func (s *Session) MethodName(id int) string { return s.nameOf(id) }
 
 // drainUntil reads and prints events until done(event) is true. Returns io.EOF
 // if the Channel closes first (the program exited).
