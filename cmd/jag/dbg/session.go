@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Session is the relay engine. It owns a Channel and the offline NameMap, reads
@@ -228,13 +229,16 @@ func (s *Session) Do(input string) (stop bool, err error) {
 		if err := s.ch.Send(wire); err != nil {
 			return false, err
 		}
-		return false, s.drainOrExit(ackDone("inspect"))
+		inspectDone := func(e Event) bool {
+			return e.Kind == KindStack || e.Kind == KindError
+		}
+		return false, s.drainOrExit(inspectDone)
 
 	case "continue", "step", "over", "out":
 		if err := s.ch.Send("dbg:" + wireVerb); err != nil {
 			return false, err
 		}
-		return false, s.drainOrExit(resumeDone)
+		return false, s.drainOrSettle(resumeDone)
 	}
 	return false, nil
 }
@@ -245,6 +249,44 @@ func (s *Session) drainOrExit(done func(Event) bool) error {
 		return nil
 	} else {
 		return err
+	}
+}
+
+// settleTimeout is how long drainOrSettle waits after the last VM output before
+// treating the channel as quiescent (program completed without hitting another
+// breakpoint). Mirrors the Python PoC's reader.settle() approach.
+const settleTimeout = 600 * time.Millisecond
+
+// drainOrSettle drains events until done, EOF, or the channel is idle for
+// settleTimeout. The idle path handles programs that run to completion after a
+// resume command: the Toit VM does not exit on program end, so no EOF ever
+// arrives; the output simply stops. Returning on idle lets the caller close the
+// channel (closing VM stdin) which causes the VM to exit cleanly.
+func (s *Session) drainOrSettle(done func(Event) bool) error {
+	timer := time.NewTimer(settleTimeout)
+	defer timer.Stop()
+	for {
+		select {
+		case line, ok := <-s.ch.Lines():
+			if !ok {
+				return nil // EOF: VM exited
+			}
+			e := ParseLine(line)
+			s.print(e)
+			if done(e) {
+				return nil
+			}
+			// Got output; reset the idle timer so we keep draining.
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(settleTimeout)
+		case <-timer.C:
+			return nil // Idle for settleTimeout: program ran to completion
+		}
 	}
 }
 

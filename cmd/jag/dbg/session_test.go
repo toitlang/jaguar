@@ -173,8 +173,8 @@ func TestDoAliasesMapToWireVerbs(t *testing.T) {
 		{"n", "dbg:over", "dbg:paused step 281 2"},
 		{"f", "dbg:out", "dbg:paused step 259 5"},
 		{"fin", "dbg:out", "dbg:paused step 259 5"},
-		{"i", "dbg:inspect", "dbg:ok inspect"},
-		{"inspect 1", "dbg:inspect 1", "dbg:ok inspect"},
+		{"i", "dbg:inspect", "dbg:stack off=285"},
+		{"inspect 1", "dbg:inspect 1", "dbg:stack off=285"},
 	}
 	for _, c := range cases {
 		s, ch, _ := methodsReady(t)
