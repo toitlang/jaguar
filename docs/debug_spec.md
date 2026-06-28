@@ -105,6 +105,13 @@ debugging there needs no firmware and no new VM primitives.
     after the catch, or continue.
   - The browser shows only `done`/`exited` for an exceptional exit; the exception
     text is console‑only.
+- **Multi‑task code** works for the core loop — breakpoints are task‑aware (a
+  breakpoint in shared code hits once per task per pass; the whole process parks
+  on a hit), and `inspect` always reflects the paused task's frame. But stepping
+  **Over a `yield`** (a cooperative task switch) overshoots to `done` — same
+  cause as the `catch:` case, the per‑stack step depth doesn't survive a task
+  switch. Workaround: use breakpoints, not single‑stepping, across yields. The UI
+  also doesn't label *which* task you're paused in (inferred from the locals).
 - A program line that begins with `dbg:` is misread as a protocol line.
 
 ## Least‑invasive future work

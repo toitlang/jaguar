@@ -136,6 +136,10 @@ your program's `print`s — verbatim. A program line that happens to begin with
   before the throw to inspect locals there. (Known quirk: stepping *over* a
   `catch:` block runs to completion instead of stopping after it; use a
   breakpoint after the catch, or `continue`.)
+- **Tasks:** breakpoints are task‑aware — a breakpoint in code run by several
+  tasks stops in each one, and `inspect` shows that task's frame. Stepping
+  *over* a `yield`, though, runs to completion (the step doesn't follow the task
+  switch), so prefer breakpoints over single‑stepping across `yield`s.
 - **Not yet supported:** device debugging (`-d <device>`), conditional
   breakpoints, watchpoints, and expression evaluation beyond `inspect`.
 
