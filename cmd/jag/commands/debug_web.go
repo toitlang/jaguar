@@ -62,6 +62,7 @@ type webDriver struct {
 	srcDir    string // directory to resolve project-relative source paths against
 	sdkLib    string // SDK lib dir for "<sdk>/..." source paths ("" if unknown)
 	entryFile string // entrypoint source path, shown on first load (set by runWeb)
+	running   bool   // a resume left the program running (settled on idle, no new pause)
 	breaks    []Breakpoint
 }
 
@@ -79,11 +80,22 @@ func (d *webDriver) handleCmd(c command) (StateUpdate, error) {
 	switch c.Verb {
 	case "continue", "step", "over", "out":
 		alias := map[string]string{"continue": "c", "step": "s", "over": "n", "out": "f"}[c.Verb]
+		before := d.session.PauseGen()
 		if _, err := d.session.Do(alias); err != nil {
 			return StateUpdate{}, err
 		}
-		if !d.session.Exited() {
+		// Only refresh the frame when a NEW pause actually happened. If the relay
+		// returned on idle while the program is still running (no new pause, not
+		// exited), issuing inspect here would block against a running VM and
+		// freeze the UI under the held lock — so report "running" instead.
+		switch {
+		case d.session.Exited():
+			d.running = false
+		case d.session.PauseGen() > before:
+			d.running = false
 			d.session.Do("i") // refresh frame registers; best-effort
+		default:
+			d.running = true
 		}
 	case "break", "clear":
 		abs, ok := d.pm.LineToAbs(c.File, c.Line)
@@ -140,6 +152,10 @@ func (d *webDriver) snapshotState() StateUpdate {
 	st := StateUpdate{Breakpoints: append([]Breakpoint{}, d.breaks...), Variables: []Variable{}, EntryFile: d.entryFile}
 	if d.session.Exited() {
 		st.Status = "exited"
+		return st
+	}
+	if d.running {
+		st.Status = "running"
 		return st
 	}
 	id, off, ok := d.session.LastPause()

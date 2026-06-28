@@ -66,9 +66,11 @@ function renderHeader() {
   const loc = document.getElementById("location");
   loc.textContent = state.location
     ? `${state.location.file}:${state.location.line}  (${state.location.method})` : "";
-  const running = state.status !== "paused";
+  // Disable controls only once the program has exited. While "running" (a
+  // resume that settled with the program still going) the controls stay live so
+  // a follow-up Continue/Step drains forward to the next pause.
   for (const id of ["btn-continue", "btn-step", "btn-over", "btn-out"])
-    document.getElementById(id).disabled = state.status === "exited" || running;
+    document.getElementById(id).disabled = state.status === "exited";
 }
 
 async function apply(update) {

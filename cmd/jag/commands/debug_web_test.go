@@ -107,6 +107,24 @@ func TestSnapshotStateCarriesEntryFileWithoutLocation(t *testing.T) {
 	}
 }
 
+// A resume that settles on idle while the program is still running (no new
+// pause, not exited) must NOT trigger a follow-up inspect — issuing inspect
+// against a running VM would block forever under the held driver lock and
+// freeze the UI. The state is reported as "running". (Under the pre-fix code
+// this test would hang.)
+func TestResumeSettlingWhileRunningDoesNotInspectAndReportsRunning(t *testing.T) {
+	d, ch := webTestDriver(t)
+	// continue: the program prints but never pauses; the relay returns on idle.
+	ch.feed("still working")
+	st, err := d.handleCmd(command{Verb: "continue"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Status != "running" {
+		t.Errorf("status = %q, want running (settled while program still running)", st.Status)
+	}
+}
+
 func TestServeIndex(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

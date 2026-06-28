@@ -30,6 +30,7 @@ type Session struct {
 	havePause bool
 	lastStack Event // most recent KindStack event
 	haveStack bool
+	pauseGen  int // monotonic count of pause events (see PauseGen)
 }
 
 // NewSession creates a relay over ch. names is the offline name map built from
@@ -113,6 +114,7 @@ func (s *Session) print(e Event) {
 	switch e.Kind {
 	case KindPaused:
 		s.lastPause, s.havePause = e, true
+		s.pauseGen++
 	case KindStack:
 		s.lastStack, s.haveStack = e, true
 	}
@@ -130,6 +132,12 @@ func (s *Session) SetObserver(fn func(Event)) { s.observer = fn }
 func (s *Session) LastPause() (id, off int, ok bool) {
 	return s.lastPause.ID, s.lastPause.Off, s.havePause
 }
+
+// PauseGen is a monotonic counter incremented on every pause event. A driver
+// compares it across a resume command to tell whether a NEW pause occurred
+// (vs. the relay returning on idle while the program is still running), so it
+// can avoid issuing a follow-up inspect that would block against a running VM.
+func (s *Session) PauseGen() int { return s.pauseGen }
 
 // LastStack returns the most recent dbg:stack event (frame registers).
 func (s *Session) LastStack() (Event, bool) { return s.lastStack, s.haveStack }
