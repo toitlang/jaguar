@@ -29,3 +29,21 @@ func TestDebugCmdHasScriptFlag(t *testing.T) {
 		t.Errorf("expected --device/-d flag")
 	}
 }
+
+func TestDebugCmdHasWebFlag(t *testing.T) {
+	cmd := DebugCmd()
+	if cmd.Flags().Lookup("web") == nil {
+		t.Errorf("expected --web flag")
+	}
+}
+
+func TestDebugCmdRejectsWebAndScript(t *testing.T) {
+	cmd := DebugCmd()
+	cmd.SetArgs([]string{"-d", "host", "--web", "--script", "x.txt", "foo.toit"})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "--web and --script are mutually exclusive") {
+		t.Fatalf("expected mutual-exclusion error, got %v", err)
+	}
+}

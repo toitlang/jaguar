@@ -46,6 +46,19 @@ func DebugCmd() *cobra.Command {
 			}
 
 			entrypoint := args[0]
+
+			scriptPath, err := cmd.Flags().GetString("script")
+			if err != nil {
+				return err
+			}
+			web, err := cmd.Flags().GetBool("web")
+			if err != nil {
+				return err
+			}
+			if web && scriptPath != "" {
+				return fmt.Errorf("--web and --script are mutually exclusive")
+			}
+
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
 					return fmt.Errorf("no such file or directory: '%s'", entrypoint)
@@ -55,26 +68,22 @@ func DebugCmd() *cobra.Command {
 				return fmt.Errorf("can't debug directory: '%s'", entrypoint)
 			}
 
-			scriptPath, err := cmd.Flags().GetString("script")
-			if err != nil {
-				return err
-			}
-
 			sdk, err := GetSDK(ctx)
 			if err != nil {
 				return err
 			}
-			return runDebug(ctx, sdk, entrypoint, scriptPath)
+			return runDebug(ctx, sdk, entrypoint, scriptPath, web)
 		},
 	}
 	cmd.Flags().StringP("device", "d", "", "device to debug (only 'host' is supported)")
 	cmd.Flags().String("script", "", "read debugger commands from a file instead of the interactive REPL")
+	cmd.Flags().Bool("web", false, "serve a browser debugger UI instead of the interactive REPL")
 	return cmd
 }
 
 // runDebug compiles entrypoint to a snapshot, builds the offline name map,
 // launches the VM in debug mode, and runs the relay (REPL or scripted).
-func runDebug(ctx context.Context, sdk *SDK, entrypoint, scriptPath string) error {
+func runDebug(ctx context.Context, sdk *SDK, entrypoint, scriptPath string, web bool) error {
 	// 1. Compile to a snapshot in a temp dir (ephemeral; the debugger does not
 	//    need the snapshot registered in jag's cache the way `run`/`decode` do).
 	tmpdir, err := os.MkdirTemp("", "jag_debug")
@@ -112,6 +121,11 @@ func runDebug(ctx context.Context, sdk *SDK, entrypoint, scriptPath string) erro
 		return fmt.Errorf("failed to fetch method registry: %w", err)
 	}
 
+	if web {
+		err := runWeb(ctx, sdk, entrypoint, snapshot, session, names)
+		channel.Close()
+		return err
+	}
 	if scriptPath != "" {
 		runScript(session, scriptPath)
 	} else {
