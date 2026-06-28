@@ -77,7 +77,9 @@ func TestWebDriverEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("step: %v", err)
 	}
-	if st.Status == "paused" && st.Location == nil {
+	if st.Status != "paused" {
+		t.Errorf("after step, want paused, got %q (%+v)", st.Status, st)
+	} else if st.Location == nil {
 		t.Errorf("paused step should carry a location, got %+v", st)
 	}
 }
