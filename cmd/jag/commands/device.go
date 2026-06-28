@@ -21,6 +21,7 @@ const (
 	JaguarContainerTimeoutHeader  = "X-Jaguar-Container-Timeout"
 	JaguarContainerIntervalHeader = "X-Jaguar-Container-Interval"
 	JaguarCRC32Header             = "X-Jaguar-CRC32"
+	JaguarLogConfigHeader         = "X-Jaguar-Log-Config"
 )
 
 type Device interface {
@@ -38,6 +39,8 @@ type Device interface {
 
 	Ping(ctx context.Context, sdk *SDK) bool
 	SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error
+	PollLog(ctx context.Context, cursor int, containers []string) (*LogPollResponse, error)
+	ConfigureLog(ctx context.Context, config map[string]interface{}) error
 	ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error)
 	ContainerUninstall(ctx context.Context, sdk *SDK, name string) error
 	UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error

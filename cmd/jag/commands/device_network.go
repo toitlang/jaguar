@@ -175,9 +175,6 @@ func (d DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name st
 	}
 
 	io.ReadAll(res.Body) // Avoid closing connection prematurely.
-	if err != nil {
-		return err
-	}
 	if res.StatusCode != http.StatusOK {
 		return fmt.Errorf("got non-OK from device: %s", res.Status)
 	}
