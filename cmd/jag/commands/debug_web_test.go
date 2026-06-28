@@ -86,6 +86,27 @@ func TestSnapshotStatePausedLocationAndVars(t *testing.T) {
 	}
 }
 
+// At the entry stub the VM is paused in method -1 (no registry entry, no source
+// line) so Location is nil — but the state must still carry EntryFile so the
+// page can show source and let the user set gutter breakpoints from first load.
+func TestSnapshotStateCarriesEntryFileWithoutLocation(t *testing.T) {
+	d, ch := webTestDriver(t)
+	d.entryFile = "count_to.toit"
+	// Pause at the entry stub (method -1), then a stack line for the driver's
+	// follow-up inspect so handleCmd does not block.
+	ch.feed("dbg:paused break -1 0", "dbg:stack off=0")
+	if _, err := d.handleCmd(command{Verb: "continue"}); err != nil {
+		t.Fatal(err)
+	}
+	st := d.snapshotState()
+	if st.Status != "paused" || st.Location != nil {
+		t.Errorf("at entry stub want paused with nil Location, got status=%q loc=%+v", st.Status, st.Location)
+	}
+	if st.EntryFile != "count_to.toit" {
+		t.Errorf("EntryFile = %q, want count_to.toit", st.EntryFile)
+	}
+}
+
 func TestServeIndex(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

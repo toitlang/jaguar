@@ -74,7 +74,11 @@ function renderHeader() {
 async function apply(update) {
   state = update;
   renderHeader(); renderVars();
-  if (state.location && state.location.file !== sourceFile) await loadSource(state.location.file);
+  // Prefer the current paused location's file; otherwise fall back to the
+  // program's entrypoint so source (and clickable gutter breakpoints) are
+  // available even at the entry stub, before any breakpoint is hit.
+  const showFile = (state.location && state.location.file) || state.entry_file || null;
+  if (showFile && showFile !== sourceFile) await loadSource(showFile);
   else renderSource();
 }
 

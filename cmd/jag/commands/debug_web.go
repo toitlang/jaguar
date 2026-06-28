@@ -27,6 +27,11 @@ type StateUpdate struct {
 	Breakpoints []Breakpoint `json:"breakpoints"`
 	Variables   []Variable   `json:"variables"`
 	MethodID    int          `json:"method_id"`
+	// EntryFile is the debugged program's entrypoint source path. The page
+	// shows it on first load so the user can set gutter breakpoints even while
+	// the VM is paused at the runtime entry stub (method -1), which has no
+	// resolvable source line and therefore no Location.
+	EntryFile string `json:"entry_file"`
 }
 type Location struct {
 	File   string `json:"file"`
@@ -51,12 +56,13 @@ type command struct {
 // state into a StateUpdate. It serializes all command handling under mu (the VM
 // is single-threaded; the relay is synchronous).
 type webDriver struct {
-	mu      sync.Mutex
-	session *dbg.Session
-	pm      dbg.PositionMap
-	srcDir  string // directory to resolve project-relative source paths against
-	sdkLib  string // SDK lib dir for "<sdk>/..." source paths ("" if unknown)
-	breaks  []Breakpoint
+	mu        sync.Mutex
+	session   *dbg.Session
+	pm        dbg.PositionMap
+	srcDir    string // directory to resolve project-relative source paths against
+	sdkLib    string // SDK lib dir for "<sdk>/..." source paths ("" if unknown)
+	entryFile string // entrypoint source path, shown on first load (set by runWeb)
+	breaks    []Breakpoint
 }
 
 func newWebDriver(s *dbg.Session, pm dbg.PositionMap, srcDir, sdkLib string) *webDriver {
@@ -131,7 +137,7 @@ func (d *webDriver) SnapshotState() StateUpdate {
 
 // snapshotState reads the relay's current state into a StateUpdate.
 func (d *webDriver) snapshotState() StateUpdate {
-	st := StateUpdate{Breakpoints: append([]Breakpoint{}, d.breaks...), Variables: []Variable{}}
+	st := StateUpdate{Breakpoints: append([]Breakpoint{}, d.breaks...), Variables: []Variable{}, EntryFile: d.entryFile}
 	if d.session.Exited() {
 		st.Status = "exited"
 		return st
@@ -304,6 +310,10 @@ func runWeb(ctx context.Context, sdk *SDK, entrypoint, snapshot string, session 
 	srcDir := filepath.Dir(entrypoint)
 	sdkLib := filepath.Join(sdk.Path, "lib")
 	driver := newWebDriver(session, pm, srcDir, sdkLib)
+	// Show the entrypoint source on first load. The entrypoint path as passed to
+	// jag matches the position-map file token (both come from the compiler's
+	// view of the file), so gutter clicks on it resolve via LineToAbs.
+	driver.entryFile = entrypoint
 	server := newWebServer(driver)
 
 	mux := http.NewServeMux()
