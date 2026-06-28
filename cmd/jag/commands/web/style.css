@@ -4,7 +4,7 @@ header { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem;
   background: #2d2d30; color: #eee; position: sticky; top: 0; }
 .status { font-weight: 600; }
 .status.paused { color: #f1c40f; } .status.running { color: #2ecc71; }
-.status.exited { color: #e74c3c; }
+.status.done { color: #74c0fc; } .status.exited { color: #e74c3c; }
 .location { color: #9cdcfe; font-family: monospace; }
 .controls { margin-left: auto; display: flex; gap: .4rem; }
 button { cursor: pointer; background: #0e639c; color: #fff; border: 0;
@@ -12,6 +12,9 @@ button { cursor: pointer; background: #0e639c; color: #fff; border: 0;
 button:disabled { opacity: .4; cursor: default; }
 main { display: flex; height: calc(100vh - 48px); }
 #source-pane { flex: 1; overflow: auto; }
+.banner { position: sticky; top: 0; padding: .6rem 1rem; font-size: 13px;
+  background: #fff3cd; color: #664d03; border-bottom: 1px solid #ffe69c; }
+.banner b { font-family: monospace; }
 .source { font-family: monospace; font-size: 13px; white-space: pre;
   counter-reset: none; }
 .line { display: flex; }

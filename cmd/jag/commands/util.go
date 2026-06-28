@@ -193,6 +193,15 @@ func (s *SDK) SnapshotPositions(ctx context.Context, snapshot string) ([]byte, e
 	return cmd.Output()
 }
 
+// SnapshotClassNames returns the output of `toit tool snapshot class-names
+// <snapshot>`: one line per class, "<class_id> <name>", used to resolve the
+// numeric class ids the debugger emits for heap-object registers (see
+// dbg.ParseClassNames). Fails on an SDK that lacks the subcommand (old SDK).
+func (s *SDK) SnapshotClassNames(ctx context.Context, snapshot string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, s.ToitPath(), "tool", "snapshot", "class-names", snapshot)
+	return cmd.Output()
+}
+
 func (s *SDK) ToitLsp(ctx context.Context, args []string) *exec.Cmd {
 	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "lsp"}, args...)...)
 }

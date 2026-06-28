@@ -112,6 +112,12 @@ func runDebug(ctx context.Context, sdk *SDK, entrypoint, scriptPath string, web 
 
 	// 4. Relay.
 	session := dbg.NewSession(channel, names, os.Stdout)
+	if web {
+		// The browser is the UI; the console shows only the debugged program's
+		// own output. Set this before Start so even the startup protocol lines
+		// ("ready", the entry-stub pause) stay off the console.
+		session.SetQuiet(true)
+	}
 	if err := session.Start(); err != nil {
 		channel.Close()
 		return fmt.Errorf("VM did not become ready: %w", err)

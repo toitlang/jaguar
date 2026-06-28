@@ -59,10 +59,12 @@ type webDriver struct {
 	mu        sync.Mutex
 	session   *dbg.Session
 	pm        dbg.PositionMap
-	srcDir    string // directory to resolve project-relative source paths against
-	sdkLib    string // SDK lib dir for "<sdk>/..." source paths ("" if unknown)
-	entryFile string // entrypoint source path, shown on first load (set by runWeb)
-	running   bool   // a resume left the program running (settled on idle, no new pause)
+	classes   dbg.ClassNames // class id -> name, for "<obj:N>" register values
+	srcDir    string         // directory to resolve project-relative source paths against
+	sdkLib    string         // SDK lib dir for "<sdk>/..." source paths ("" if unknown)
+	pkgRoots  pkgRoots       // package id -> root, for "<pkg:..>/..." source paths
+	entryFile string         // entrypoint source path, shown on first load (set by runWeb)
+	settled   bool           // a resume ran to completion (settled on idle: no new pause, not exited)
 	breaks    []Breakpoint
 }
 
@@ -78,24 +80,18 @@ func (d *webDriver) handleCmd(c command) (StateUpdate, error) {
 	defer d.mu.Unlock()
 
 	switch c.Verb {
-	case "continue", "step", "over", "out":
-		alias := map[string]string{"continue": "c", "step": "s", "over": "n", "out": "f"}[c.Verb]
-		before := d.session.PauseGen()
-		if _, err := d.session.Do(alias); err != nil {
+	case "continue":
+		if err := d.resume("c"); err != nil {
 			return StateUpdate{}, err
 		}
-		// Only refresh the frame when a NEW pause actually happened. If the relay
-		// returned on idle while the program is still running (no new pause, not
-		// exited), issuing inspect here would block against a running VM and
-		// freeze the UI under the held lock — so report "running" instead.
-		switch {
-		case d.session.Exited():
-			d.running = false
-		case d.session.PauseGen() > before:
-			d.running = false
-			d.session.Do("i") // refresh frame registers; best-effort
-		default:
-			d.running = true
+	case "step", "over", "out":
+		alias := map[string]string{"step": "s", "over": "n", "out": "f"}[c.Verb]
+		// "In" (step) may descend into any frame, including the SDK. "Over"/"Out"
+		// must never reveal SDK internals: when they fall off the end of the
+		// user's code into the runtime harness, run on to completion instead.
+		allowSDK := c.Verb == "step"
+		if err := d.stepToNewLine(alias, allowSDK); err != nil {
+			return StateUpdate{}, err
 		}
 	case "break", "clear":
 		abs, ok := d.pm.LineToAbs(c.File, c.Line)
@@ -120,6 +116,106 @@ func (d *webDriver) handleCmd(c command) (StateUpdate, error) {
 	return d.snapshotState(), nil
 }
 
+// resume issues a single VM resume (used for "continue") and records the
+// resulting state. If the relay returned on idle with no new pause (and not
+// exited), the program ran to completion — report "done"; issuing inspect then
+// would block against the parked VM and freeze the UI under the held lock.
+func (d *webDriver) resume(alias string) error {
+	before := d.session.PauseGen()
+	if _, err := d.session.Do(alias); err != nil {
+		return err
+	}
+	switch {
+	case d.session.Exited():
+		d.settled = false
+	case d.session.PauseGen() > before:
+		d.settled = false
+		d.session.Do("i") // refresh frame registers; best-effort
+	default:
+		d.settled = true
+	}
+	return nil
+}
+
+// stepToNewLine drives one user-level step (In/Over/Out). The VM steps one
+// bytecode at a time, and most bytecodes carry the method's *declaration-line*
+// position as a fallback — so a single VM step makes the marker bounce back to
+// e.g. `main:`. We instead repeat the VM primitive until the pause lands on a
+// genuinely new source line (or steps into/out of a call), giving "one click =
+// one line". Stops early on program end, a breakpoint hit, or a safety cap.
+func (d *webDriver) stepToNewLine(alias string, allowSDK bool) error {
+	startLine, startMethod := d.pauseLineMethod()
+	const maxSteps = 2000
+	for i := 0; i < maxSteps; i++ {
+		before := d.session.PauseGen()
+		if _, err := d.session.Do(alias); err != nil {
+			return err
+		}
+		if d.session.Exited() {
+			d.settled = false
+			return nil
+		}
+		if d.session.PauseGen() == before {
+			d.settled = true // settled on idle: ran to completion
+			return nil
+		}
+		d.settled = false
+		if d.session.LastPauseReason() == "break" || d.atNewLine(startLine, startMethod, allowSDK) {
+			d.session.Do("i") // refresh frame registers; best-effort
+			return nil
+		}
+	}
+	d.session.Do("i") // safety cap: stop where we are with a fresh frame
+	return nil
+}
+
+// pauseLineMethod returns the current pause's source line and method id, the
+// reference point for line stepping. Returns (0, -1) if there is no resolvable
+// pause yet (e.g. the entry stub), which makes the first new stop count as a
+// method change and therefore meaningful.
+func (d *webDriver) pauseLineMethod() (line, method int) {
+	id, off, ok := d.session.LastPause()
+	if !ok {
+		return 0, -1
+	}
+	if m, found := d.session.Registry()[id]; found {
+		if pos, ok := d.pm.Locate(m.EntryBci, off); ok {
+			return pos.Line, id
+		}
+	}
+	return 0, id
+}
+
+// atNewLine reports whether the current pause is a meaningful stop for line
+// stepping: a different method (stepped into or out of a call), or — within the
+// same method — a source line that is neither the start line nor the method's
+// declaration line (the position fallback used for filler bytecodes).
+func (d *webDriver) atNewLine(startLine, startMethod int, allowSDK bool) bool {
+	id, off, ok := d.session.LastPause()
+	if !ok {
+		return true // unknown: don't loop forever
+	}
+	m, found := d.session.Registry()[id]
+	if !found {
+		return true // entry stub / unknown method: stop
+	}
+	pos, ok := d.pm.Locate(m.EntryBci, off)
+	if !ok {
+		return false // no source for this bytecode: keep stepping
+	}
+	if !allowSDK && strings.HasPrefix(pos.File, "<sdk>/") {
+		return false // Over/Out: don't surface SDK internals, keep stepping
+	}
+	if id != startMethod {
+		return true // entered or returned out of a call
+	}
+	declLine := 0
+	if hp, ok := d.pm.Locate(m.EntryBci, 0); ok {
+		declLine = hp.Line
+	}
+	return pos.Line != startLine && pos.Line != declLine
+}
+
 func (d *webDriver) setBreak(verb, file string, line int) {
 	if verb == "clear" {
 		out := d.breaks[:0]
@@ -139,6 +235,61 @@ func (d *webDriver) setBreak(verb, file string, line int) {
 	d.breaks = append(d.breaks, Breakpoint{File: file, Line: line})
 }
 
+// runToMain sets a one-shot breakpoint at the first line of the user's main and
+// resumes to it, so the page opens already paused at the program's first
+// statement instead of the runtime entry stub (method -1, no source line).
+// Best-effort: if main or its first line cannot be resolved the VM is left at
+// the entry stub, which the page still renders (entry source, no marker).
+func (d *webDriver) runToMain(entryFile string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	mainID, ok := d.session.ResolveName("main")
+	if !ok {
+		return
+	}
+	reg := d.session.Registry()
+	m, ok := reg[mainID]
+	if !ok {
+		return
+	}
+	// main's bytecode runs from its EntryBci up to the next method's EntryBci.
+	hi := -1
+	for _, mm := range reg {
+		if mm.EntryBci > m.EntryBci && (hi < 0 || mm.EntryBci < hi) {
+			hi = mm.EntryBci
+		}
+	}
+	// Prefer the first statement past main's signature line (more useful: real
+	// code, locals populated). Fall back to the declaration line for a one-liner
+	// main whose body shares the signature line.
+	line, ok := d.pm.FirstLineInRange(entryFile, m.EntryBci, hi, 0)
+	if !ok {
+		return
+	}
+	if stmt, ok := d.pm.FirstLineInRange(entryFile, m.EntryBci, hi, line); ok {
+		line = stmt
+	}
+	abs, ok := d.pm.LineToAbs(entryFile, line)
+	if !ok {
+		return
+	}
+	id, off, ok := dbg.MethodForAbs(reg, abs)
+	if !ok {
+		return
+	}
+	// Set the breakpoint, continue to it, then clear it (one-shot) — clearing a
+	// breakpoint does not resume, so the VM stays paused at main. Don't record it
+	// in d.breaks: it's internal, not a user breakpoint.
+	if _, err := d.session.Do(fmt.Sprintf("b %d %d", id, off)); err != nil {
+		return
+	}
+	if _, err := d.session.Do("c"); err != nil {
+		return
+	}
+	d.session.Do(fmt.Sprintf("d %d %d", id, off))
+}
+
 // SnapshotState returns the current state under the driver lock, for callers
 // (the SSE initial push) that are not already holding d.mu via handleCmd.
 func (d *webDriver) SnapshotState() StateUpdate {
@@ -154,13 +305,13 @@ func (d *webDriver) snapshotState() StateUpdate {
 		st.Status = "exited"
 		return st
 	}
-	if d.running {
-		st.Status = "running"
+	if d.settled {
+		st.Status = "done"
 		return st
 	}
 	id, off, ok := d.session.LastPause()
 	if !ok {
-		st.Status = "running"
+		st.Status = "done"
 		return st
 	}
 	st.Status = "paused"
@@ -177,7 +328,7 @@ func (d *webDriver) snapshotState() StateUpdate {
 		}
 		sort.Ints(slots)
 		for _, s := range slots {
-			st.Variables = append(st.Variables, Variable{Slot: s, Value: stk.Regs[s]})
+			st.Variables = append(st.Variables, Variable{Slot: s, Value: d.classes.Resolve(stk.Regs[s])})
 		}
 	}
 	return st
@@ -194,6 +345,14 @@ func (d *webDriver) resolveSourcePath(file string) (string, bool) {
 		p := filepath.Join(d.sdkLib, strings.TrimPrefix(file, "<sdk>/"))
 		if _, err := os.Stat(p); err == nil {
 			return p, true
+		}
+		return "", false
+	}
+	if strings.HasPrefix(file, "<pkg:") {
+		if p, ok := pkgFilePath(file, d.pkgRoots); ok {
+			if _, err := os.Stat(p); err == nil {
+				return p, true
+			}
 		}
 		return "", false
 	}
@@ -323,13 +482,29 @@ func runWeb(ctx context.Context, sdk *SDK, entrypoint, snapshot string, session 
 	}
 	pm := dbg.ParsePositions(string(posOut))
 
+	// Class-name resolution for heap-object register values ("<obj:N>"). Same SDK
+	// vintage as the positions dump, so a failure here means the same old-SDK
+	// problem; surface it the same way.
+	classOut, err := sdk.SnapshotClassNames(ctx, snapshot)
+	if err != nil {
+		return fmt.Errorf("this SDK lacks 'snapshot class-names'; rebuild the debug SDK: %w", err)
+	}
+	classes := dbg.ParseClassNames(string(classOut))
+
 	srcDir := filepath.Dir(entrypoint)
 	sdkLib := filepath.Join(sdk.Path, "lib")
 	driver := newWebDriver(session, pm, srcDir, sdkLib)
+	driver.classes = classes
 	// Show the entrypoint source on first load. The entrypoint path as passed to
 	// jag matches the position-map file token (both come from the compiler's
 	// view of the file), so gutter clicks on it resolve via LineToAbs.
 	driver.entryFile = entrypoint
+	// Package source ("<pkg:..>/...") resolves via the entrypoint's package.lock,
+	// so stepping In to a package method shows its source instead of the banner.
+	driver.pkgRoots = loadPkgRoots(srcDir)
+	// Resume to the first line of main so the page opens paused at the user's code
+	// rather than the runtime entry stub. Best-effort (see runToMain).
+	driver.runToMain(entrypoint)
 	server := newWebServer(driver)
 
 	mux := http.NewServeMux()

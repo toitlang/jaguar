@@ -43,6 +43,34 @@ func newTestSession() (*Session, *fakeChannel, *strings.Builder) {
 	return NewSession(ch, nm, out), ch, out
 }
 
+func TestQuietModeEmitsOnlyProgramOutput(t *testing.T) {
+	// In --web mode the browser is the UI: line-stepping issues many VM-level
+	// step/over commands, and printing each "ok: over"/"paused in ..." to the
+	// console buries the program's own output. Quiet mode forwards only the
+	// debugged program's output (KindApp) to out, suppressing protocol events.
+	s, _, out := newTestSession()
+	s.SetQuiet(true)
+	s.print(Event{Kind: KindPaused, Mode: "step", ID: 5, Off: 3})
+	s.print(Event{Kind: KindOK, Verb: "over"})
+	s.print(Event{Kind: KindStack, Off: 3, Regs: map[int]string{0: "42"}})
+	s.print(Event{Kind: KindError, Msg: "boom"})
+	s.print(Event{Kind: KindApp, Text: "service=7.5 -> tip=20.00"})
+
+	got := out.String()
+	for _, leak := range []string{"paused", "ok:", "stack", "error:"} {
+		if strings.Contains(got, leak) {
+			t.Errorf("quiet mode leaked protocol text %q in output: %q", leak, got)
+		}
+	}
+	if !strings.Contains(got, "service=7.5 -> tip=20.00") {
+		t.Errorf("quiet mode dropped program output: %q", got)
+	}
+	// The structured observer/state must still be fed in quiet mode.
+	if id, off, ok := s.LastPause(); !ok || id != 5 || off != 3 {
+		t.Errorf("quiet mode broke pause state: id=%d off=%d ok=%v", id, off, ok)
+	}
+}
+
 func TestStartWaitsForReady(t *testing.T) {
 	s, ch, out := newTestSession()
 	ch.feed("dbg:ready")

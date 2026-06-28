@@ -43,8 +43,85 @@ type Event struct {
 var (
 	pausedRe = regexp.MustCompile(`^dbg:paused (break|step) (-?\d+) (\d+)$`)
 	offRe    = regexp.MustCompile(`off=(\d+)`)
-	regRe    = regexp.MustCompile(`r(\d+)=(\S+)`)
 )
+
+// parseRegs extracts the rN=value pairs from a "dbg:stack" line. A value is
+// either a bare token with no whitespace (numbers, null/true/false, <obj:..>)
+// or a double-quoted string, which may contain spaces and the escapes \" \\ \n
+// \r \t \xNN (emitted by the VM for String registers). A regex cannot do this:
+// it would split a string value on its interior spaces. The returned value for
+// a quoted string keeps its surrounding quotes with the escapes resolved.
+func parseRegs(s string) map[int]string {
+	regs := map[int]string{}
+	n := len(s)
+	for i := 0; i < n; {
+		// A register starts with "r" at a token boundary (start or after a space),
+		// followed by digits and "=".
+		if s[i] != 'r' || (i > 0 && s[i-1] != ' ') {
+			i++
+			continue
+		}
+		j := i + 1
+		for j < n && s[j] >= '0' && s[j] <= '9' {
+			j++
+		}
+		if j == i+1 || j >= n || s[j] != '=' {
+			i++
+			continue
+		}
+		idx, _ := strconv.Atoi(s[i+1 : j])
+		k := j + 1 // start of value
+		if k < n && s[k] == '"' {
+			var b strings.Builder
+			b.WriteByte('"')
+			k++
+			for k < n {
+				c := s[k]
+				if c == '"' {
+					k++ // consume closing quote
+					break
+				}
+				if c == '\\' && k+1 < n {
+					switch nx := s[k+1]; nx {
+					case 'n':
+						b.WriteByte('\n')
+					case 'r':
+						b.WriteByte('\r')
+					case 't':
+						b.WriteByte('\t')
+					case 'x':
+						if k+3 < n {
+							if v, err := strconv.ParseUint(s[k+2:k+4], 16, 8); err == nil {
+								b.WriteByte(byte(v))
+								k += 4
+								continue
+							}
+						}
+						b.WriteByte(nx)
+					default: // \" \\ and any other escaped char: emit it literally
+						b.WriteByte(nx)
+					}
+					k += 2
+					continue
+				}
+				b.WriteByte(c)
+				k++
+			}
+			b.WriteByte('"')
+			regs[idx] = b.String()
+			i = k
+			continue
+		}
+		// Bare token: up to the next space.
+		e := k
+		for e < n && s[e] != ' ' {
+			e++
+		}
+		regs[idx] = s[k:e]
+		i = e
+	}
+	return regs
+}
 
 // ParseLine parses one line of VM stdout. Non-"dbg:" lines are the program's
 // own output (KindApp). Port of the Python driver's parse_line.
@@ -64,12 +141,7 @@ func ParseLine(line string) Event {
 	if strings.HasPrefix(s, "dbg:stack off=") {
 		if om := offRe.FindStringSubmatch(s); om != nil {
 			off, _ := strconv.Atoi(om[1])
-			regs := map[int]string{}
-			for _, rm := range regRe.FindAllStringSubmatch(s, -1) {
-				idx, _ := strconv.Atoi(rm[1])
-				regs[idx] = rm[2]
-			}
-			return Event{Kind: KindStack, Off: off, Regs: regs}
+			return Event{Kind: KindStack, Off: off, Regs: parseRegs(s)}
 		}
 	}
 	if strings.HasPrefix(s, "dbg:ok ") {

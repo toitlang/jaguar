@@ -26,6 +26,7 @@ type Session struct {
 	exited   bool // the debugged program has finished and the VM is gone
 
 	observer  func(Event) // optional structured sink (the web driver); nil for text modes
+	quiet     bool        // suppress protocol text on out, forwarding only program output (web mode)
 	lastPause Event       // most recent KindPaused event
 	havePause bool
 	lastStack Event // most recent KindStack event
@@ -121,8 +122,20 @@ func (s *Session) print(e Event) {
 	if s.observer != nil {
 		s.observer(e)
 	}
+	// In quiet mode (web), the browser renders protocol state via the observer,
+	// so the console shows only the debugged program's own output. Without this,
+	// one line-step fans out into many VM-level step/over commands whose
+	// "ok: over"/"paused in ..." acks bury the program's output.
+	if s.quiet && e.Kind != KindApp {
+		return
+	}
 	fmt.Fprintln(s.out, s.format(e))
 }
+
+// SetQuiet suppresses pretty-printed protocol text on out, forwarding only the
+// debugged program's own output (KindApp). Used by the web driver, where the
+// browser is the UI and the console is just the program's stdout.
+func (s *Session) SetQuiet(q bool) { s.quiet = q }
 
 // SetObserver installs a structured sink called for every parsed event, in
 // addition to text output. Used by the web driver; unset in REPL/script modes.
@@ -132,6 +145,12 @@ func (s *Session) SetObserver(fn func(Event)) { s.observer = fn }
 func (s *Session) LastPause() (id, off int, ok bool) {
 	return s.lastPause.ID, s.lastPause.Off, s.havePause
 }
+
+// LastPauseReason reports why the most recent pause happened: "break" (a
+// breakpoint, or the forced entry-stub pause) or "step". Empty before any pause.
+// A line-stepping driver uses this to stop as soon as a breakpoint is hit while
+// repeatedly issuing the VM's per-bytecode step primitive.
+func (s *Session) LastPauseReason() string { return s.lastPause.Mode }
 
 // PauseGen is a monotonic counter incremented on every pause event. A driver
 // compares it across a resume command to tell whether a NEW pause occurred
@@ -147,6 +166,16 @@ func (s *Session) Exited() bool { return s.exited }
 
 // MethodName resolves a method id to its name, or "#<id>" if unknown.
 func (s *Session) MethodName(id int) string { return s.nameOf(id) }
+
+// ResolveName returns the method id for a method name (e.g. "main"), using the
+// name<->id resolver built in Methods. Returns ok=false if unresolved.
+func (s *Session) ResolveName(name string) (id int, ok bool) {
+	if s.resolver == nil {
+		return 0, false
+	}
+	id, ok = s.resolver.NameToID[name]
+	return id, ok
+}
 
 // drainUntil reads and prints events until done(event) is true. Returns io.EOF
 // if the Channel closes first (the program exited).

@@ -53,6 +53,26 @@ func TestLineToAbsLowest(t *testing.T) {
 	}
 }
 
+func TestFirstLineInRange(t *testing.T) {
+	pm := ParsePositions(positionsFixture)
+	// count-to spans [285, unbounded): lines 6 (decl), 8, 9, 10.
+	if line, ok := pm.FirstLineInRange("/proj/count_to.toit", 285, -1, 0); !ok || line != 6 {
+		t.Errorf("FirstLineInRange(285,-1,0) = %d,%v, want 6,true (declaration)", line, ok)
+	}
+	// Past the declaration line 6: the first statement is line 8.
+	if line, ok := pm.FirstLineInRange("/proj/count_to.toit", 285, -1, 6); !ok || line != 8 {
+		t.Errorf("FirstLineInRange(285,-1,6) = %d,%v, want 8,true (first statement)", line, ok)
+	}
+	// main spans [263, 285): only line 2 (a single-line method). The declaration
+	// line resolves, but there is no statement past it -> the one-liner fallback.
+	if line, ok := pm.FirstLineInRange("/proj/count_to.toit", 263, 285, 0); !ok || line != 2 {
+		t.Errorf("FirstLineInRange(263,285,0) = %d,%v, want 2,true", line, ok)
+	}
+	if _, ok := pm.FirstLineInRange("/proj/count_to.toit", 263, 285, 2); ok {
+		t.Errorf("FirstLineInRange(263,285,2) should miss (no statement past the only line)")
+	}
+}
+
 func TestMethodForAbs(t *testing.T) {
 	reg := map[int]Method{
 		259: {EntryBci: 263, Arity: 0}, // main

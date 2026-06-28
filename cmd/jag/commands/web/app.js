@@ -60,17 +60,45 @@ function renderVars() {
   }
 }
 
+// A frame is "opaque" when we're paused in it but its source could not be
+// loaded — the /source fetch for the current file 404'd, leaving sourceLines
+// null. SDK and package frames usually DO resolve now (against the SDK lib and
+// package.lock), so this is keyed on the actual fetch result, not the path.
+function frameHasNoSource() {
+  const loc = state.location;
+  if (!loc || !loc.file) return false;
+  return loc.file === sourceFile && !sourceLines;
+}
+
+function renderBanner() {
+  const b = document.getElementById("banner");
+  if (state.status === "paused" && frameHasNoSource()) {
+    const loc = state.location;
+    b.hidden = false;
+    b.innerHTML = "";
+    const lead = document.createTextNode("⚠ Paused in library code with no source — ");
+    const where = document.createElement("b");
+    where.textContent = `${loc.file}:${loc.line} (${loc.method})`;
+    const tail = document.createTextNode(
+      ". This is not an exception. Press ⤴ Out to return to your code, or ▶ Continue to run on.");
+    b.append(lead, where, tail);
+  } else {
+    b.hidden = true;
+    b.textContent = "";
+  }
+}
+
 function renderHeader() {
   const s = document.getElementById("status");
   s.textContent = state.status; s.className = "status " + state.status;
   const loc = document.getElementById("location");
   loc.textContent = state.location
     ? `${state.location.file}:${state.location.line}  (${state.location.method})` : "";
-  // Disable controls only once the program has exited. While "running" (a
-  // resume that settled with the program still going) the controls stay live so
-  // a follow-up Continue/Step drains forward to the next pause.
-  for (const id of ["btn-continue", "btn-step", "btn-over", "btn-out"])
-    document.getElementById(id).disabled = state.status === "exited";
+  // Disable the resume controls once the program is finished: "done" (ran to
+  // completion) or "exited" (VM gone). There's nothing left to step into.
+  const finished = state.status === "done" || state.status === "exited";
+  for (const id of ["btn-continue", "btn-in", "btn-over", "btn-out"])
+    document.getElementById(id).disabled = finished;
 }
 
 async function apply(update) {
@@ -82,10 +110,11 @@ async function apply(update) {
   const showFile = (state.location && state.location.file) || state.entry_file || null;
   if (showFile && showFile !== sourceFile) await loadSource(showFile);
   else renderSource();
+  renderBanner();
 }
 
 document.getElementById("btn-continue").onclick = () => postCmd({ verb: "continue" });
-document.getElementById("btn-step").onclick = () => postCmd({ verb: "step" });
+document.getElementById("btn-in").onclick = () => postCmd({ verb: "step" });
 document.getElementById("btn-over").onclick = () => postCmd({ verb: "over" });
 document.getElementById("btn-out").onclick = () => postCmd({ verb: "out" });
 

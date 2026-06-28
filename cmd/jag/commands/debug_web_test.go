@@ -48,6 +48,136 @@ func webTestDriver(t *testing.T) (*webDriver, *webFakeChannel) {
 	return newWebDriver(s, pm, ".", ""), ch
 }
 
+// scriptedChannel models the VM's request→response timing: each resume command
+// (continue/step/over/out) yields exactly one queued pause line, and each
+// inspect yields one queued stack line. This is faithful to the real VM (which
+// only emits a pause per resume) and lets us exercise the line-stepping loop,
+// which issues several VM steps for one user click.
+type scriptedChannel struct {
+	lines  chan string
+	pauses []string
+	pi     int
+	stacks []string
+	si     int
+}
+
+func newScriptedChannel(pauses, stacks []string) *scriptedChannel {
+	return &scriptedChannel{lines: make(chan string, 64), pauses: pauses, stacks: stacks}
+}
+func (c *scriptedChannel) feedRaw(ls ...string) {
+	for _, l := range ls {
+		c.lines <- l
+	}
+}
+func (c *scriptedChannel) Send(cmd string) error {
+	switch {
+	case strings.HasPrefix(cmd, "dbg:continue"), strings.HasPrefix(cmd, "dbg:step"),
+		strings.HasPrefix(cmd, "dbg:over"), strings.HasPrefix(cmd, "dbg:out"):
+		if c.pi < len(c.pauses) {
+			c.lines <- c.pauses[c.pi]
+			c.pi++
+		}
+	case strings.HasPrefix(cmd, "dbg:inspect"):
+		if c.si < len(c.stacks) {
+			c.lines <- c.stacks[c.si]
+			c.si++
+		}
+	}
+	return nil
+}
+func (c *scriptedChannel) Lines() <-chan string { return c.lines }
+func (c *scriptedChannel) Close() error         { return nil }
+
+// A line-granularity Over must skip stops whose bytecode falls back to the
+// method's declaration line (the position fallback that made the marker "bounce"
+// to `main:`) and the start line itself, stopping at the next genuine source
+// line.
+func TestOverAdvancesByLineSkippingDeclarationFallback(t *testing.T) {
+	ch := newScriptedChannel(
+		[]string{
+			"dbg:paused break 1 2", // prime: off 2 -> line 32
+			"dbg:paused step 1 4",  // off 4 -> line 31 (declaration fallback)
+			"dbg:paused step 1 6",  // off 6 -> line 31 (fallback)
+			"dbg:paused step 1 8",  // off 8 -> line 33 (genuine)
+		},
+		[]string{
+			"dbg:stack off=880 r0=<obj>",
+			"dbg:stack off=886 r0=<obj>",
+		},
+	)
+	names := dbg.NameMap{
+		NameToEntry: map[string]int{"main": 878},
+		EntryToName: map[int]string{878: "main"},
+		EntrySDK:    map[int]bool{878: false},
+	}
+	s := dbg.NewSession(ch, names, &strings.Builder{})
+	ch.feedRaw("1 878 0", "dbg:ok methods")
+	if err := s.Methods(); err != nil {
+		t.Fatal(err)
+	}
+	pm := dbg.ParsePositions(
+		"878 simple.toit 31 1\n" + // entry / declaration line
+			"880 simple.toit 32 5\n" + // off 2
+			"882 simple.toit 31 1\n" + // off 4 fallback
+			"884 simple.toit 31 1\n" + // off 6 fallback
+			"886 simple.toit 33 5\n") // off 8 genuine
+	d := newWebDriver(s, pm, ".", "")
+
+	if _, err := d.handleCmd(command{Verb: "continue"}); err != nil {
+		t.Fatal(err) // prime: land on line 32
+	}
+	st, err := d.handleCmd(command{Verb: "over"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Location == nil || st.Location.Line != 33 {
+		t.Errorf("after Over want line 33 (skipping the line-31 fallback bounce), got %+v", st.Location)
+	}
+}
+
+// Over/Out must not reveal SDK internals: stepping off the end of the user's
+// code (main returns into the runtime entry harness) should run on to
+// completion ("done"), not park the marker in an <sdk>/ frame.
+func TestOverPastLastUserLineRunsToDoneNotSDK(t *testing.T) {
+	ch := newScriptedChannel(
+		[]string{
+			"dbg:paused break 1 38", // prime: off 38 -> line 35 (last user line)
+			"dbg:paused step 2 0",   // returned into __entry__main (SDK)
+			// no further pause: the program then settles to completion
+		},
+		// Two stacks: the second only gets consumed by the pre-fix code, which
+		// wrongly parks in the SDK frame and then inspects it. The fixed code
+		// skips the SDK frame and settles to "done" without inspecting.
+		[]string{"dbg:stack off=916 r0=<obj>", "dbg:stack off=930 r0=<obj>"},
+	)
+	names := dbg.NameMap{
+		NameToEntry: map[string]int{"main": 878, "__entry__main": 930},
+		EntryToName: map[int]string{878: "main", 930: "__entry__main"},
+		EntrySDK:    map[int]bool{878: false, 930: true},
+	}
+	s := dbg.NewSession(ch, names, &strings.Builder{})
+	ch.feedRaw("1 878 0", "2 930 0", "dbg:ok methods")
+	if err := s.Methods(); err != nil {
+		t.Fatal(err)
+	}
+	pm := dbg.ParsePositions(
+		"878 simple.toit 31 1\n" +
+			"916 simple.toit 35 3\n" + // off 38 -> last user line
+			"930 <sdk>/core/entry.toit 10 1\n") // returned-into SDK frame
+	d := newWebDriver(s, pm, ".", "")
+
+	if _, err := d.handleCmd(command{Verb: "continue"}); err != nil {
+		t.Fatal(err) // prime: line 35
+	}
+	st, err := d.handleCmd(command{Verb: "over"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Status != "done" {
+		t.Errorf("Over off the end of user code: status = %q (loc %+v), want done", st.Status, st.Location)
+	}
+}
+
 func TestHandleBreakMapsLineToMethodOffset(t *testing.T) {
 	d, ch := webTestDriver(t)
 	ch.feed("dbg:ok break")
@@ -107,12 +237,12 @@ func TestSnapshotStateCarriesEntryFileWithoutLocation(t *testing.T) {
 	}
 }
 
-// A resume that settles on idle while the program is still running (no new
-// pause, not exited) must NOT trigger a follow-up inspect — issuing inspect
-// against a running VM would block forever under the held driver lock and
-// freeze the UI. The state is reported as "running". (Under the pre-fix code
-// this test would hang.)
-func TestResumeSettlingWhileRunningDoesNotInspectAndReportsRunning(t *testing.T) {
+// A resume that settles on idle (no new pause, not exited) means the program
+// ran to completion. It must NOT trigger a follow-up inspect — issuing inspect
+// against the parked VM would block forever under the held driver lock and
+// freeze the UI. The state is reported as "done". (Under the pre-fix code this
+// test would hang.)
+func TestResumeSettlingReportsDoneWithoutInspecting(t *testing.T) {
 	d, ch := webTestDriver(t)
 	// continue: the program prints but never pauses; the relay returns on idle.
 	ch.feed("still working")
@@ -120,8 +250,8 @@ func TestResumeSettlingWhileRunningDoesNotInspectAndReportsRunning(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if st.Status != "running" {
-		t.Errorf("status = %q, want running (settled while program still running)", st.Status)
+	if st.Status != "done" {
+		t.Errorf("status = %q, want done (resume settled to completion)", st.Status)
 	}
 }
 

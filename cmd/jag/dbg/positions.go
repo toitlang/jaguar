@@ -66,6 +66,31 @@ func (pm PositionMap) LineToAbs(file string, line int) (int, bool) {
 	return abs, ok
 }
 
+// FirstLineInRange returns the lowest source line in file whose bytecode lies in
+// the bci range [loBci, hiBci) and is strictly greater than aboveLine. hiBci <= 0
+// means no upper bound; aboveLine == 0 means no lower line constraint. Used to
+// find a method's first source line from its entry-bci range, for "run to main":
+// call once with aboveLine 0 for the declaration line, again with that line to
+// get the first statement past the signature.
+func (pm PositionMap) FirstLineInRange(file string, loBci, hiBci, aboveLine int) (line int, ok bool) {
+	best := -1
+	for abs, pos := range pm.byAbs {
+		if pos.File != file || abs < loBci || (hiBci > 0 && abs >= hiBci) {
+			continue
+		}
+		if pos.Line <= aboveLine {
+			continue
+		}
+		if best < 0 || pos.Line < best {
+			best = pos.Line
+		}
+	}
+	if best < 0 {
+		return 0, false
+	}
+	return best, true
+}
+
 // MethodForAbs finds the method containing absolute bci abs: the one with the
 // largest EntryBci <= abs. Returns its id and off = abs - EntryBci. Mirrors the
 // VM's method-from-absolute-bci.
