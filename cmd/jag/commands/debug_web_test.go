@@ -138,6 +138,11 @@ func TestServeIndex(t *testing.T) {
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
 		t.Errorf("content-type = %q, want text/html", ct)
 	}
+	// Embedded assets change every jag build; they must not be browser-cached or
+	// a rebuilt jag would serve stale front-end code.
+	if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
+		t.Errorf("Cache-Control = %q, want no-store", cc)
+	}
 }
 
 func TestServeAssetMissing(t *testing.T) {

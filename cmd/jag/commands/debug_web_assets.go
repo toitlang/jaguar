@@ -24,6 +24,10 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	// The page and its assets are embedded in the jag binary and change with
+	// every build; without this a browser can serve a stale cached app.js/css
+	// after jag is rebuilt, so the UI silently runs old front-end code.
+	w.Header().Set("Cache-Control", "no-store")
 	switch {
 	case strings.HasSuffix(path, ".html"):
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
