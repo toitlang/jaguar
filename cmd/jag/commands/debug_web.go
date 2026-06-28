@@ -121,6 +121,14 @@ func (d *webDriver) setBreak(verb, file string, line int) {
 	d.breaks = append(d.breaks, Breakpoint{File: file, Line: line})
 }
 
+// SnapshotState returns the current state under the driver lock, for callers
+// (the SSE initial push) that are not already holding d.mu via handleCmd.
+func (d *webDriver) SnapshotState() StateUpdate {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.snapshotState()
+}
+
 // snapshotState reads the relay's current state into a StateUpdate.
 func (d *webDriver) snapshotState() StateUpdate {
 	st := StateUpdate{Breakpoints: append([]Breakpoint{}, d.breaks...), Variables: []Variable{}}
@@ -253,7 +261,7 @@ func (s *webServer) handleEvents(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Push the current state immediately so a late-joining page is correct.
-	sendSSE(w, flusher, s.driver.snapshotState())
+	sendSSE(w, flusher, s.driver.SnapshotState())
 	for {
 		select {
 		case <-r.Context().Done():

@@ -55,7 +55,7 @@ func TestHandleBreakMapsLineToMethodOffset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Line 8 -> abs 287 -> count-to (entry 285) off 2 -> "dbg:break 281 2".
+	// Line 8 -> abs 292 -> count-to (entry 285) off 7 -> "dbg:break 281 7".
 	if len(st.Breakpoints) != 1 || st.Breakpoints[0].Line != 8 {
 		t.Errorf("breakpoint not recorded: %+v", st.Breakpoints)
 	}
