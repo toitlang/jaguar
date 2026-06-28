@@ -127,9 +127,17 @@ your program's `print`s — verbatim. A program line that happens to begin with
 - **Settling:** after a `continue` that runs the program to completion there is
   a brief (~0.5s) pause before the prompt returns; the debug VM does not exit on
   its own, so the driver waits for output to go quiet.
+- **Inspected values:** `i` shows real frame values — `null`, `true`/`false`,
+  integers, doubles, strings (quoted), and other objects as `<obj:ClassName>`.
+  The slots are raw VM registers (`r0`, `r1`, …); **named locals are not yet
+  decoded**.
+- **Exceptions:** an uncaught exception prints the VM's `EXCEPTION` message and
+  backtrace (with `file:line`), then the program exits — set a breakpoint at or
+  before the throw to inspect locals there. (Known quirk: stepping *over* a
+  `catch:` block runs to completion instead of stopping after it; use a
+  breakpoint after the catch, or `continue`.)
 - **Not yet supported:** device debugging (`-d <device>`), conditional
   breakpoints, watchpoints, and expression evaluation beyond `inspect`.
-  Inspected non-integer values print as `<obj>` (no class-name resolution).
 
 ## Web UI (`--web`)
 
@@ -137,21 +145,30 @@ your program's `print`s — verbatim. A program line that happens to begin with
 REPL. jag serves a self-contained page on an ephemeral `localhost` port (the URL
 is printed to the console; the browser opens automatically when possible).
 
-The page shows the program source with the current line highlighted as you step,
-lets you set/clear breakpoints by clicking the line-number gutter, drives
-execution with the Continue / Step / Over / Out buttons, and shows the current
-frame's raw register slots (`r0`, `r1`, …) in the variables panel. The debugged
-program's own output stays on the launch console.
+The page opens **paused at `main`'s first statement** and shows the program
+source with the current line highlighted as you step, lets you set/clear
+breakpoints by clicking the line-number gutter, drives execution with the
+Continue / In / Over / Out buttons, and shows the current frame's values in the
+variables panel (`r0`, `r1`, … with real values: numbers, strings, `<obj:Class>`).
+The In / Over / Out buttons step a **source line** at a time, not one bytecode.
+
+The debugged program's own output stays on the **launch console** — and in
+`--web` the console shows *only* that output (the debugger's own step chatter is
+rendered in the browser, not echoed to the console).
 
 `--web` is mutually exclusive with `--script`, and like the rest of `jag debug`
 it supports `-d host` only. It requires a debug-capable SDK that includes the
-`snapshot positions` tool; on an older SDK, `--web` fails at startup with a
-"rebuild the debug SDK" message (the REPL/script modes are unaffected).
+`snapshot positions` and `snapshot class-names` tools; on an older SDK, `--web`
+fails at startup with a "rebuild the debug SDK" message (the REPL/script modes
+are unaffected).
 
 Named local variables are not yet decoded — the panel shows raw VM stack slots.
+Multi-line statements (e.g. a list literal spanning several lines) highlight
+their sub-expressions before the statement line, which can look out of order;
+each highlight is faithful to the executing bytecode.
 
 ## Design
 
-The architecture (a transport-agnostic core behind a `Channel` interface, so a
-future device transport is a new implementation rather than a rewrite) is
-described in `docs/superpowers/specs/2026-06-27-jag-host-debugger-design.md`.
+The architecture and the implementation design are in
+[debug_spec.md](debug_spec.md) (the what & why) and
+[debug_design.md](debug_design.md) (the how).
