@@ -181,7 +181,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 
 	// The '--partition-table' flag is only registered for commands that produce
 	// a full flashable image ('flash' and 'firmware extract'). For others (e.g.
-	// 'firmware update') we fall back to the automatic per-chip override only.
+	// 'firmware update') no partition-table override is applied.
 	partitionTable := ""
 	if cmd.Flags().Lookup("partition-table") != nil {
 		partitionTable, err = cmd.Flags().GetString("partition-table")
@@ -190,7 +190,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 		}
 	}
 
-	partitionArgs, cleanupPartitions, err := partitionOverrideArgs(ctx, chip, partitionTable, jagVersion, sdk.Version)
+	partitionArgs, cleanupPartitions, err := partitionOverrideArgs(ctx, partitionTable, jagVersion, sdk.Version)
 	if err != nil {
 		return err
 	}
