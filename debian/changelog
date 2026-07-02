@@ -1,3 +1,10 @@
+jaguar (1.68.0-1) unstable; urgency=medium
+
+  * Update SDK to v2.0.0-alpha.195.
+  * Fix device ID/SDK version not persisting after firmware update.
+
+ -- Toit contributors <contact@toit.io>  Sat, 13 Jun 2026 16:26:00 +0200
+
 jaguar (1.67.0-1) unstable; urgency=medium
 
   * Add a --partition-table flag for flashing.
