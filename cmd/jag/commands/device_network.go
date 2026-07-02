@@ -238,7 +238,7 @@ func Identify(ctx context.Context, ds deviceSelect) ([]Device, error) {
 	}
 	// Use the provided address. This way we can tunnel through the device.
 	dev.address = "http://" + addr
-	return []Device{*dev}, nil
+	return []Device{dev}, nil
 }
 
 func ScanNetwork(ctx context.Context, ds deviceSelect, port uint) ([]Device, error) {
@@ -279,7 +279,7 @@ looping:
 		if err != nil {
 			fmt.Println("Failed to parse identify", err)
 		} else if dev != nil {
-			devices[dev.Address()] = *dev
+			devices[dev.Address()] = dev
 		}
 	}
 
