@@ -47,14 +47,22 @@ func FlashCmd() *cobra.Command {
 
 			probeChipType := func(ctx context.Context, sdk *SDK) (string, error) {
 				result, err := ProbeChipType(ctx, port, sdk)
-				if err == nil {
-					if exists, err := PortExists(port); err != nil || !exists {
-						// Some boards leave flash mode and require manual intervention after
-						// ever interaction. Tell the user how to work around this.
-						fmt.Println("Note: Your board disappeared after probing the chip type.\n" +
-							"This can happen on some boards that require manual intervention to enter flash mode.\n" +
-							"Use '--chip=" + result + "' to avoid this probe step in the future.")
-					}
+				if err != nil {
+					return result, err
+				}
+				// Probing the chip type talks to the chip over serial, which resets
+				// it. Boards that use the ESP32's integrated USB peripheral (for
+				// example the ESP32-S2) are taken out of their manually-entered
+				// download mode by this, and their serial port disappears. There is
+				// no reliable way to probe without disturbing such boards, so detect
+				// the situation and tell the user how to skip the probe. We already
+				// have the chip type from the probe, so we can name the exact flag.
+				if exists, existsErr := PortExists(port); existsErr == nil && !exists {
+					return "", fmt.Errorf(
+						"the board left download mode after probing its chip type.\n"+
+							"This happens on boards that use the ESP32's integrated USB peripheral (for example\n"+
+							"the ESP32-S2) and must be put into download mode manually. Re-enter download mode and\n"+
+							"run again with '--chip=%s' to skip the chip-type probe.", result)
 				}
 				return result, err
 			}
@@ -78,16 +86,19 @@ func FlashCmd() *cobra.Command {
 				// escaping rules for COM ports over 10 (COM10, COM11),
 				// which we don't want to deal with.
 				if os.PathSeparator != '\\' && !shouldSkipPortCheck {
-					// Use golang to check the port can be opened for writing first.
-					// This is to avoid the error message from esptool.py, which is
-					// confusing to users in the common case where the port is owned
+					// Check the port is writable first, to avoid the confusing error
+					// message from esptool in the common case where the port is owned
 					// by the dialout or uucp group.
-					file, err := os.OpenFile(port, os.O_WRONLY, 0)
-					if err != nil {
+					//
+					// We deliberately do NOT open the port to check this: opening (and
+					// closing) a serial port toggles the DTR/RTS lines, which resets
+					// boards that use the ESP32's integrated USB peripheral (for example
+					// the ESP32-S2) and takes them out of the manually-entered download
+					// mode before we get a chance to flash. checkPortWritable uses
+					// access(2) instead, which never opens the port.
+					if err := checkPortWritable(port); err != nil {
 						return err
 					}
-					// Close the file again:
-					file.Close()
 				}
 
 				fmt.Printf("Flashing device over serial on port '%s' ...\n", port)
