@@ -65,10 +65,9 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 			// Run the esptool to probe the chip type.
 			probedChip, err := probeChip(ctx, sdk)
 			if err != nil {
-				return fmt.Errorf("failed to probe chip type: %w", err)
-			} else {
-				fmt.Printf("Probed chip type: %s\n", probedChip)
+				return err
 			}
+			fmt.Printf("Probed chip type: %s\n", probedChip)
 			chip = probedChip
 		} else {
 			chip = ""
