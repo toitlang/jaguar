@@ -49,6 +49,16 @@ Target state:
 | toit-vcnl4040 | Done | Done | Present | Example/call-site migration. |
 | ublox-gnss-driver | Done | Done | Present | Example I2C/UART migration. |
 
+## Jaguar repository
+
+Jaguar itself was handled after the sibling-package pass:
+
+- [x] Rebased `floitsch/fix-gpio` onto current `origin/main`.
+- [x] Retained the UART integer-pin migration.
+- [x] Added `environment.sdk: ^2.0.0-alpha.196` on `floitsch/fix-gpio`.
+- [x] Removed the local `floitsch/fix-gpio.ci` branch.
+- [x] Left Jaguar's application release workflows unchanged.
+
 ## Other missing publish workflows
 
 The following package-shaped repositories have no `publish.yml`, `publish.yaml`,
@@ -87,8 +97,8 @@ The following repositories already had an alternate package-publish workflow,
 ## Verification
 
 - [x] All three additional migration worktrees are clean.
-- [x] All 33 resulting `floitsch/fix-gpio` branches have SDK floor `^2.0.0-alpha.196`.
-- [x] No local `floitsch/fix-gpio.ci` branches remain among the sibling packages.
+- [x] All 34 resulting `floitsch/fix-gpio` branches, including Jaguar, have SDK floor `^2.0.0-alpha.196`.
+- [x] No local `floitsch/fix-gpio.ci` branches remain in the tracked repositories.
 - [x] All 12 added workflows exactly match the `toit-package` canonical resource.
 - [x] The three new migrations analyze successfully with SDK `v2.0.0-alpha.196`.
 
