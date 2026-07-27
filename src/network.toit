@@ -13,6 +13,8 @@ import system
 import system.firmware
 import uuid show Uuid
 
+import mdns.client show LocalMdnsClient
+
 import .jaguar
 
 HTTP-PORT        ::= 9000
@@ -27,7 +29,9 @@ HEADER-CONTAINER-NAME     ::= "X-Jaguar-Container-Name"
 HEADER-CONTAINER-TIMEOUT  ::= "X-Jaguar-Container-Timeout"
 HEADER-CONTAINER-INTERVAL ::= "X-Jaguar-Container-Interval"
 HEADER-CRC32              ::= "X-Jaguar-CRC32"
-HEADER-DISABLE-UDP       ::= "X-Jaguar-Disable-UDP"
+HEADER-DISABLE-UDP        ::= "X-Jaguar-Disable-UDP"
+
+MDNS-SERVICE-TYPE ::= "_jaguar._tcp"
 
 // Assets for the mini-webpage that the device serves up on $HTTP_PORT.
 CHIP-IMAGE ::= "https://toitlang.github.io/jaguar/device-files/chip.svg"
@@ -60,6 +64,7 @@ class EndpointHttp implements Endpoint:
 
       tasks := [
         :: serve-incoming-requests socket device address request-mutex,
+        :: advertise-mdns device socket.local-address.port address,
         // If the call to the network-manager monitor returns, it will terminate the
         // task and thus shut down the whole group.
         ::
@@ -77,6 +82,29 @@ class EndpointHttp implements Endpoint:
     finally:
       if socket: socket.close
       network.close
+
+  advertise-mdns device/Device port/int address/string -> none:
+    client/LocalMdnsClient? := null
+    exception := catch --trace:
+      client = LocalMdnsClient --hostname=(mdns-hostname device.name)
+      client.register-service MDNS-SERVICE-TYPE port
+          --name=device.name
+          --txt={
+            "id": "$device.id",
+            "chip": device.chip,
+            "sdk": system.vm-sdk-version,
+            "word-size": "$system.BYTES-PER-WORD",
+            "address": address,
+          }
+      logger.info "advertising Jaguar through mDNS as '$(device.name).$(MDNS-SERVICE-TYPE).local'"
+    if exception:
+      logger.warn "failed to advertise Jaguar through mDNS: $exception"
+
+    try:
+      // Keep the client alive until the HTTP endpoint is stopped.
+      while true: sleep (Duration --h=1)
+    finally:
+      if client: client.close
 
   identity-payload device/Device address/string -> ByteArray:
     identity := """
@@ -249,3 +277,25 @@ class EndpointHttp implements Endpoint:
 
   name -> string:
     return "HTTP"
+
+/**
+Returns a valid, stable mDNS hostname for the given Jaguar device $name.
+*/
+mdns-hostname name/string -> string:
+  label := name.to-ascii-lower
+  normalized := ""
+  previous-was-hyphen := false
+  label.do: | rune/int |
+    allowed := ('a' <= rune <= 'z') or ('0' <= rune <= '9')
+    if allowed:
+      normalized += string.from-rune rune
+      previous-was-hyphen = false
+    else if not previous-was-hyphen and not normalized.is-empty:
+      normalized += "-"
+      previous-was-hyphen = true
+  while normalized.ends-with "-": normalized = normalized[..normalized.size - 1]
+  if normalized.is-empty: normalized = "jaguar"
+  if normalized.size > 63:
+    normalized = normalized[..63]
+    while normalized.ends-with "-": normalized = normalized[..normalized.size - 1]
+  return "$(normalized).local"
