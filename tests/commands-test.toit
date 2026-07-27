@@ -2,8 +2,8 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-import ..src.cli.commands
-import ..src.cli.paths
+import ..src.host.cli.commands
+import ..src.host.cli.paths
 
 main:
   paths := Paths

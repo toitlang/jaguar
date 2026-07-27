@@ -4,8 +4,8 @@
 
 import host.file
 
-import ...src.cli.firmware
-import ...src.cli.paths
+import ...src.host.cli.firmware
+import ...src.host.cli.paths
 
 main arguments:
   if arguments.size != 3:

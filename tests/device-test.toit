@@ -4,7 +4,7 @@
 
 import expect show *
 
-import ..src.cli.device
+import ..src.host.cli.device
 
 IDENTITY ::= """
   {

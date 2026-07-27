@@ -6,7 +6,7 @@ import expect show *
 import host.directory
 import host.file
 
-import ..src.cli.config
+import ..src.host.cli.config
 
 main:
   test-round-trip

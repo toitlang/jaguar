@@ -7,7 +7,7 @@
 set -euo pipefail
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-BUILD_INFO="${CURR_DIR}/../src/cli/build-info.toit"
+BUILD_INFO="${CURR_DIR}/../src/host/cli/build-info.toit"
 
 VERSION="${1:-}"
 if [[ -z "${VERSION}" ]]; then

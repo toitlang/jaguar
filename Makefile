@@ -17,9 +17,12 @@ else
 endif
 
 JAG_BINARY ?= $(BUILD_DIR)/jag$(EXE_SUFFIX)
-JAG_HOST_ENTRY_POINT := $(CURDIR)/src/jag.toit
-JAG_DEVICE_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
-JAG_TOIT_SOURCES := $(shell find src -name '*.toit')
+JAG_HOST_SOURCE_DIR := $(CURDIR)/src/host
+JAG_DEVICE_SOURCE_DIR := $(CURDIR)/src/device
+JAG_HOST_ENTRY_POINT := $(JAG_HOST_SOURCE_DIR)/jag.toit
+JAG_DEVICE_ENTRY_POINT := $(JAG_DEVICE_SOURCE_DIR)/jaguar.toit
+JAG_HOST_SOURCES := $(shell find $(JAG_HOST_SOURCE_DIR) -name '*.toit')
+JAG_DEVICE_SOURCES := $(shell find $(JAG_DEVICE_SOURCE_DIR) -name '*.toit')
 JAG_PACKAGE_FILES := package.lock package.yaml
 JAG_TEST_SOURCES := $(shell find tests -name '*.toit')
 
@@ -37,20 +40,23 @@ install-dependencies:
 .PHONY: jag
 jag: $(JAG_BINARY)
 
-$(JAG_BINARY): $(JAG_TOIT_SOURCES) $(JAG_PACKAGE_FILES)
+$(JAG_BINARY): $(JAG_HOST_SOURCES) $(JAG_PACKAGE_FILES)
 	mkdir -p $(dir $@)
 	$(TOIT) compile -O2 $(TOIT_COMPILE_FLAGS) -o $@ $(JAG_HOST_ENTRY_POINT)
 
 .PHONY: assets
 assets: $(BUILD_DIR)/assets/jaguar.snapshot
 
-$(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_TOIT_SOURCES) $(JAG_PACKAGE_FILES)
+$(BUILD_DIR)/assets/jaguar.snapshot: $(JAG_DEVICE_SOURCES) $(JAG_PACKAGE_FILES)
 	mkdir -p $(dir $@)
 	$(TOIT) compile -Werror -O2 --snapshot -o $@ $(JAG_DEVICE_ENTRY_POINT)
 
 .PHONY: analyze
 analyze:
-	$(TOIT) analyze -Werror $(JAG_TOIT_SOURCES) $(JAG_TEST_SOURCES)
+	$(TOIT) analyze -Werror \
+		$(JAG_HOST_SOURCES) \
+		$(JAG_DEVICE_SOURCES) \
+		$(JAG_TEST_SOURCES)
 
 .PHONY: unit-test
 unit-test: analyze

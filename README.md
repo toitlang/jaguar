@@ -289,9 +289,10 @@ jag completion zsh > "${fpath[1]}/_jag"
 ```
 
 # Building it yourself
-Jaguar's host CLI and device service are both written in Toit. Install the
-matching Toit SDK (`v2.0.0-alpha.196`) or follow the instructions for
-[building Toit](https://github.com/toitlang/toit).
+Jaguar's host CLI and device service are both written in Toit, but kept in
+separate source roots: `src/host` contains the CLI and `src/device` contains
+the firmware service. Install the matching Toit SDK (`v2.0.0-alpha.196`) or
+follow the instructions for [building Toit](https://github.com/toitlang/toit).
 
 We assume all the commands are executed from this directory (the checkout of
 the Jaguar repository).

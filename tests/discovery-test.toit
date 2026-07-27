@@ -4,8 +4,8 @@
 
 import expect show *
 
-import ..src.cli.device
-import ..src.cli.discovery
+import ..src.host.cli.device
+import ..src.host.cli.discovery
 
 class FakeDiscovery implements Discovery:
   name/string

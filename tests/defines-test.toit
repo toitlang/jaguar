@@ -4,8 +4,8 @@
 
 import expect show *
 
-import ..src.cli.commands
-import ..src.cli.device-client
+import ..src.host.cli.commands
+import ..src.host.cli.device-client
 
 main:
   parsed := parse-defines [

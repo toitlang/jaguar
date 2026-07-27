@@ -4,7 +4,7 @@
 
 import expect show *
 
-import ..src.network
+import ..src.device.network
 
 main:
   expect-equals "office-sensor.local" (mdns-hostname "Office Sensor")
