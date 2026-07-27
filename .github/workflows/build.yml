@@ -33,10 +33,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Set up Toit
+        uses: toitlang/action-setup@v1.4.0
         with:
-          go-version: "1.26.4"
+          toit-version: v2.0.0-alpha.196
 
       - name: Install dependencies
         if: runner.os == 'Windows'
@@ -47,26 +47,26 @@ jobs:
       - name: Build jag
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" = "release" ]]; then
-            export JAG_BUILD_RELEASE=1
-          fi
-
           RUNNER_OS=$(echo ${{ runner.os }} | tr '[:upper:]' '[:lower:]')
 
           if [[ $RUNNER_OS = "windows" ]]; then
-            make JAG_BINARY=$RUNNER_OS/jag.exe jag
+            make JAG_BINARY=build/$RUNNER_OS/jag.exe jag
           elif [[ $RUNNER_OS = "macos" ]]; then
-            GOOS=darwin GOARCH=amd64 make JAG_BINARY=$RUNNER_OS/jag_amd64 jag
-            GOOS=darwin GOARCH=arm64 make JAG_BINARY=$RUNNER_OS/jag_arm64 jag
+            make JAG_BINARY=build/$RUNNER_OS/jag_amd64 \
+              TOIT_COMPILE_FLAGS="--os=macos --arch=x86_64" jag
+            make JAG_BINARY=build/$RUNNER_OS/jag_arm64 \
+              TOIT_COMPILE_FLAGS="--os=macos --arch=arm64" jag
             lipo -create -output build/$RUNNER_OS/jag build/$RUNNER_OS/jag_amd64 build/$RUNNER_OS/jag_arm64
             rm build/$RUNNER_OS/jag_amd64 build/$RUNNER_OS/jag_arm64
           else
-            make JAG_BINARY=$RUNNER_OS/jag jag
+            make JAG_BINARY=build/$RUNNER_OS/jag jag
           fi
 
           if [[ $RUNNER_OS = "linux" ]]; then
-            GOOS=linux GOARCH=arm make JAG_BINARY=$RUNNER_OS-arm/jag jag
-            GOOS=linux GOARCH=arm64 make JAG_BINARY=$RUNNER_OS-arm64/jag jag
+            make JAG_BINARY=build/$RUNNER_OS-arm/jag \
+              TOIT_COMPILE_FLAGS="--os=linux --arch=arm" jag
+            make JAG_BINARY=build/$RUNNER_OS-arm64/jag \
+              TOIT_COMPILE_FLAGS="--os=linux --arch=arm64" jag
           fi
 
       - name: Upload artifacts
@@ -202,10 +202,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Set up Toit
+        uses: toitlang/action-setup@v1.4.0
+        with:
+          toit-version: v2.0.0-alpha.196
+
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential debhelper golang git
+          sudo apt-get install -y build-essential debhelper git
 
       - name: Build Debian package
         run: |
@@ -321,14 +326,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Set up Toit
+        uses: toitlang/action-setup@v1.4.0
         with:
-          go-version: 1.19
-
-      - name: Download SDK
-        run: |
-          make download-sdk
+          toit-version: v2.0.0-alpha.196
 
       - name: Build assets
         run: |

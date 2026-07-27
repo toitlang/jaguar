@@ -105,13 +105,16 @@ After flashing it is possible to monitor the serial output from the device:
 jag monitor
 ```
 
-Once the serial output shows that your ESP32 runs the Jaguar application, it will start announcing
-its presence to the network using UDP broadcast. You can find a device by scanning, but this requires
-you to be on the same local network as your ESP32:
+Once the serial output shows that your ESP32 runs the Jaguar application, it will announce
+its presence using both mDNS/DNS-SD and the legacy UDP broadcast protocol. You can find a
+device by scanning, but this requires you to be on the same local network as your ESP32:
 
 ``` sh
 jag scan
 ```
+
+Use `jag scan --discovery=mdns` or `jag scan --discovery=udp` to select one
+discovery mechanism explicitly.
 
 ### Running code via WiFi
 With the scanning complete, you're ready to run your first Toit program on your Jaguar-enabled
@@ -275,46 +278,42 @@ sudo usermod -aG dialout $USER
 You will have to log out and log back in for this to take effect. You can also try
 `newgrp dialout` to avoid the need to log out and log back in.
 
-# Installing via Go
-You can also install using `go install`. First you'll need to have a [Go development environment](https://go.dev)
-properly set up (1.16+) and remember to add `$HOME/go/bin` or `%USERPROFILE%\go\bin` to your `PATH`. Using that
-you can install the `jag` command line tool through:
+# Shell completion
+
+Jaguar can generate completion scripts for Bash, Zsh, Fish, and PowerShell.
+The generated completion includes commands, options, and discovered Jaguar
+device names and IDs. For example:
 
 ``` sh
-go install github.com/toitlang/jaguar/cmd/jag@latest
+jag completion zsh > "${fpath[1]}/_jag"
 ```
 
 # Building it yourself
-You've read this far and you want to know how to build Jaguar and the underlying Toit language
-implementation yourself? Great! You will need to follow the instructions for
-[building Toit](https://github.com/toitlang/toit) and make sure you can flash a
-[simple example](https://github.com/toitlang/toit/blob/master/examples/hello.toit) onto your device.
+Jaguar's host CLI and device service are both written in Toit. Install the
+matching Toit SDK (`v2.0.0-alpha.196`) or follow the instructions for
+[building Toit](https://github.com/toitlang/toit).
 
 We assume all the commands are executed from this directory (the checkout of
 the Jaguar repository).
 
-Start by setting the `JAG_TOIT_REPO_PATH`. Typically, this would  be
-the path to the third_party directory:
-``` sh
-export JAG_TOIT_REPO_PATH=$PWD/third_party/toit
-```
-Alternatively, `JAG_TOIT_REPO_PATH` could point to a different checkout of Toit.
+With a released SDK on `PATH`, build and test Jaguar with:
 
-Setup the ESP-IDF environment variables and PATHs, which will allow to compile
-ESP32 programs. The easiest is to just use the `export.sh` that comes with
-the ESP-IDF repository:
 ``` sh
-source $JAG_TOIT_REPO_PATH/third_party/esp-idf/export.sh
+toit pkg install
+make
+make test
 ```
-Note that Toit's ESP-IDF is patched. Don't use use a plain ESP-IDF checkout instead.
 
-Compile everything.
+To use an SDK built in a Toit checkout, point `JAG_TOIT_REPO_PATH` at that
+checkout:
+
 ``` sh
+export JAG_TOIT_REPO_PATH=/path/to/toit
 make
 ```
-This will build the SDK from the `JAG_TOIT_REPO_PATH`, then use it to download
-the Toit dependencies (using `toit.pkg`) and finally build Jaguar; both the
-host executable, as well as the Toit program that runs on the device.
+
+This produces the host executable at `build/jag` and the device snapshot at
+`build/assets/jaguar.snapshot`.
 
 You can now use Jaguar as usual:
 
@@ -322,7 +321,7 @@ You can now use Jaguar as usual:
 build/jag flash
 sleep 3        # Give the device time to connect to the WiFi.
 build/jag scan # Select the new device.
-build/jag run $JAG_TOIT_REPO_PATH/examples/hello.toit
+build/jag run /path/to/toit/examples/hello.toit
 build/jag monitor
 ```
 

@@ -4,9 +4,8 @@
 	dh $@
 
 override_dh_auto_build:
-	# We use the existing Makefile to build the binary
-	# Disable VCS stamping to avoid issues in container/tarball builds
-	make jag GO_BUILD_FLAGS='GOFLAGS="-buildvcs=false -buildmode=pie"'
+	# We use the existing Makefile to build the binary.
+	make jag
 
 override_dh_auto_test:
 	# Skip tests for packaging
@@ -16,8 +15,4 @@ override_dh_auto_install:
 	# Install the binary to /usr/bin
 	mkdir -p debian/jaguar/usr/bin
 	cp build/jag debian/jaguar/usr/bin/jag
-
-override_dh_dwz:
-	# Skip dwz compression for Go binaries
-	true
 

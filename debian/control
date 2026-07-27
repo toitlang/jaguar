@@ -2,7 +2,7 @@ Source: jaguar
 Section: devel
 Priority: optional
 Maintainer: Toit contributors <contact@toit.io>
-Build-Depends: debhelper-compat (= 13), golang-go (>= 1.16)
+Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.5.0
 Homepage: https://github.com/toitlang/jaguar
 

@@ -5,11 +5,19 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential \
     debhelper \
-    golang-go \
     ca-certificates \
+    curl \
     git \
     lintian \
     && rm -rf /var/lib/apt/lists/*
+
+ARG TOIT_VERSION=v2.0.0-alpha.196
+RUN curl --fail --location \
+      "https://github.com/toitlang/toit/releases/download/${TOIT_VERSION}/toit-linux-x64.tar.gz" \
+      --output /tmp/toit.tar.gz \
+    && tar -xzf /tmp/toit.tar.gz -C /opt \
+    && ln -s /opt/toit/bin/toit /usr/local/bin/toit \
+    && rm /tmp/toit.tar.gz
 
 WORKDIR /app
 
