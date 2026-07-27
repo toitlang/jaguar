@@ -1,9 +1,60 @@
-sdk: ^2.0.0-alpha.145
+sdk: ^2.0.0-alpha.196
 prefixes:
-  http: pkg-http
+  cli: github.com/toitlang/pkg-cli-2
+  fs: github.com/toitlang/pkg-fs-2
+  host: github.com/toitlang/pkg-host-1
+  http: github.com/toitlang/pkg-http-2
+  mdns: github.com/close2/toit-mdns-1
+  semver: github.com/toitware/toit-semver-1
+  tar: github.com/toitlang/pkg-tar-2
 packages:
-  pkg-http:
+  github.com/close2/toit-mdns-1:
+    hash: 63ba25b3fa2538712eeba1447c7f02b79df8f6d2
+    url: github.com/close2/toit-mdns
+    version: 1.0.6
+  github.com/toitlang/pkg-cli-2:
+    hash: 8b57ca731ab1798a2a97c4afc1ea464072cf2cbb
+    prefixes:
+      desktop: github.com/toitlang/pkg-desktop-1
+      fs: github.com/toitlang/pkg-fs-2
+      host: github.com/toitlang/pkg-host-1
+      lockfile: github.com/toitware/toit-lockfile-1
+    url: github.com/toitlang/pkg-cli
+    version: 2.16.0
+  github.com/toitlang/pkg-desktop-1:
+    hash: d6ad1d5c25e16d0c2910a132acba426251b5d87f
+    prefixes:
+      host: github.com/toitlang/pkg-host-1
+    url: github.com/toitlang/pkg-desktop
+    version: 1.1.0
+  github.com/toitlang/pkg-fs-2:
+    hash: 60836d4500317af2093d59d50c117d612c33f1fa
+    prefixes:
+      host: github.com/toitlang/pkg-host-1
+    url: github.com/toitlang/pkg-fs
+    version: 2.3.1
+  github.com/toitlang/pkg-host-1:
+    hash: d7a30b86c73cf8d9cd5dd0211031c76b68706738
+    url: github.com/toitlang/pkg-host
+    version: 1.19.0
+  github.com/toitlang/pkg-http-2:
+    hash: b68f3f4a3c26bfdff2beca4fb5ac7bc182f20270
     url: github.com/toitlang/pkg-http
-    name: http
-    version: 2.7.2
-    hash: 614dd0f374e70aab09f12e9466a35b779b9a8d63
+    version: 2.12.0
+  github.com/toitlang/pkg-tar-2:
+    hash: c9abee2219ec674a12a2e7cdc9cd7a74af875fe7
+    prefixes:
+      host: github.com/toitlang/pkg-host-1
+    url: github.com/toitlang/pkg-tar
+    version: 2.1.0
+  github.com/toitware/toit-lockfile-1:
+    hash: 47ddd8c13811e6cc368d6fef8f383b855f9d0ada
+    prefixes:
+      fs: github.com/toitlang/pkg-fs-2
+      host: github.com/toitlang/pkg-host-1
+    url: github.com/toitware/toit-lockfile
+    version: 1.0.0
+  github.com/toitware/toit-semver-1:
+    hash: 7b862ca7b40601ae2a63ec6ffbacebb48c929e02
+    url: github.com/toitware/toit-semver
+    version: 1.2.0

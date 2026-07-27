@@ -5,7 +5,6 @@
 import encoding.base64
 import encoding.json
 import encoding.ubjson
-import gpio
 import io
 import io show LITTLE-ENDIAN
 import log
@@ -24,9 +23,8 @@ class EndpointUart implements Endpoint:
 
   run device/Device -> none:
     logger.debug "starting endpoint"
-    rx := gpio.Pin config_["rx"]
     port := uart.Port
-        --rx=rx
+        --rx=config_["rx"]
         --tx=null
         --baud-rate=config_.get "baud" --if-absent=: 115200
 
@@ -39,7 +37,6 @@ class EndpointUart implements Endpoint:
       client.run
     finally:
       port.close
-      rx.close
 
   name -> string:
     return "uart"

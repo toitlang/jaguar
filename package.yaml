@@ -1,6 +1,26 @@
+name: jaguar
+description: Fast development for Toit applications on ESP32 devices.
 environment:
-  sdk: ^2.0.0-alpha.144
+  sdk: ^2.0.0-alpha.196
 dependencies:
+  cli:
+    url: github.com/toitlang/pkg-cli
+    version: ^2.16.0
+  fs:
+    url: github.com/toitlang/pkg-fs
+    version: ^2.3.1
+  host:
+    url: github.com/toitlang/pkg-host
+    version: ^1.19.0
   http:
     url: github.com/toitlang/pkg-http
-    version: ^2.7.2
+    version: ^2.12.0
+  mdns:
+    url: github.com/close2/toit-mdns
+    version: ^1.0.6
+  semver:
+    url: github.com/toitware/toit-semver
+    version: ^1.2.0
+  tar:
+    url: github.com/toitlang/pkg-tar
+    version: ^2.1.0
