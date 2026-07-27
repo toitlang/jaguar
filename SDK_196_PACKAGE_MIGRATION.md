@@ -68,8 +68,6 @@ or alternate package-publish workflow. Add the canonical `publish.yml` from the
 - [x] DHT11 — `floitsch/add-publish-workflow`
 - [x] Rail — `floitsch/add-publish-workflow`
 - [x] artemis — `floitsch/add-publish-workflow`
-- [x] bmp180-driver — `floitsch/fix-gpio`
-- [x] bmp280-driver — `floitsch/fix-gpio`
 - [x] chats — `floitsch/add-publish-workflow`
 - [x] jaguar-test — `floitsch/add-publish-workflow`
 - [x] toit-hue — `floitsch/add-publish-workflow`
@@ -90,17 +88,20 @@ The following repositories already had an alternate package-publish workflow,
 
 | Repository | Initial cleanliness | Default branch update | Migration branch | Notes |
 | --- | --- | --- | --- | --- |
-| bmp180-driver | Clean | Up to date | Ready | Combined `kebabify` and `package-yaml`; migrated I2C example; added publish workflow. |
-| bmp280-driver | Clean | Up to date | Ready | Combined `kebabify` and `package-yaml`; migrated I2C example; added publish workflow. |
+| bmp180-driver | Clean | Up to date | Excluded | Personal upstream `davidlao2k/bmp180-driver`; not part of this release. |
+| bmp280-driver | Clean | Up to date | Excluded | Personal upstream `harshkc03/bmp280-driver`; not part of this release. |
 | toit-rn4871 | Clean | Fast-forwarded | Ready | Migrated UART/reset API and example; added ownership cleanup and publish workflow. |
+
+The prepared local BMP migration branches are retained for reference, but they
+must not be published or included in this release.
 
 ## Verification
 
 - [x] All three additional migration worktrees are clean.
-- [x] All 34 resulting `floitsch/fix-gpio` branches, including Jaguar, have SDK floor `^2.0.0-alpha.196`.
+- [x] All 32 in-scope `floitsch/fix-gpio` branches, including Jaguar, have SDK floor `^2.0.0-alpha.196`.
 - [x] No local `floitsch/fix-gpio.ci` branches remain in the tracked repositories.
-- [x] All 12 added workflows exactly match the `toit-package` canonical resource.
-- [x] The three new migrations analyze successfully with SDK `v2.0.0-alpha.196`.
+- [x] All 10 in-scope added workflows exactly match the `toit-package` canonical resource.
+- [x] The prepared extra migrations analyzed successfully with SDK `v2.0.0-alpha.196` before the BMP packages were excluded.
 
 RN4871 retains pre-existing analyzer warnings about attached parentheses and
 deprecated `int.stringify`; the GPIO migration itself introduces no analyzer
