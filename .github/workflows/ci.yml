@@ -17,28 +17,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Set up Toit
+        uses: toitlang/action-setup@v1.4.0
         with:
-          go-version: "1.26.4"
-
-      - name: Make
-        run: |
-          make jag
-
-      - name: Setup
-        run: |
-          JAG_BINARY=build/jag
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            JAG_BINARY=build/jag.exe
-          fi
-          $JAG_BINARY setup --skip-assets
-          SDK_PATH="$($JAG_BINARY setup --print-path sdk)"
-          ASSETS_PATH="$($JAG_BINARY setup --print-path assets)"
-          mkdir -p "$ASSETS_PATH"
-          make SDK_PATH="$SDK_PATH" assets
-          cp -r build/assets/* "$ASSETS_PATH"
+          toit-version: v2.0.0-alpha.196
 
       - name: Run tests
+        run: make test
+
+  qemu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Toit
+        uses: toitlang/action-setup@v1.4.0
+        with:
+          toit-version: v2.0.0-alpha.196
+
+      - name: Download QEMU and firmware envelopes
+        shell: bash
         run: |
-          make test
+          set -euo pipefail
+          QEMU_RELEASE=v9.2.2-toitlang.1
+          QEMU_ARCHIVE=qemu-toit-${QEMU_RELEASE}-linux-x86_64.tar.gz
+          curl --fail --location --output qemu.tar.gz \
+            "https://github.com/toitlang/qemu/releases/download/${QEMU_RELEASE}/${QEMU_ARCHIVE}"
+          echo "7f064715d32629e34edc3c54c85d5c132c32e40e4d7d5564822258150f3c8fe0  qemu.tar.gz" \
+            | sha256sum --check
+          tar -xzf qemu.tar.gz
+
+          TOIT_RELEASE=v2.0.0-alpha.196
+          for envelope in \
+              firmware-esp32 \
+              firmware-esp32s3-spiram-octo; do
+            curl --fail --location --output "${envelope}.envelope.gz" \
+              "https://github.com/toitlang/toit/releases/download/${TOIT_RELEASE}/${envelope}.envelope.gz"
+            gzip --decompress "${envelope}.envelope.gz"
+          done
+
+      - name: Test ESP32
+        shell: bash
+        run: |
+          QEMU_SYSTEM_XTENSA="$PWD/qemu-toit-v9.2.2-toitlang.1-linux-x86_64/bin/qemu-system-xtensa" \
+          TOIT_WIFI_ENVELOPE="$PWD/firmware-esp32.envelope" \
+            make qemu-test-esp32
+
+      - name: Test ESP32-S3
+        shell: bash
+        run: |
+          QEMU_SYSTEM_XTENSA="$PWD/qemu-toit-v9.2.2-toitlang.1-linux-x86_64/bin/qemu-system-xtensa" \
+          TOIT_WIFI_ENVELOPE="$PWD/firmware-esp32s3-spiram-octo.envelope" \
+            make qemu-test-esp32s3
