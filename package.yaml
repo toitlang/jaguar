@@ -1,5 +1,5 @@
 environment:
-  sdk: ^2.0.0-alpha.144
+  sdk: ^2.0.0-alpha.196
 dependencies:
   http:
     url: github.com/toitlang/pkg-http
