@@ -21,16 +21,14 @@ import (
 
 func WatchCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "watch <file>",
-		Short:        "Watch for changes to <file> and its dependencies and automatically re-run the code",
+		Use:   "watch <file>",
+		Short: "Watch for changes to <file> and its dependencies and automatically re-run the code",
+		Long: "Watch for changes to <file> and its dependencies and automatically re-run the code.\n" +
+			"If you specify the device to be 'host' with the option '-d host', then the\n" +
+			"program runs on the current computer instead.",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
-			if err != nil {
-				return err
-			}
-
 			entrypoint := args[0]
 			if stat, err := os.Stat(entrypoint); err != nil {
 				if os.IsNotExist(err) {
@@ -52,16 +50,35 @@ func WatchCmd() *cobra.Command {
 				return err
 			}
 
-			device, err := GetDevice(ctx, sdk, true, deviceSelect)
-			if err != nil {
-				return err
-			}
-
 			optimizationLevel := -1
 			if cmd.Flags().Changed("optimization-level") {
 				optimizationLevel, err = cmd.Flags().GetInt("optimization-level")
 				if err != nil {
 					return err
+				}
+			}
+
+			var run func(context.Context) error
+			if name, ok := deviceSelect.(deviceNameSelect); ok && string(name) == "host" {
+				run = func(runCtx context.Context) error {
+					err := runOnHostWithSDK(runCtx, sdk, []string{entrypoint}, optimizationLevel, "")
+					if runCtx.Err() != nil {
+						return nil
+					}
+					return err
+				}
+			} else {
+				programAssetsPath, err := GetProgramAssetsPath(cmd.Flags(), "assets")
+				if err != nil {
+					return err
+				}
+
+				device, err := GetDevice(ctx, sdk, true, deviceSelect)
+				if err != nil {
+					return err
+				}
+				run = func(context.Context) error {
+					return RunFile(cmd, device, sdk, entrypoint, nil, programAssetsPath, optimizationLevel)
 				}
 			}
 
@@ -71,7 +88,7 @@ func WatchCmd() *cobra.Command {
 			}
 			defer watcher.Close()
 
-			waitCh, fn := onWatchChanges(cmd, watcher, device, sdk, entrypoint, programAssetsPath, optimizationLevel)
+			waitCh, fn := onWatchChanges(cmd, watcher, sdk, entrypoint, run)
 			go fn()
 
 			<-waitCh
@@ -175,11 +192,9 @@ func parseDependeniesToDirs(b []byte) []string {
 func onWatchChanges(
 	cmd *cobra.Command,
 	watcher *watcher,
-	device Device,
 	sdk *SDK,
 	entrypoint string,
-	assetsPath string,
-	optimizationLevel int) (<-chan struct{}, func()) {
+	run func(context.Context) error) (<-chan struct{}, func()) {
 	doneCh := make(chan struct{})
 	ctx := cmd.Context()
 
@@ -188,7 +203,7 @@ func onWatchChanges(
 		if tmpFile, err := os.CreateTemp("", "*.txt"); err == nil {
 			defer os.Remove(tmpFile.Name())
 			tmpFile.Close()
-			cmd := sdk.ToitAnalyze(ctx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", entrypoint)
+			cmd := sdk.ToitAnalyze(runCtx, "--dependency-file", tmpFile.Name(), "--dependency-format", "plain", entrypoint)
 			if err := cmd.Run(); err == nil {
 				if b, err := os.ReadFile(tmpFile.Name()); err == nil {
 					paths = parseDependeniesToDirs(b)
@@ -210,16 +225,15 @@ func onWatchChanges(
 		}
 	}
 
-	runOnDevice := func(runCtx context.Context) {
-		if err := RunFile(cmd, device, sdk, entrypoint, nil, assetsPath, optimizationLevel); err != nil {
+	runProgram := func(runCtx context.Context) {
+		if err := run(runCtx); err != nil {
 			fmt.Println("Error:", err)
-			return
 		}
 	}
 
 	firstCtx, previousCancel := context.WithCancel(ctx)
 	go updateWatcher(firstCtx)
-	runOnDevice(firstCtx)
+	go runProgram(firstCtx)
 	return doneCh, func() {
 		defer close(doneCh)
 		fired := false
@@ -243,7 +257,7 @@ func onWatchChanges(
 						var innerCtx context.Context
 						innerCtx, previousCancel = context.WithCancel(ctx)
 						go updateWatcher(innerCtx)
-						go runOnDevice(innerCtx)
+						go runProgram(innerCtx)
 						fired = true
 						ticker.Reset(ticketDuration)
 					}
