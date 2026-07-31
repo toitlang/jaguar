@@ -186,13 +186,17 @@ func runOnHost(ctx context.Context, cmd *cobra.Command, args []string, optimizat
 		return err
 	}
 
-	if optimizationLevel >= 0 {
-		args = append([]string{"-O" + strconv.Itoa(optimizationLevel)}, args...)
-	}
-
 	expression, err := cmd.Flags().GetString("expression")
 	if err != nil {
 		return err
+	}
+
+	return runOnHostWithSDK(ctx, sdk, args, optimizationLevel, expression)
+}
+
+func runOnHostWithSDK(ctx context.Context, sdk *SDK, args []string, optimizationLevel int, expression string) error {
+	if optimizationLevel >= 0 {
+		args = append([]string{"-O" + strconv.Itoa(optimizationLevel)}, args...)
 	}
 
 	var runCmd *exec.Cmd
