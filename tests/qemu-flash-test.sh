@@ -53,16 +53,6 @@ fi
   --exclude-jaguar \
   --output="${TEMP_DIR}/base.bin"
 
-# Recreate the source-tree layout selected by JAG_TOIT_REPO_PATH using the
-# actual downloaded SDK and envelope. This is the configuration from the bug
-# report: it must still select the SDK's bundle, not a Python esptool module.
-TOIT_REPO_PATH="${TEMP_DIR}/toit"
-mkdir -p "${TOIT_REPO_PATH}/build/host" "${TOIT_REPO_PATH}/build/esp32"
-ln -s "${SDK_PATH}" "${TOIT_REPO_PATH}/build/host/sdk"
-ln -s "$(dirname "${SDK_PATH}")/envelopes/firmware-esp32.envelope" \
-  "${TOIT_REPO_PATH}/build/esp32/firmware.envelope"
-export JAG_TOIT_REPO_PATH="${TOIT_REPO_PATH}"
-
 # A 4 MiB flash drive matches the default ESP32 firmware envelope. Strap mode
 # 0x0f starts the ESP32 ROM UART downloader instead of booting from flash.
 truncate --size=4M "${TEMP_DIR}/flash.bin"

@@ -43,21 +43,11 @@ jobs:
         run: |
           make test
 
-      - name: Install latest Toit QEMU release
+      - name: Install Toit QEMU
         if: runner.os == 'Linux'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          QEMU_VERSION="$(gh release view --repo toitlang/qemu --json tagName --jq .tagName)"
-          QEMU_ARCHIVE="qemu-toit-${QEMU_VERSION}-linux-x86_64.tar.gz"
-          QEMU_DIR="${RUNNER_TEMP}/toit-qemu"
-          mkdir -p "${QEMU_DIR}"
-          gh release download "${QEMU_VERSION}" --repo toitlang/qemu \
-            --pattern "${QEMU_ARCHIVE}" --pattern SHA256SUMS --dir "${QEMU_DIR}"
-          cd "${QEMU_DIR}"
-          grep " ${QEMU_ARCHIVE}$" SHA256SUMS | sha256sum --check
-          tar -xf "${QEMU_ARCHIVE}"
-          echo "QEMU_SYSTEM_XTENSA=${QEMU_DIR}/qemu-toit-${QEMU_VERSION}-linux-x86_64/bin/qemu-system-xtensa" >> "${GITHUB_ENV}"
+        uses: toitlang/action-setup@v1
+        with:
+          qemu-version: latest
 
       - name: Test flashing an ESP32 in QEMU
         if: runner.os == 'Linux'
