@@ -170,7 +170,24 @@ func (s *SDK) AssetsTool(ctx context.Context, args ...string) *exec.Cmd {
 }
 
 func (s *SDK) FirmwareTool(ctx context.Context, args ...string) *exec.Cmd {
-	return exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "firmware"}, args...)...)
+	cmd := exec.CommandContext(ctx, s.ToitPath(), append([]string{"tool", "firmware"}, args...)...)
+	cmd.Env = environmentWithoutToitRepoPath()
+	return cmd
+}
+
+// JAG_TOIT_REPO_PATH tells Jaguar where a source-built SDK and its envelopes
+// live. Firmware tools are already launched by absolute path from that SDK and
+// must not interpret this Jaguar-specific setting as an esptool override.
+func environmentWithoutToitRepoPath() []string {
+	prefix := directory.ToitRepoPathEnv + "="
+	environment := os.Environ()
+	result := make([]string, 0, len(environment))
+	for _, entry := range environment {
+		if !strings.HasPrefix(entry, prefix) {
+			result = append(result, entry)
+		}
+	}
+	return result
 }
 
 type EspToolOutput struct {
@@ -180,7 +197,9 @@ type EspToolOutput struct {
 
 func (s *SDK) EspToolCommand(ctx context.Context) ([]string, error) {
 	args := []string{"--output-format", "json", "tool", "firmware", "tool", "esptool", "-e", "unused"}
-	out, err := exec.CommandContext(ctx, s.ToitPath(), args...).Output()
+	cmd := exec.CommandContext(ctx, s.ToitPath(), args...)
+	cmd.Env = environmentWithoutToitRepoPath()
+	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
