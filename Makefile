@@ -85,6 +85,7 @@ $(JAG_TOIT_DEPENDENCIES): $(SDK_BUILD_MARKER)
 # use the rule once per invocation of this Makefile.
 $(SDK_BUILD_MARKER):
 	make -C $(JAG_TOIT_REPO_PATH) version-file esp32
+	make -C $(JAG_TOIT_REPO_PATH) install-esptool
 	mkdir -p $(BUILD_DIR)
 	echo "$(BUILD_DATE)" > $@
 

@@ -42,3 +42,13 @@ jobs:
       - name: Run tests
         run: |
           make test
+
+      - name: Install Toit QEMU
+        if: runner.os == 'Linux'
+        uses: toitlang/action-setup@v1
+        with:
+          qemu-version: latest
+
+      - name: Test flashing an ESP32 in QEMU
+        if: runner.os == 'Linux'
+        run: tests/qemu-flash-test.sh
