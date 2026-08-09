@@ -17,6 +17,7 @@ import system.containers
 import system.firmware
 
 import .container-registry
+import .log.buffer
 import .network
 import .schedule
 import .uart
@@ -92,6 +93,10 @@ wifi-manager / NetworkManager ::= NetworkManager
 // The installed and named containers are kept in a registry backed
 // by the flash (on the device).
 registry_ / ContainerRegistry ::= ContainerRegistry
+
+// The network-visible capture of print/log/trace output. Off by default; turned
+// on by a `run -m`/`install -m`, or the first `GET /log`.
+log-buffer_ / LogBuffer ::= LogBuffer
 
 main arguments:
   device := Device.parse arguments
@@ -326,11 +331,22 @@ start-image_ -> bool
   // Once the program has terminated we need to cancel the callback.
   cancelation-token := null
 
+  // The started container's gid, filled in once we have it. The on-stopped
+  // callback reads it lazily (it only runs at a later yield point, by which
+  // time it is set).
+  container-gid := -1
+
   // Start the image, but don't wait for it to run to completion.
   container := containers.start image --on-stopped=:: | code/int |
     started-containers_.remove image
     if cancelation-token:
       scheduled-callbacks.remove cancelation-token
+
+    // Mark the container's exit in the log ring so a network monitor
+    // (e.g. `run -m`) filtering on this container knows the program finished,
+    // then drop the gid->name mapping now that the container is gone.
+    log-buffer_.append-exit --gid=container-gid --code=code
+    log-buffer_.unregister-container --gid=container-gid
 
     if code == 0:
       logger.info "$nick stopped"
@@ -348,6 +364,10 @@ start-image_ -> bool
           if current-entry:
             logger.info "restarting container '$name' (interval restart)"
             start-image image "restarted" name current-entry[1]
+  container-gid = container.gid
+  // Register before the container gets a chance to run (no yield until then) so
+  // its very first print already resolves to the right name.
+  log-buffer_.register-container --gid=container-gid --name=name
   started-containers_[image] = container
 
   if timeout:
