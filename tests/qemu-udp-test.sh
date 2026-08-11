@@ -42,8 +42,8 @@ build_image() {
   shift
   "${JAG}" \
     --no-analytics \
-    firmware extract esp32-qemu \
-    --wifi-ssid=test --wifi-password=test \
+    firmware extract esp32 \
+    --wifi-ssid="Open Wifi" --wifi-password= \
     --name=qemu-udp-test \
     --output="${output}" \
     "$@"
@@ -53,6 +53,7 @@ run_image() {
   local image="$1"
   local log="$2"
   local capture="$3"
+  local qemu_log="${log}.qemu"
 
   "${QEMU_SYSTEM_XTENSA}" \
     -M esp32 \
@@ -62,10 +63,9 @@ run_image() {
     -no-reboot \
     -serial "file:${log}" \
     -drive "file=${image},if=mtd,format=raw" \
-    -netdev user,id=network \
-    -device open_eth,netdev=network \
+    -nic user,id=network,model=esp32_wifi \
     -object "filter-dump,id=capture,netdev=network,file=${capture}" \
-    >/dev/null 2>&1 &
+    >"${qemu_log}" 2>&1 &
   QEMU_PID="$!"
 
   for ((tick = 0; tick < QEMU_TIMEOUT_TICKS; tick++)); do
@@ -83,7 +83,8 @@ run_image() {
   done
 
   stop_qemu
-  echo "Timed out waiting for Jaguar to start in QEMU." >&2
+  echo "Failed waiting for Jaguar to start in QEMU." >&2
+  cat "${qemu_log}" >&2
   cat "${log}" >&2
   exit 1
 }
