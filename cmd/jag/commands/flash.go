@@ -35,7 +35,7 @@ func FlashCmd() *cobra.Command {
 				return err
 			}
 			if !shouldSkipPortCheck {
-				if port, err = CheckPort(port); err != nil {
+				if port, err = checkPort(port, cmd.Flags().Changed("port")); err != nil {
 					return err
 				}
 			}

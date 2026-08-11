@@ -33,7 +33,7 @@ func MonitorCmd() *cobra.Command {
 				return err
 			}
 
-			if port, err = CheckPort(port); err != nil {
+			if port, err = checkPort(port, cmd.Flags().Changed("port")); err != nil {
 				return err
 			}
 
