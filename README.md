@@ -92,6 +92,15 @@ credentials, but be aware that the tooling requires
 jag flash
 ```
 
+To keep Jaguar's HTTP endpoint enabled without broadcasting UDP device-discovery
+advertisements, pass `--disable-udp`. The option is also available when updating
+firmware over WiFi:
+
+``` sh
+jag flash --disable-udp
+jag firmware update --disable-udp
+```
+
 If you want to avoid typing the WiFi credentials every time you flash, you can store
 them in Jaguar's config file with:
 

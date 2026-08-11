@@ -52,3 +52,7 @@ jobs:
       - name: Test flashing an ESP32 in QEMU
         if: runner.os == 'Linux'
         run: tests/qemu-flash-test.sh
+
+      - name: Test UDP advertisement configuration in QEMU
+        if: runner.os == 'Linux'
+        run: tests/qemu-udp-test.sh
