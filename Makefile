@@ -112,6 +112,7 @@ download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
 
 .PHONY: test
 test: $(BUILD_DIR)/$(JAG_BINARY)
+	go test ./...
 	@# For now just try to extract images for all chips.
 	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
 		set -e; \

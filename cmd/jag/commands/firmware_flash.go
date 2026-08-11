@@ -27,6 +27,7 @@ func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 	cmd.Flags().StringP("chip", "c", "auto", "chip of the target device")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
+	cmd.Flags().Bool("disable-udp", false, "disable UDP device discovery advertisements")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
 	cmd.Flags().Int("uart-endpoint-rx", -1, "add a UART endpoint to the device listening on the given pin")
 	cmd.Flags().MarkHidden("uart-endpoint-rx")
@@ -79,6 +80,10 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 	}
 
 	wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
+	if err != nil {
+		return err
+	}
+	disableUDP, err := cmd.Flags().GetBool("disable-udp")
 	if err != nil {
 		return err
 	}
@@ -153,6 +158,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 		Chip:         chip,
 		WifiSsid:     wifiSSID,
 		WifiPassword: wifiPassword,
+		DisableUDP:   disableUDP,
 	}
 
 	excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
@@ -229,11 +235,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			return nil, err
 		}
 
-		configAssetMap := map[string]interface{}{
-			"id":   device.Id,
-			"name": device.Name,
-			"chip": device.Chip,
-		}
+		configAssetMap := device.getJaguarConfig()
 		if uartEndpointOptions != nil {
 			configAssetMap["endpointUart"] = uartEndpointOptions
 		}
@@ -315,11 +317,24 @@ type DeviceOptions struct {
 	Chip         string
 	WifiSsid     string
 	WifiPassword string
+	DisableUDP   bool
 }
 
 type EnvelopeOptions struct {
 	Path          string
 	ExcludeJaguar bool
+}
+
+func (d DeviceOptions) getJaguarConfig() map[string]interface{} {
+	config := map[string]interface{}{
+		"id":   d.Id,
+		"name": d.Name,
+		"chip": d.Chip,
+	}
+	if d.DisableUDP {
+		config["jag.disable-udp"] = true
+	}
+	return config
 }
 
 func (d DeviceOptions) GetConfig() map[string]interface{} {
