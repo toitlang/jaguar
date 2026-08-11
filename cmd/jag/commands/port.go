@@ -132,12 +132,19 @@ func ConfiguredPort() string {
 }
 
 func CheckPort(port string) (string, error) {
+	return checkPort(port, false)
+}
+
+func checkPort(port string, explicitlySet bool) (string, error) {
 	exists, err := PortExists(port)
 	if err != nil {
 		return "", err
 	}
 	if exists {
 		return port, nil
+	}
+	if explicitlySet {
+		return "", fmt.Errorf("the port '%s' was not found", port)
 	}
 
 	cfg, err := directory.GetDeviceConfig()
