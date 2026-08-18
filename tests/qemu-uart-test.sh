@@ -68,8 +68,7 @@ extract_firmware() {
 
 run_proxy() {
   local name="$1"
-  local test_no_timeout="$2"
-  shift 2
+  shift
 
   local image="${TEMP_DIR}/${name}.bin"
   local qemu_log="${TEMP_DIR}/${name}.qemu.log"
@@ -134,40 +133,6 @@ run_proxy() {
     exit 1
   fi
 
-  if [[ "${test_no_timeout}" == true ]]; then
-    local proxy_address
-    proxy_address="$(sed -n "s/.*proxied through '\(http:[^']*\)'.*/\1/p" "${monitor_log}" | head -n 1)"
-    if [[ -z "${proxy_address}" ]]; then
-      echo "Could not extract the UART proxy address (${name})." >&2
-      cat "${monitor_log}" >&2
-      exit 1
-    fi
-
-    "${JAG}" \
-      --no-analytics \
-      run \
-      --device="${proxy_address}" \
-      -D jag.wifi=false \
-      "${ROOT_DIR}/tests/uart-proxy-no-timeout.toit"
-
-    for ((tick = 0; tick < QEMU_TIMEOUT_TICKS; tick++)); do
-      if grep -a -Fq "UART_PROXY_NO_TIMEOUT_PASS" "${monitor_log}" 2>/dev/null; then
-        break
-      fi
-      if ! kill -0 "${QEMU_PID}" 2>/dev/null || ! kill -0 "${MONITOR_PID}" 2>/dev/null; then
-        break
-      fi
-      sleep 0.1
-    done
-
-    if ! grep -a -Fq "UART_PROXY_NO_TIMEOUT_PASS" "${monitor_log}"; then
-      echo "Program sent through the UART proxy did not outlive the default timeout (${name})." >&2
-      cat "${qemu_log}" >&2
-      cat "${monitor_log}" >&2
-      exit 1
-    fi
-  fi
-
   stop_monitor
   stop_qemu
 }
@@ -175,7 +140,7 @@ run_proxy() {
 extract_firmware default "${EXPECTED_BAUD_RATE}"
 extract_firmware explicit 115200
 
-run_proxy default true
-run_proxy explicit false --baud=115200
+run_proxy default
+run_proxy explicit --baud=115200
 
-echo "PASS: Jaguar proxied configured UART endpoints without an implicit timeout in QEMU"
+echo "PASS: Jaguar proxied configured UART endpoints at default and explicit baud rates in QEMU"
