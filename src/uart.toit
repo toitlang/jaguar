@@ -27,6 +27,8 @@ class EndpointUart implements Endpoint:
     port := uart.Port.console --large-buffers
 
     try:
+      logger.info "switching baud rate to $baud-rate"
+      port.out.flush
       port.baud-rate = baud-rate
 
       client := UartClient
