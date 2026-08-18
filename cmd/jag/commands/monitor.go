@@ -88,7 +88,11 @@ func MonitorCmd() *cobra.Command {
 			if shouldProxy {
 				ch1, ch2 := multiplexReader(dev)
 				logReader = ch1
-				go runUartProxy(dev, ch2)
+				go func() {
+					if err := runUartProxy(dev, ch2, !cmd.Flags().Changed("baud")); err != nil {
+						fmt.Printf("[jaguar.uart] ERROR: proxy failed: %v\n", err)
+					}
+				}()
 			}
 
 			scanner := bufio.NewScanner(logReader)
@@ -120,7 +124,7 @@ func MonitorCmd() *cobra.Command {
 	cmd.Flags().BoolP("attach", "a", false, "attach to the serial output without rebooting it")
 	cmd.Flags().BoolP("force-pretty", "r", false, "force output to use terminal graphics")
 	cmd.Flags().BoolP("force-plain", "l", false, "force output to use plain ASCII text")
-	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring")
+	cmd.Flags().Uint("baud", 115200, "the baud rate for serial monitoring; proxy mode switches to 921600 by default")
 	cmd.Flags().Bool("proxy", false, "proxy the connected device to the local network")
 	cmd.Flags().String("envelope", "", "name or path of the firmware envelope")
 	return cmd

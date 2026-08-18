@@ -56,3 +56,7 @@ jobs:
       - name: Test UDP advertisement configuration in QEMU
         if: runner.os == 'Linux'
         run: tests/qemu-udp-test.sh
+
+      - name: Test console UART proxy in QEMU
+        if: runner.os == 'Linux'
+        run: tests/qemu-uart-test.sh

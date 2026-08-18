@@ -98,8 +98,8 @@ main arguments:
   endpoints := [
     EndpointHttp logger,
   ]
-  uart := device.config.get "endpointUart"
-  if uart: endpoints.add (EndpointUart --config=uart --logger=logger)
+  uart-config := device.config.get "endpointUart"
+  endpoints.add (EndpointUart --config=uart-config --logger=logger)
   main device endpoints
 
 main device/Device endpoints/List:
