@@ -23,12 +23,14 @@ class EndpointUart implements Endpoint:
 
   run device/Device -> none:
     logger.debug "starting endpoint"
-    port := uart.Port
-        --rx=config_["rx"]
-        --tx=null
-        --baud-rate=config_.get "baud" --if-absent=: 115200
+    baud-rate := config_["baud"]
+    port := uart.Port.console --large-buffers
 
     try:
+      logger.info "switching baud rate to $baud-rate"
+      port.out.flush
+      port.baud-rate = baud-rate
+
       client := UartClient
           --reader=port.in
           --writer=StdoutWriter
@@ -157,6 +159,7 @@ class UartClient:
         if packet[pos++] != SYNC-MAGIC_[i] - 1:
           continue
       // Found a sync packet.
+      note-uart-proxy-activity
       return
 
   handle request/ByteArray -> none:
@@ -192,6 +195,7 @@ class UartClient:
 
   handle-sync data/ByteArray -> none:
     logger.debug "handle sync request"
+    note-uart-proxy-activity
     sync-id := LITTLE-ENDIAN.uint16 data 0
     send-response COMMAND-SYNC_  #[sync-id & 0xff, sync-id >> 8]
 

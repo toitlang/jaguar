@@ -113,6 +113,7 @@ download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
 .PHONY: test
 test: $(BUILD_DIR)/$(JAG_BINARY)
 	go test ./...
+	$(BUILD_DIR)/$(JAG_BINARY) toit run tests/uart-proxy-timeout-test.toit
 	@# For now just try to extract images for all chips.
 	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
 		set -e; \

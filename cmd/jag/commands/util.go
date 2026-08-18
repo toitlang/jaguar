@@ -557,24 +557,26 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 }
 
 func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) {
-	uartEndpointRx, err := cmd.Flags().GetInt("uart-endpoint-rx")
-	if err != nil {
-		return nil, err
-	}
-	if uartEndpointRx < 0 {
-		return nil, nil
-	}
-	uartEndpointOptions := map[string]interface{}{
-		"rx": uartEndpointRx,
-	}
 	uartBaud, err := cmd.Flags().GetUint("uart-endpoint-baud")
 	if err != nil {
 		return nil, err
 	}
-	if uartBaud != 0 {
-		uartEndpointOptions["baud"] = uartBaud
+	uartOnly, err := cmd.Flags().GetBool("uart-only")
+	if err != nil {
+		return nil, err
 	}
-	return uartEndpointOptions, nil
+	if uartOnly && uartBaud == 0 {
+		if cmd.Flags().Changed("uart-endpoint-baud") {
+			return nil, fmt.Errorf("--uart-endpoint-baud must be greater than zero with --uart-only")
+		}
+		uartBaud = defaultProxyBaudRate
+	}
+	if uartBaud == 0 {
+		return nil, nil
+	}
+	return map[string]interface{}{
+		"baud": uartBaud,
+	}, nil
 }
 
 // isLikelyRunningOnBuildbot returns true if the current process is running on a buildbot.

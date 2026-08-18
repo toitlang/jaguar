@@ -19,8 +19,8 @@ func FlashCmd() *cobra.Command {
 		Use:   "flash [envelope]",
 		Short: "Flash an ESP32 with the Jaguar firmware",
 		Long: "Flash an ESP32 with the Jaguar firmware. The initial flashing is\n" +
-			"done over a serial connection and it is used to give the ESP32 its initial\n" +
-			"firmware and the necessary WiFi credentials.",
+			"done over a serial connection and gives the ESP32 its initial firmware and\n" +
+			"Jaguar endpoint configuration.",
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

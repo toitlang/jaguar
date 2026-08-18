@@ -29,10 +29,8 @@ func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().Bool("disable-udp", false, "disable UDP device discovery advertisements")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
-	cmd.Flags().Int("uart-endpoint-rx", -1, "add a UART endpoint to the device listening on the given pin")
-	cmd.Flags().MarkHidden("uart-endpoint-rx")
-	cmd.Flags().Uint("uart-endpoint-baud", 0, "set the baud rate for the UART endpoint")
-	cmd.Flags().MarkHidden("uart-endpoint-baud")
+	cmd.Flags().Bool("uart-only", false, fmt.Sprintf("use only the UART endpoint, defaulting to %d baud", defaultProxyBaudRate))
+	cmd.Flags().Uint("uart-endpoint-baud", 0, "enable the UART endpoint at the given baud rate")
 }
 
 // addPartitionTableFlag adds the '--partition-table' flag. It is only meaningful
@@ -79,9 +77,25 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 		}
 	}
 
-	wifiSSID, wifiPassword, err := getWifiCredentials(cmd)
+	uartOnly, err := cmd.Flags().GetBool("uart-only")
 	if err != nil {
 		return err
+	}
+	excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
+	if err != nil {
+		return err
+	}
+	if uartOnly && excludeJaguar {
+		return fmt.Errorf("--uart-only cannot be used with --exclude-jaguar")
+	}
+
+	wifiSSID := ""
+	wifiPassword := ""
+	if !uartOnly || cmd.Flags().Changed("wifi-ssid") || cmd.Flags().Changed("wifi-password") {
+		wifiSSID, wifiPassword, err = getWifiCredentials(cmd)
+		if err != nil {
+			return err
+		}
 	}
 	disableUDP, err := cmd.Flags().GetBool("disable-udp")
 	if err != nil {
@@ -159,11 +173,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 		WifiSsid:     wifiSSID,
 		WifiPassword: wifiPassword,
 		DisableUDP:   disableUDP,
-	}
-
-	excludeJaguar, err := cmd.Flags().GetBool("exclude-jaguar")
-	if err != nil {
-		return err
+		UartOnly:     uartOnly,
 	}
 
 	envelopeOptions := EnvelopeOptions{
@@ -318,6 +328,7 @@ type DeviceOptions struct {
 	WifiSsid     string
 	WifiPassword string
 	DisableUDP   bool
+	UartOnly     bool
 }
 
 type EnvelopeOptions struct {
@@ -333,6 +344,9 @@ func (d DeviceOptions) getJaguarConfig() map[string]interface{} {
 	}
 	if d.DisableUDP {
 		config["jag.disable-udp"] = true
+	}
+	if d.UartOnly {
+		config["jag.uart-only"] = true
 	}
 	return config
 }

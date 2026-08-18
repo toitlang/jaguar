@@ -85,7 +85,7 @@ jag setup
 ### Flashing via serial
 Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
 application onto it. Running `jag flash` will ask you for the serial port to use and the WiFi
-credentials, but be aware that the tooling requires
+credentials unless `--uart-only` is used, but be aware that the tooling requires
 [permission to access your serial port](#permission-to-access-serial-port).
 
 ``` sh
@@ -113,6 +113,50 @@ After flashing it is possible to monitor the serial output from the device:
 ``` sh
 jag monitor
 ```
+
+### Using the UART proxy
+
+Jaguar can expose its control endpoint through the ESP32's console UART. This allows normal Jaguar commands to reach a
+device through the serial cable instead of WiFi, without reserving any additional pins. The UART endpoint is disabled by
+default; enable it when flashing by setting its baud rate:
+
+``` sh
+jag flash --uart-endpoint-baud=921600
+```
+
+The `--uart-endpoint-baud` option is also available for `jag firmware update` and `jag firmware extract`.
+
+To run Jaguar exclusively through the proxy, use `--uart-only` instead. This omits Jaguar's HTTP/WiFi endpoint and
+enables the UART endpoint at 921600 baud, so Jaguar does not ask for WiFi credentials or try to connect to an access
+point:
+
+``` sh
+jag flash --uart-only
+```
+
+Applications remain free to use WiFi themselves. To choose a different proxy baud rate, combine the options:
+
+``` sh
+jag flash --uart-only --uart-endpoint-baud=115200
+```
+
+The `--uart-only` option is also available for firmware updates and extracted firmware images.
+
+Start the proxy by keeping the device connected over serial and running:
+
+``` sh
+jag monitor --proxy
+```
+
+In proxy mode, `jag monitor` uses 921600 baud by default. If the endpoint was configured with another baud rate, pass the
+same rate explicitly:
+
+``` sh
+jag monitor --proxy --baud=115200
+```
+
+Keep the monitor running while using commands such as `jag run` or `jag container install`. Program output and Jaguar
+logs continue to appear in the monitor alongside the proxied connection.
 
 Once the serial output shows that your ESP32 runs the Jaguar application, it will start announcing
 its presence to the network using UDP broadcast. You can find a device by scanning, but this requires
@@ -242,11 +286,15 @@ jag run -D jag.wifi=false softap.toit
 ```
 
 By default this runs with a 10 seconds timeout to avoid making the device inaccessible by Jaguar. You can configure
-the timeout by passing a separate `-D jag.timeout` option:
+an explicit timeout by passing a separate `-D jag.timeout` option:
 
 ``` sh
 jag run -D jag.wifi=false -D jag.timeout=5m softap.toit
 ```
+
+Jaguar records the timeout, but it has no effect while a UART proxy is active because Jaguar remains accessible through
+the proxy. Timeouts also have no effect in UART-only mode, even when no proxy is connected. This applies regardless of
+how the program was started.
 
 This also works for installed containers. Containers that run with `-D jag.wifi=false` start when the device boots and
 runs to completion before Jaguar tries to connect to WiFi. This allows them to control the WiFi and to prevent
@@ -255,6 +303,9 @@ Jaguar from taking over before they are ready for it:
 ``` sh
 jag container install -D jag.wifi=false softap softap.toit
 ```
+
+The same behavior applies whenever an installed container starts: on initial install, at boot, or after an interval. Its
+recorded timeout has no effect while a UART proxy is active.
 
 You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
 

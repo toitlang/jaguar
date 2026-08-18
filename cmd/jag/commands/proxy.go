@@ -14,6 +14,8 @@ import (
 // A sequence of random numbers that is used as synchronization token.
 var syncMagic = []byte{27, 121, 55, 49, 253, 65, 123, 243}
 
+const defaultProxyBaudRate = 921600
+
 func uartName(name string) string {
 	return name + "-uart"
 }

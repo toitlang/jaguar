@@ -31,6 +31,7 @@ JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
 JAG-INTERVAL ::= "jag.interval"
 JAG-DISABLE-UDP ::= "jag.disable-udp"
+JAG-UART-ONLY ::= "jag.uart-only"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
 flash-mutex ::= monitor.Mutex
@@ -92,14 +93,16 @@ wifi-manager / NetworkManager ::= NetworkManager
 // The installed and named containers are kept in a registry backed
 // by the flash (on the device).
 registry_ / ContainerRegistry ::= ContainerRegistry
+uart-only_/bool := false
 
 main arguments:
   device := Device.parse arguments
-  endpoints := [
-    EndpointHttp logger,
-  ]
-  uart := device.config.get "endpointUart"
-  if uart: endpoints.add (EndpointUart --config=uart --logger=logger)
+  uart-only_ = (device.config.get JAG-UART-ONLY) == true
+  endpoints := []
+  if not uart-only_:
+    endpoints.add (EndpointHttp logger)
+  uart-config := device.config.get "endpointUart"
+  if uart-config: endpoints.add (EndpointUart --config=uart-config --logger=logger)
   main device endpoints
 
 main device/Device endpoints/List:
@@ -246,6 +249,56 @@ This is used to kill containers that have deadlines and to restart containers wi
 */
 scheduled-callbacks := Schedule
 
+// UART proxies synchronize every five seconds while they are connected. Give
+// them enough time to miss two synchronizations before considering them gone.
+UART-PROXY-ACTIVITY-WINDOW ::= Duration --s=15
+uart-proxy-active-until-us_/int := 0
+
+note-uart-proxy-activity --window/Duration=UART-PROXY-ACTIVITY-WINDOW -> none:
+  uart-proxy-active-until-us_ =
+      Time.monotonic-us + window.in-us
+
+uart-proxy-is-active -> bool:
+  return Time.monotonic-us < uart-proxy-active-until-us_
+
+class ProxyAwareTimeout_:
+  duration_/Duration
+  callback_/Lambda
+  token_/any? := null
+  canceled_/bool := false
+
+  constructor .duration_ --callback/Lambda:
+    callback_ = callback
+    schedule_
+
+  cancel -> none:
+    canceled_ = true
+    if token_:
+      scheduled-callbacks.remove token_
+      token_ = null
+
+  schedule_ -> none:
+    token_ = scheduled-callbacks.add duration_ --callback=::
+      token_ = null
+      if not canceled_:
+        if uart-proxy-is-active:
+          schedule_
+        else:
+          callback_.call
+
+/**
+Schedules a container timeout.
+
+The timeout is not scheduled when $uart-only is set and is deferred while a
+  UART proxy is active.
+
+Returns a lambda that cancels the timeout.
+*/
+schedule-container-timeout duration/Duration --uart-only/bool=false --callback/Lambda -> Lambda:
+  if uart-only: return (::)
+  timeout := ProxyAwareTimeout_ duration --callback=callback
+  return (:: timeout.cancel)
+
 /**
 Starts the given image.
 
@@ -322,15 +375,12 @@ start-image_ -> bool
   // was changed while we were running.
   revision := name ? (registry_.revision name) : 0
 
-  // The token we get when registering a timeout callback.
-  // Once the program has terminated we need to cancel the callback.
-  cancelation-token := null
+  cancel-timeout/Lambda? := null
 
   // Start the image, but don't wait for it to run to completion.
   container := containers.start image --on-stopped=:: | code/int |
     started-containers_.remove image
-    if cancelation-token:
-      scheduled-callbacks.remove cancelation-token
+    if cancel-timeout: cancel-timeout.call
 
     if code == 0:
       logger.info "$nick stopped"
@@ -351,9 +401,7 @@ start-image_ -> bool
   started-containers_[image] = container
 
   if timeout:
-    // We schedule a callback to kill the container if it doesn't
-    // stop on its own before the timeout.
-    cancelation-token = scheduled-callbacks.add timeout --callback=::
+    cancel-timeout = schedule-container-timeout timeout --uart-only=uart-only_ --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
 
