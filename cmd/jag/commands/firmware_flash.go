@@ -30,7 +30,6 @@ func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 	cmd.Flags().Bool("disable-udp", false, "disable UDP device discovery advertisements")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
 	cmd.Flags().Uint("uart-endpoint-baud", 0, "enable the UART endpoint at the given baud rate")
-	cmd.Flags().MarkHidden("uart-endpoint-baud")
 }
 
 // addPartitionTableFlag adds the '--partition-table' flag. It is only meaningful

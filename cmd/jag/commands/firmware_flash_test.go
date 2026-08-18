@@ -79,6 +79,19 @@ func TestUartEndpointOptions(t *testing.T) {
 	}
 }
 
+func TestFirmwareCommandsHavePublicUartEndpointBaudFlag(t *testing.T) {
+	commands := []*cobra.Command{FlashCmd(), FirmwareUpdateCmd(), FirmwareExtractCmd()}
+	for _, command := range commands {
+		flag := command.Flags().Lookup("uart-endpoint-baud")
+		if flag == nil {
+			t.Fatalf("%s is missing --uart-endpoint-baud flag", command.CommandPath())
+		}
+		if flag.Hidden {
+			t.Fatalf("%s hides --uart-endpoint-baud flag", command.CommandPath())
+		}
+	}
+}
+
 func TestFirmwareCommandsDoNotHaveUartEndpointRxFlag(t *testing.T) {
 	commands := []*cobra.Command{FlashCmd(), FirmwareUpdateCmd(), FirmwareExtractCmd()}
 	for _, command := range commands {
