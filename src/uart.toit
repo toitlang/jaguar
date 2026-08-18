@@ -159,6 +159,7 @@ class UartClient:
         if packet[pos++] != SYNC-MAGIC_[i] - 1:
           continue
       // Found a sync packet.
+      note-uart-proxy-activity
       return
 
   handle request/ByteArray -> none:
@@ -194,6 +195,7 @@ class UartClient:
 
   handle-sync data/ByteArray -> none:
     logger.debug "handle sync request"
+    note-uart-proxy-activity
     sync-id := LITTLE-ENDIAN.uint16 data 0
     send-response COMMAND-SYNC_  #[sync-id & 0xff, sync-id >> 8]
 
@@ -256,7 +258,7 @@ class UartClient:
     // Signal that we are ready to receive the container.
     send-response response-code #[]
     image := flash-image container-size acking-reader container-id defines --crc32=crc32
-    start-image image run-message container-id defines --proxied
+    start-image image run-message container-id defines
 
   send-response command/int response/ByteArray -> none:
     data := #[command] + response

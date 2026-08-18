@@ -80,12 +80,12 @@ func ContainerInstallCmd() *cobra.Command {
 			"Installed containers run when they are installed, and on boot.\n" +
 			"\n" +
 			"The following define flags have a special meaning:\n" +
-			"	'-D jag.disabled': Disable Jaguar for this program.\n" +
-			"     Disables the HTTP server on the device.\n" +
+			"	'-D jag.wifi=false': Disable Jaguar's WiFi-based HTTP server while the\n" +
+			"     container is running.\n" +
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
-			"     If jag.disabled is enabled, then the default is 10 seconds. Timeouts do\n" +
-			"     not apply to the initial run when installing through a UART proxy.\n" +
+			"     If jag.wifi=false is set, then the default is 10 seconds.\n" +
+			"     Timeouts have no effect while a UART proxy is active.\n" +
 			"	'-D jag.interval' (or --interval):Interval for container starts\n" +
 			"     (e.g., '30s', '5m', '1h'). When specified, Jaguar will start the\n" +
 			"     container at the specified interval if it has previously exited.",

@@ -246,16 +246,62 @@ This is used to kill containers that have deadlines and to restart containers wi
 */
 scheduled-callbacks := Schedule
 
+// UART proxies synchronize every five seconds while they are connected. Give
+// them enough time to miss two synchronizations before considering them gone.
+UART-PROXY-ACTIVITY-WINDOW ::= Duration --s=15
+uart-proxy-active-until-us_/int := 0
+
+note-uart-proxy-activity --window/Duration=UART-PROXY-ACTIVITY-WINDOW -> none:
+  uart-proxy-active-until-us_ =
+      Time.monotonic-us + window.in-us
+
+uart-proxy-is-active -> bool:
+  return Time.monotonic-us < uart-proxy-active-until-us_
+
+class ProxyAwareTimeout_:
+  duration_/Duration
+  callback_/Lambda
+  token_/any? := null
+  canceled_/bool := false
+
+  constructor .duration_ --callback/Lambda:
+    callback_ = callback
+    schedule_
+
+  cancel -> none:
+    canceled_ = true
+    if token_:
+      scheduled-callbacks.remove token_
+      token_ = null
+
+  schedule_ -> none:
+    token_ = scheduled-callbacks.add duration_ --callback=::
+      token_ = null
+      if not canceled_:
+        if uart-proxy-is-active:
+          schedule_
+        else:
+          callback_.call
+
+/**
+Schedules a timeout that is deferred while a UART proxy is active.
+
+Returns a lambda that cancels the timeout.
+*/
+schedule-proxy-aware-timeout duration/Duration --callback/Lambda -> Lambda:
+  timeout := ProxyAwareTimeout_ duration --callback=callback
+  return (:: timeout.cancel)
+
 /**
 Starts the given image.
 
 Does not block.
 */
-start-image image/uuid.Uuid cause/string name/string? defines/Map --proxied/bool=false -> none:
+start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
   wifi-disabled := (defines.get JAG-WIFI) == false
 
   if not wifi-disabled:
-    timeout := compute-timeout defines --no-wifi-disabled --proxied
+    timeout := compute-timeout defines --no-wifi-disabled
     start-image_ image cause name defines --timeout=timeout
     return
 
@@ -269,7 +315,7 @@ start-image image/uuid.Uuid cause/string name/string? defines/Map --proxied/bool
       sleep --ms=100
     wifi-manager.disable-network
 
-    timeout := compute-timeout defines --wifi-disabled --proxied
+    timeout := compute-timeout defines --wifi-disabled
     was-started := start-image_ image cause name defines
         --timeout=timeout
         --on-stopped=:: | code/int |
@@ -322,15 +368,12 @@ start-image_ -> bool
   // was changed while we were running.
   revision := name ? (registry_.revision name) : 0
 
-  // The token we get when registering a timeout callback.
-  // Once the program has terminated we need to cancel the callback.
-  cancelation-token := null
+  cancel-timeout/Lambda? := null
 
   // Start the image, but don't wait for it to run to completion.
   container := containers.start image --on-stopped=:: | code/int |
     started-containers_.remove image
-    if cancelation-token:
-      scheduled-callbacks.remove cancelation-token
+    if cancel-timeout: cancel-timeout.call
 
     if code == 0:
       logger.info "$nick stopped"
@@ -351,9 +394,7 @@ start-image_ -> bool
   started-containers_[image] = container
 
   if timeout:
-    // We schedule a callback to kill the container if it doesn't
-    // stop on its own before the timeout.
-    cancelation-token = scheduled-callbacks.add timeout --callback=::
+    cancel-timeout = schedule-proxy-aware-timeout timeout --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
 
@@ -366,11 +407,7 @@ uninstall-image name/string -> none:
     else:
       logger.error "container '$name' not found"
 
-compute-timeout defines/Map --wifi-disabled/bool --proxied/bool=false -> Duration?:
-  // The UART proxy remains a Jaguar control channel while the program runs,
-  // so proxied programs do not need a timeout.
-  if proxied: return null
-
+compute-timeout defines/Map --wifi-disabled/bool -> Duration?:
   jag-timeout := defines.get JAG-TIMEOUT
   if jag-timeout is int and jag-timeout > 0:
     return Duration --s=jag-timeout

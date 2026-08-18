@@ -248,8 +248,8 @@ an explicit timeout by passing a separate `-D jag.timeout` option:
 jag run -D jag.wifi=false -D jag.timeout=5m softap.toit
 ```
 
-Timeouts do not apply to programs started through a UART proxy, even if `jag.timeout` is set, because Jaguar remains
-accessible through the proxy.
+Jaguar records the timeout, but it has no effect while a UART proxy is active because Jaguar remains accessible through
+the proxy. This applies regardless of how the program was started.
 
 This also works for installed containers. Containers that run with `-D jag.wifi=false` start when the device boots and
 runs to completion before Jaguar tries to connect to WiFi. This allows them to control the WiFi and to prevent
@@ -259,9 +259,8 @@ Jaguar from taking over before they are ready for it:
 jag container install -D jag.wifi=false softap softap.toit
 ```
 
-When installing through a UART proxy, no timeout applies to the container's initial run. A configured timeout is retained
-for later starts, and the 10 seconds default still applies after a reboot or an interval restart, because Jaguar cannot
-assume that a proxy is still attached.
+The same behavior applies whenever an installed container starts: on initial install, at boot, or after an interval. Its
+recorded timeout has no effect while a UART proxy is active.
 
 You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
 

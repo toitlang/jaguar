@@ -2,22 +2,31 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
-import ..src.jaguar show compute-timeout
+import ..src.jaguar show
+    compute-timeout
+    note-uart-proxy-activity
+    schedule-proxy-aware-timeout
+    uart-proxy-is-active
 
 main:
-  proxied := compute-timeout {"jag.wifi": false} --wifi-disabled --proxied
-  assert: proxied == null
+  implicit := compute-timeout {"jag.wifi": false} --wifi-disabled
+  assert: implicit == (Duration --s=10)
 
-  direct := compute-timeout {"jag.wifi": false} --wifi-disabled
-  assert: direct == (Duration --s=10)
-
-  proxied-explicit := compute-timeout
-      {"jag.timeout": 5}
-      --no-wifi-disabled
-      --proxied
-  assert: proxied-explicit == null
-
-  direct-explicit := compute-timeout
+  explicit := compute-timeout
       {"jag.timeout": 5, "jag.wifi": false}
       --wifi-disabled
-  assert: direct-explicit == (Duration --s=5)
+  assert: explicit == (Duration --s=5)
+
+  assert: not uart-proxy-is-active
+  note-uart-proxy-activity --window=(Duration --ms=100)
+  assert: uart-proxy-is-active
+
+  timed-out := false
+  cancel := schedule-proxy-aware-timeout (Duration --ms=10) --callback=::
+    timed-out = true
+  sleep --ms=50
+  assert: not timed-out
+
+  sleep --ms=100
+  assert: timed-out
+  cancel.call
