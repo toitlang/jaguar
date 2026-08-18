@@ -561,6 +561,16 @@ func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
+	uartOnly, err := cmd.Flags().GetBool("uart-only")
+	if err != nil {
+		return nil, err
+	}
+	if uartOnly && uartBaud == 0 {
+		if cmd.Flags().Changed("uart-endpoint-baud") {
+			return nil, fmt.Errorf("--uart-endpoint-baud must be greater than zero with --uart-only")
+		}
+		uartBaud = defaultProxyBaudRate
+	}
 	if uartBaud == 0 {
 		return nil, nil
 	}

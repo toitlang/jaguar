@@ -85,7 +85,7 @@ jag setup
 ### Flashing via serial
 Now it is time to connect your ESP32 with a serial cable to your computer and put the Jaguar
 application onto it. Running `jag flash` will ask you for the serial port to use and the WiFi
-credentials, but be aware that the tooling requires
+credentials unless `--uart-only` is used, but be aware that the tooling requires
 [permission to access your serial port](#permission-to-access-serial-port).
 
 ``` sh
@@ -125,6 +125,22 @@ jag flash --uart-endpoint-baud=921600
 ```
 
 The `--uart-endpoint-baud` option is also available for `jag firmware update` and `jag firmware extract`.
+
+To run Jaguar exclusively through the proxy, use `--uart-only` instead. This omits Jaguar's HTTP/WiFi endpoint and
+enables the UART endpoint at 921600 baud, so Jaguar does not ask for WiFi credentials or try to connect to an access
+point:
+
+``` sh
+jag flash --uart-only
+```
+
+Applications remain free to use WiFi themselves. To choose a different proxy baud rate, combine the options:
+
+``` sh
+jag flash --uart-only --uart-endpoint-baud=115200
+```
+
+The `--uart-only` option is also available for firmware updates and extracted firmware images.
 
 Start the proxy by keeping the device connected over serial and running:
 

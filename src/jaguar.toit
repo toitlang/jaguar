@@ -31,6 +31,7 @@ JAG-WIFI ::= "jag.wifi"
 JAG-TIMEOUT  ::= "jag.timeout"
 JAG-INTERVAL ::= "jag.interval"
 JAG-DISABLE-UDP ::= "jag.disable-udp"
+JAG-UART-ONLY ::= "jag.uart-only"
 
 logger ::= log.Logger log.INFO-LEVEL log.DefaultTarget --name="jaguar"
 flash-mutex ::= monitor.Mutex
@@ -95,9 +96,9 @@ registry_ / ContainerRegistry ::= ContainerRegistry
 
 main arguments:
   device := Device.parse arguments
-  endpoints := [
-    EndpointHttp logger,
-  ]
+  endpoints := []
+  if not device.config.get JAG-UART-ONLY:
+    endpoints.add (EndpointHttp logger)
   uart-config := device.config.get "endpointUart"
   if uart-config: endpoints.add (EndpointUart --config=uart-config --logger=logger)
   main device endpoints

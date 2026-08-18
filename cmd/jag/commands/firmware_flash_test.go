@@ -46,6 +46,18 @@ func TestDeviceOptionsJaguarConfigDisableUDP(t *testing.T) {
 	}
 }
 
+func TestDeviceOptionsJaguarConfigUartOnly(t *testing.T) {
+	withoutFlag := (DeviceOptions{}).getJaguarConfig()
+	if _, ok := withoutFlag["jag.uart-only"]; ok {
+		t.Fatal("jag.uart-only is present without --uart-only")
+	}
+
+	withFlag := (DeviceOptions{UartOnly: true}).getJaguarConfig()
+	if value, ok := withFlag["jag.uart-only"]; !ok || value != true {
+		t.Fatalf("jag.uart-only is %#v, want true", value)
+	}
+}
+
 func TestUartEndpointOptions(t *testing.T) {
 	tests := []struct {
 		name string
@@ -57,6 +69,16 @@ func TestUartEndpointOptions(t *testing.T) {
 			name: "console",
 			args: []string{"--uart-endpoint-baud=921600"},
 			want: map[string]interface{}{"baud": uint(921600)},
+		},
+		{
+			name: "uart-only default",
+			args: []string{"--uart-only"},
+			want: map[string]interface{}{"baud": uint(defaultProxyBaudRate)},
+		},
+		{
+			name: "uart-only explicit",
+			args: []string{"--uart-only", "--uart-endpoint-baud=115200"},
+			want: map[string]interface{}{"baud": uint(115200)},
 		},
 	}
 
@@ -79,15 +101,28 @@ func TestUartEndpointOptions(t *testing.T) {
 	}
 }
 
-func TestFirmwareCommandsHavePublicUartEndpointBaudFlag(t *testing.T) {
+func TestUartOnlyRejectsDisabledEndpoint(t *testing.T) {
+	cmd := &cobra.Command{}
+	addFirmwareFlashFlags(cmd, "device name")
+	if err := cmd.ParseFlags([]string{"--uart-only", "--uart-endpoint-baud=0"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := getUartEndpointOptions(cmd); err == nil {
+		t.Fatal("--uart-only accepted an explicitly disabled UART endpoint")
+	}
+}
+
+func TestFirmwareCommandsHavePublicUartFlags(t *testing.T) {
 	commands := []*cobra.Command{FlashCmd(), FirmwareUpdateCmd(), FirmwareExtractCmd()}
 	for _, command := range commands {
-		flag := command.Flags().Lookup("uart-endpoint-baud")
-		if flag == nil {
-			t.Fatalf("%s is missing --uart-endpoint-baud flag", command.CommandPath())
-		}
-		if flag.Hidden {
-			t.Fatalf("%s hides --uart-endpoint-baud flag", command.CommandPath())
+		for _, name := range []string{"uart-endpoint-baud", "uart-only"} {
+			flag := command.Flags().Lookup(name)
+			if flag == nil {
+				t.Fatalf("%s is missing --%s flag", command.CommandPath(), name)
+			}
+			if flag.Hidden {
+				t.Fatalf("%s hides --%s flag", command.CommandPath(), name)
+			}
 		}
 	}
 }

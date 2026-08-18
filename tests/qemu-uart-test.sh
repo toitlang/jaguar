@@ -10,7 +10,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 JAG="${JAG:-${ROOT_DIR}/build/jag}"
 QEMU_SYSTEM_XTENSA="${QEMU_SYSTEM_XTENSA:-qemu-system-xtensa}"
 QEMU_TIMEOUT_TICKS="${QEMU_TIMEOUT_TICKS:-300}"
-EXPECTED_BAUD_RATE=921600
 
 if [[ ! -x "${JAG}" ]]; then
   echo "Jaguar executable is not executable: ${JAG}" >&2
@@ -54,16 +53,15 @@ trap cleanup EXIT
 
 extract_firmware() {
   local name="$1"
-  local baud_rate="$2"
+  shift
 
   "${JAG}" \
     --no-analytics \
     firmware extract esp32 \
-    --wifi-ssid="Open Wifi" --wifi-password= \
     --name="qemu-uart-test-${name}" \
-    --disable-udp \
-    --uart-endpoint-baud="${baud_rate}" \
-    --output="${TEMP_DIR}/${name}.firmware.bin"
+    --uart-only \
+    --output="${TEMP_DIR}/${name}.firmware.bin" \
+    "$@"
 }
 
 run_proxy() {
@@ -132,15 +130,21 @@ run_proxy() {
     cat "${monitor_log}" >&2
     exit 1
   fi
+  if grep -a -Fq "[wifi]" "${monitor_log}"; then
+    echo "Jaguar started WiFi in UART-only mode in QEMU (${name})." >&2
+    cat "${qemu_log}" >&2
+    cat "${monitor_log}" >&2
+    exit 1
+  fi
 
   stop_monitor
   stop_qemu
 }
 
-extract_firmware default "${EXPECTED_BAUD_RATE}"
-extract_firmware explicit 115200
+extract_firmware default
+extract_firmware explicit --uart-endpoint-baud=115200
 
 run_proxy default
 run_proxy explicit --baud=115200
 
-echo "PASS: Jaguar proxied configured UART endpoints at default and explicit baud rates in QEMU"
+echo "PASS: Jaguar proxied UART-only firmware at default and explicit baud rates in QEMU"
