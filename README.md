@@ -114,6 +114,34 @@ After flashing it is possible to monitor the serial output from the device:
 jag monitor
 ```
 
+### Using the UART proxy
+
+Jaguar can expose its control endpoint through the ESP32's console UART. This allows normal Jaguar commands to reach a
+device through the serial cable instead of WiFi, without reserving any additional pins. The UART endpoint is disabled by
+default; enable it when flashing by setting its baud rate:
+
+``` sh
+jag flash --uart-endpoint-baud=921600
+```
+
+The `--uart-endpoint-baud` option is also available for `jag firmware update` and `jag firmware extract`.
+
+Start the proxy by keeping the device connected over serial and running:
+
+``` sh
+jag monitor --proxy
+```
+
+In proxy mode, `jag monitor` uses 921600 baud by default. If the endpoint was configured with another baud rate, pass the
+same rate explicitly:
+
+``` sh
+jag monitor --proxy --baud=115200
+```
+
+Keep the monitor running while using commands such as `jag run` or `jag container install`. Program output and Jaguar
+logs continue to appear in the monitor alongside the proxied connection.
+
 Once the serial output shows that your ESP32 runs the Jaguar application, it will start announcing
 its presence to the network using UDP broadcast. You can find a device by scanning, but this requires
 you to be on the same local network as your ESP32:
