@@ -151,7 +151,7 @@ func serialOpen(port string, baud int) (*serialPort, error) {
 		return nil, fmt.Errorf("the port '%s' was not found", port)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open port '%s': %w", port, err)
 	}
 
 	return &serialPort{dev}, err
