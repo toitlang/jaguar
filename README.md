@@ -257,8 +257,8 @@ Jaguar from taking over before they are ready for it:
 jag container install -D jag.wifi=false softap softap.toit
 ```
 
-When the install is sent through a UART proxy, the initial run has no default timeout. Later starts, including after a
-reboot or an interval restart, keep the 10 seconds default because Jaguar cannot assume that a proxy is still attached.
+When installing through a UART proxy, the container's initial run has no default timeout. Later starts, including after
+a reboot or an interval restart, keep the 10 seconds default because Jaguar cannot assume that a proxy is still attached.
 
 You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
 
