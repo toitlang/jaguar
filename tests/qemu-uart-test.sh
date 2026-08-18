@@ -44,27 +44,36 @@ stop_qemu() {
 cleanup() {
   stop_monitor
   stop_qemu
+  if [[ "${KEEP_TEMP:-false}" == true ]]; then
+    echo "Kept QEMU UART test files in ${TEMP_DIR}" >&2
+    return
+  fi
   rm -rf "${TEMP_DIR}"
 }
 trap cleanup EXIT
 
-"${JAG}" \
-  --no-analytics \
-  firmware extract esp32 \
-  --wifi-ssid="Open Wifi" --wifi-password= \
-  --name=qemu-uart-test \
-  --disable-udp \
-  --output="${TEMP_DIR}/firmware.bin"
+extract_firmware() {
+  local name="$1"
+  local baud_rate="$2"
+
+  "${JAG}" \
+    --no-analytics \
+    firmware extract esp32 \
+    --wifi-ssid="Open Wifi" --wifi-password= \
+    --name="qemu-uart-test-${name}" \
+    --disable-udp \
+    --uart-endpoint-baud="${baud_rate}" \
+    --output="${TEMP_DIR}/${name}.firmware.bin"
+}
 
 run_proxy() {
   local name="$1"
-  local expect_switch="$2"
-  shift 2
+  shift
 
   local image="${TEMP_DIR}/${name}.bin"
   local qemu_log="${TEMP_DIR}/${name}.qemu.log"
   local monitor_log="${TEMP_DIR}/${name}.monitor.log"
-  cp "${TEMP_DIR}/firmware.bin" "${image}"
+  cp "${TEMP_DIR}/${name}.firmware.bin" "${image}"
 
   "${QEMU_SYSTEM_XTENSA}" \
     -M esp32 \
@@ -74,6 +83,7 @@ run_proxy() {
     -no-reboot \
     -serial pty \
     -drive "file=${image},if=mtd,format=raw" \
+    -nic user,id=network,model=esp32_wifi \
     >"${qemu_log}" 2>&1 &
   QEMU_PID="$!"
 
@@ -123,23 +133,14 @@ run_proxy() {
     exit 1
   fi
 
-  if [[ "${expect_switch}" == true ]]; then
-    if ! grep -a -Fq "switched UART proxy to ${EXPECTED_BAUD_RATE} baud" "${monitor_log}"; then
-      echo "Jaguar did not confirm the ${EXPECTED_BAUD_RATE}-baud transition." >&2
-      cat "${monitor_log}" >&2
-      exit 1
-    fi
-  elif grep -a -Fq "switched UART proxy" "${monitor_log}"; then
-    echo "Jaguar changed the baud rate despite an explicit --baud option." >&2
-    cat "${monitor_log}" >&2
-    exit 1
-  fi
-
   stop_monitor
   stop_qemu
 }
 
-run_proxy default true
-run_proxy explicit false --baud=115200
+extract_firmware default "${EXPECTED_BAUD_RATE}"
+extract_firmware explicit 115200
 
-echo "PASS: Jaguar proxied its console UART with default and explicit baud rates in QEMU"
+run_proxy default
+run_proxy explicit --baud=115200
+
+echo "PASS: Jaguar proxied configured UART endpoints at default and explicit baud rates in QEMU"

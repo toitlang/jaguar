@@ -5,6 +5,8 @@
 package commands
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -42,5 +44,55 @@ func TestDeviceOptionsJaguarConfigDisableUDP(t *testing.T) {
 	withFlag := (DeviceOptions{DisableUDP: true}).getJaguarConfig()
 	if value, ok := withFlag["jag.disable-udp"]; !ok || value != true {
 		t.Fatalf("jag.disable-udp is %#v, want true", value)
+	}
+}
+
+func TestUartEndpointOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		want    map[string]interface{}
+		wantErr string
+	}{
+		{name: "disabled"},
+		{
+			name: "console",
+			args: []string{"--uart-endpoint-baud=921600"},
+			want: map[string]interface{}{"baud": uint(921600)},
+		},
+		{
+			name: "custom rx",
+			args: []string{"--uart-endpoint-baud=115200", "--uart-endpoint-rx=16"},
+			want: map[string]interface{}{"baud": uint(115200), "rx": 16},
+		},
+		{
+			name:    "rx without baud",
+			args:    []string{"--uart-endpoint-rx=16"},
+			wantErr: "--uart-endpoint-baud must be set",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			addFirmwareFlashFlags(cmd, "device name")
+			if err := cmd.ParseFlags(test.args); err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := getUartEndpointOptions(cmd)
+			if test.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), test.wantErr) {
+					t.Fatalf("getUartEndpointOptions error = %v, want error containing %q", err, test.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, test.want) {
+				t.Fatalf("getUartEndpointOptions = %#v, want %#v", got, test.want)
+			}
+		})
 	}
 }

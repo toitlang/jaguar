@@ -27,7 +27,6 @@ const (
 	commandFirmware       = 5
 	commandInstall        = 6
 	commandRun            = 7
-	commandSetBaudRate    = 8
 
 	responseAck = 255
 
@@ -171,33 +170,11 @@ func (d *uartDevice) Ping() error {
 	return nil
 }
 
-func (d *uartDevice) SetBaudRate(baudRate int, setHostBaudRate func(int) error) (bool, error) {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-
-	payload := appendUint32Le(nil, uint32(baudRate))
-	response, err := d.sendRequest(commandSetBaudRate, payload)
-	if err != nil {
-		return false, err
-	}
-	if len(response) != 1 || response[0] > 1 {
-		return false, fmt.Errorf("invalid set baud rate response")
-	}
-	if response[0] == 0 {
-		return false, nil
-	}
-	if err := setHostBaudRate(baudRate); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
 type uartIdentity struct {
-	Name              string `json:"name"`
-	Id                string `json:"id"`
-	Chip              string `json:"chip"`
-	SdkVersion        string `json:"sdkVersion"`
-	CanChangeBaudRate bool   `json:"canChangeBaudRate"`
+	Name       string `json:"name"`
+	Id         string `json:"id"`
+	Chip       string `json:"chip"`
+	SdkVersion string `json:"sdkVersion"`
 }
 
 func (d *uartDevice) Identify() (*uartIdentity, error) {

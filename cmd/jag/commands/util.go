@@ -557,22 +557,25 @@ func getWifiCredentials(cmd *cobra.Command) (string, string, error) {
 }
 
 func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) {
-	uartEndpointRx, err := cmd.Flags().GetInt("uart-endpoint-rx")
-	if err != nil {
-		return nil, err
-	}
-	if uartEndpointRx < 0 {
-		return nil, nil
-	}
-	uartEndpointOptions := map[string]interface{}{
-		"rx": uartEndpointRx,
-	}
 	uartBaud, err := cmd.Flags().GetUint("uart-endpoint-baud")
 	if err != nil {
 		return nil, err
 	}
-	if uartBaud != 0 {
-		uartEndpointOptions["baud"] = uartBaud
+	uartEndpointRx, err := cmd.Flags().GetInt("uart-endpoint-rx")
+	if err != nil {
+		return nil, err
+	}
+	if uartBaud == 0 {
+		if uartEndpointRx >= 0 {
+			return nil, fmt.Errorf("--uart-endpoint-baud must be set when --uart-endpoint-rx is used")
+		}
+		return nil, nil
+	}
+	uartEndpointOptions := map[string]interface{}{
+		"baud": uartBaud,
+	}
+	if uartEndpointRx >= 0 {
+		uartEndpointOptions["rx"] = uartEndpointRx
 	}
 	return uartEndpointOptions, nil
 }

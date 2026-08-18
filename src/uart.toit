@@ -14,29 +14,39 @@ import system
 import .jaguar
 
 class EndpointUart implements Endpoint:
-  config_/Map?
+  config_/Map
   logger/log.Logger
 
-  constructor --config/Map? --logger/log.Logger:
+  constructor --config/Map --logger/log.Logger:
     config_ = config
     this.logger = logger.with-name "uart"
 
   run device/Device -> none:
     logger.debug "starting endpoint"
-    port := config_
-        ? uart.Port
-            --rx=config_["rx"]
-            --tx=null
-            --baud-rate=config_.get "baud" --if-absent=: 115200
+    baud-rate := config_["baud"]
+    rx := config_.get "rx"
+    port := rx != null
+        ? uart.Port --rx=rx --tx=null --baud-rate=baud-rate
         : uart.Port.console --large-buffers
 
     try:
+      // Responses are written to stdout, which uses the console UART. If
+      // requests arrive on a separate UART, configure the console UART to use
+      // the same baud rate before releasing its receive resources again.
+      if rx != null:
+        console-port := uart.Port.console
+        try:
+          console-port.baud-rate = baud-rate
+        finally:
+          console-port.close
+      else:
+        port.baud-rate = baud-rate
+
       client := UartClient
-          --port=port
+          --reader=port.in
           --writer=StdoutWriter
           --device=device
           --logger=logger
-          --can-change-baud-rate=not config_
       client.run
     finally:
       port.close
@@ -85,21 +95,16 @@ class UartClient:
   static COMMAND-FIRMWARE_ ::= 5
   static COMMAND-INSTALL_ ::= 6
   static COMMAND-RUN_ ::= 7
-  static COMMAND-SET-BAUD-RATE_ ::= 8
   static COMMAND-UNKNOWN_ ::= 99
 
   static ACK-RESPONSE_ ::= 255
 
-  port/uart.Port
   reader/io.Reader
   writer/UartWriter
   device/Device
   logger/log.Logger
-  can-change-baud-rate_/bool
 
-  constructor --.port --.writer --.device --.logger --can-change-baud-rate/bool:
-    reader = port.in
-    can-change-baud-rate_ = can-change-baud-rate
+  constructor --.reader --.writer --.device --.logger:
 
   run -> none:
     announce
@@ -195,9 +200,6 @@ class UartClient:
     if command == COMMAND-RUN_:
       handle-install-run data --run
       return
-    if command == COMMAND-SET-BAUD-RATE_:
-      handle-set-baud-rate data
-      return
     send-response COMMAND-UNKNOWN_ #[]
     throw "Unknown command: $command"
 
@@ -218,23 +220,10 @@ class UartClient:
       "id": "$device.id",
       "chip": "$device.chip",
       "sdkVersion": "$system.vm-sdk-version",
-      "canChangeBaudRate": can-change-baud-rate_,
     }
     encoded := ubjson.encode identity
     send-response COMMAND-IDENTIFY_ encoded
     return
-
-  handle-set-baud-rate data/ByteArray -> none:
-    logger.debug "handle set baud rate request"
-    if not can-change-baud-rate_:
-      send-response COMMAND-SET-BAUD-RATE_ #[0]
-      return
-
-    baud-rate := LITTLE-ENDIAN.uint32 data 0
-    send-response COMMAND-SET-BAUD-RATE_ #[1]
-    // Give the response time to leave the UART before changing its baud rate.
-    sleep --ms=100
-    port.baud-rate = baud-rate
 
   handle-list-containers data/ByteArray -> none:
     result := ubjson.encode registry_.entries
