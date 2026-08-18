@@ -85,7 +85,8 @@ func ContainerInstallCmd() *cobra.Command {
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
 			"     If jag.wifi=false is set, then the default is 10 seconds.\n" +
-			"     Timeouts have no effect while a UART proxy is active.\n" +
+			"     Timeouts have no effect while a UART proxy is active or Jaguar is in\n" +
+			"     UART-only mode.\n" +
 			"	'-D jag.interval' (or --interval):Interval for container starts\n" +
 			"     (e.g., '30s', '5m', '1h'). When specified, Jaguar will start the\n" +
 			"     container at the specified interval if it has previously exited.",

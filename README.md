@@ -293,7 +293,8 @@ jag run -D jag.wifi=false -D jag.timeout=5m softap.toit
 ```
 
 Jaguar records the timeout, but it has no effect while a UART proxy is active because Jaguar remains accessible through
-the proxy. This applies regardless of how the program was started.
+the proxy. Timeouts also have no effect in UART-only mode, even when no proxy is connected. This applies regardless of
+how the program was started.
 
 This also works for installed containers. Containers that run with `-D jag.wifi=false` start when the device boots and
 runs to completion before Jaguar tries to connect to WiFi. This allows them to control the WiFi and to prevent

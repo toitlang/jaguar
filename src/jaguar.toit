@@ -93,11 +93,13 @@ wifi-manager / NetworkManager ::= NetworkManager
 // The installed and named containers are kept in a registry backed
 // by the flash (on the device).
 registry_ / ContainerRegistry ::= ContainerRegistry
+uart-only_/bool := false
 
 main arguments:
   device := Device.parse arguments
+  uart-only_ = (device.config.get JAG-UART-ONLY) == true
   endpoints := []
-  if not device.config.get JAG-UART-ONLY:
+  if not uart-only_:
     endpoints.add (EndpointHttp logger)
   uart-config := device.config.get "endpointUart"
   if uart-config: endpoints.add (EndpointUart --config=uart-config --logger=logger)
@@ -285,11 +287,15 @@ class ProxyAwareTimeout_:
           callback_.call
 
 /**
-Schedules a timeout that is deferred while a UART proxy is active.
+Schedules a container timeout.
+
+The timeout is not scheduled when $uart-only is set and is deferred while a
+  UART proxy is active.
 
 Returns a lambda that cancels the timeout.
 */
-schedule-proxy-aware-timeout duration/Duration --callback/Lambda -> Lambda:
+schedule-container-timeout duration/Duration --uart-only/bool=false --callback/Lambda -> Lambda:
+  if uart-only: return (::)
   timeout := ProxyAwareTimeout_ duration --callback=callback
   return (:: timeout.cancel)
 
@@ -395,7 +401,7 @@ start-image_ -> bool
   started-containers_[image] = container
 
   if timeout:
-    cancel-timeout = schedule-proxy-aware-timeout timeout --callback=::
+    cancel-timeout = schedule-container-timeout timeout --uart-only=uart-only_ --callback=::
       logger.error "$nick timed out after $timeout"
       container.stop
 

@@ -5,7 +5,7 @@
 import ..src.jaguar show
     compute-timeout
     note-uart-proxy-activity
-    schedule-proxy-aware-timeout
+    schedule-container-timeout
     uart-proxy-is-active
 
 main:
@@ -22,11 +22,18 @@ main:
   assert: uart-proxy-is-active
 
   timed-out := false
-  cancel := schedule-proxy-aware-timeout (Duration --ms=10) --callback=::
+  cancel := schedule-container-timeout (Duration --ms=10) --callback=::
     timed-out = true
   sleep --ms=50
   assert: not timed-out
 
   sleep --ms=100
   assert: timed-out
+  cancel.call
+
+  timed-out = false
+  cancel = schedule-container-timeout (Duration --ms=10) --uart-only --callback=::
+    timed-out = true
+  sleep --ms=50
+  assert: not timed-out
   cancel.call
