@@ -85,8 +85,8 @@ func ContainerInstallCmd() *cobra.Command {
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
 			"     If jag.disabled is enabled, then the default is 10 seconds. When\n" +
-			"     installing through a UART proxy, the container's initial run has no\n" +
-			"     default timeout.\n" +
+			"     installing through a UART proxy, no timeout applies to the container's\n" +
+			"     initial run. A configured timeout is retained for later starts.\n" +
 			"	'-D jag.interval' (or --interval):Interval for container starts\n" +
 			"     (e.g., '30s', '5m', '1h'). When specified, Jaguar will start the\n" +
 			"     container at the specified interval if it has previously exited.",

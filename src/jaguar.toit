@@ -255,7 +255,7 @@ start-image image/uuid.Uuid cause/string name/string? defines/Map --proxied/bool
   wifi-disabled := (defines.get JAG-WIFI) == false
 
   if not wifi-disabled:
-    timeout := compute-timeout defines --no-wifi-disabled
+    timeout := compute-timeout defines --no-wifi-disabled --proxied
     start-image_ image cause name defines --timeout=timeout
     return
 
@@ -367,14 +367,16 @@ uninstall-image name/string -> none:
       logger.error "container '$name' not found"
 
 compute-timeout defines/Map --wifi-disabled/bool --proxied/bool=false -> Duration?:
+  // The UART proxy remains a Jaguar control channel while the program runs,
+  // so proxied programs do not need a timeout.
+  if proxied: return null
+
   jag-timeout := defines.get JAG-TIMEOUT
   if jag-timeout is int and jag-timeout > 0:
     return Duration --s=jag-timeout
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
-  // A request received through the UART proxy still has a Jaguar control
-  // channel after WiFi is disabled, so it does not need a safety timeout.
-  return wifi-disabled and not proxied ? (Duration --s=10) : null
+  return wifi-disabled ? (Duration --s=10) : null
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:

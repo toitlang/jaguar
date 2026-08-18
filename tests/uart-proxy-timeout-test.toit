@@ -11,8 +11,13 @@ main:
   direct := compute-timeout {"jag.wifi": false} --wifi-disabled
   assert: direct == (Duration --s=10)
 
-  explicit := compute-timeout
+  proxied-explicit := compute-timeout
+      {"jag.timeout": 5}
+      --no-wifi-disabled
+      --proxied
+  assert: proxied-explicit == null
+
+  direct-explicit := compute-timeout
       {"jag.timeout": 5, "jag.wifi": false}
       --wifi-disabled
-      --proxied
-  assert: explicit == (Duration --s=5)
+  assert: direct-explicit == (Duration --s=5)
