@@ -99,7 +99,8 @@ func RunCmd() *cobra.Command {
 			"     is running.\n" +
 			"	'-D jag.timeout': Set the timeout for Jaguar to wait for the program to\n" +
 			"     finish. The value can be a number of seconds or a duration string.\n" +
-			"     If jag.wifi=false is set, then the default is 10 seconds.\n" +
+			"     If jag.wifi=false is set, then the default is 10 seconds unless the\n" +
+			"     device is accessed through a UART proxy.\n" +
 			"\n" +
 			"For example 'jag run -D jag.wifi=false wifi-scan.toit' will run the wifi-scan\n" +
 			"program on the device without Jaguar using the network.",

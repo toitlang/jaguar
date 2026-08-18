@@ -256,7 +256,7 @@ class UartClient:
     // Signal that we are ready to receive the container.
     send-response response-code #[]
     image := flash-image container-size acking-reader container-id defines --crc32=crc32
-    start-image image run-message container-id defines
+    start-image image run-message container-id defines --proxied
 
   send-response command/int response/ByteArray -> none:
     data := #[command] + response

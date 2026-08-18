@@ -241,8 +241,9 @@ the Soft AP based service.
 jag run -D jag.wifi=false softap.toit
 ```
 
-By default this runs with a 10 seconds timeout to avoid making the device inaccessible by Jaguar. You can configure
-the timeout by passing a separate `-D jag.timeout` option:
+By default this runs with a 10 seconds timeout to avoid making the device inaccessible by Jaguar. When the command
+reaches the device through a UART proxy, no default timeout is needed because Jaguar remains accessible through the
+proxy. You can configure an explicit timeout in either case by passing a separate `-D jag.timeout` option:
 
 ``` sh
 jag run -D jag.wifi=false -D jag.timeout=5m softap.toit
@@ -255,6 +256,9 @@ Jaguar from taking over before they are ready for it:
 ``` sh
 jag container install -D jag.wifi=false softap softap.toit
 ```
+
+When the install is sent through a UART proxy, the initial run has no default timeout. Later starts, including after a
+reboot or an interval restart, keep the 10 seconds default because Jaguar cannot assume that a proxy is still attached.
 
 You can also set the timeout for them to make sure they cannot block enabling Jaguar forever:
 

@@ -251,7 +251,7 @@ Starts the given image.
 
 Does not block.
 */
-start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
+start-image image/uuid.Uuid cause/string name/string? defines/Map --proxied/bool=false -> none:
   wifi-disabled := (defines.get JAG-WIFI) == false
 
   if not wifi-disabled:
@@ -269,7 +269,7 @@ start-image image/uuid.Uuid cause/string name/string? defines/Map -> none:
       sleep --ms=100
     wifi-manager.disable-network
 
-    timeout := compute-timeout defines --wifi-disabled
+    timeout := compute-timeout defines --wifi-disabled --proxied
     was-started := start-image_ image cause name defines
         --timeout=timeout
         --on-stopped=:: | code/int |
@@ -366,13 +366,15 @@ uninstall-image name/string -> none:
     else:
       logger.error "container '$name' not found"
 
-compute-timeout defines/Map --wifi-disabled/bool -> Duration?:
+compute-timeout defines/Map --wifi-disabled/bool --proxied/bool=false -> Duration?:
   jag-timeout := defines.get JAG-TIMEOUT
   if jag-timeout is int and jag-timeout > 0:
     return Duration --s=jag-timeout
   else if jag-timeout:
     logger.error "invalid $JAG-TIMEOUT setting ($jag-timeout)"
-  return wifi-disabled ? (Duration --s=10) : null
+  // A request received through the UART proxy still has a Jaguar control
+  // channel after WiFi is disabled, so it does not need a safety timeout.
+  return wifi-disabled and not proxied ? (Duration --s=10) : null
 
 install-firmware firmware-size/int reader/reader.Reader -> none:
   with-timeout --ms=300_000: flash-mutex.do:
