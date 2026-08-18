@@ -6,7 +6,6 @@ package commands
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -49,26 +48,15 @@ func TestDeviceOptionsJaguarConfigDisableUDP(t *testing.T) {
 
 func TestUartEndpointOptions(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		want    map[string]interface{}
-		wantErr string
+		name string
+		args []string
+		want map[string]interface{}
 	}{
 		{name: "disabled"},
 		{
 			name: "console",
 			args: []string{"--uart-endpoint-baud=921600"},
 			want: map[string]interface{}{"baud": uint(921600)},
-		},
-		{
-			name: "custom rx",
-			args: []string{"--uart-endpoint-baud=115200", "--uart-endpoint-rx=16"},
-			want: map[string]interface{}{"baud": uint(115200), "rx": 16},
-		},
-		{
-			name:    "rx without baud",
-			args:    []string{"--uart-endpoint-rx=16"},
-			wantErr: "--uart-endpoint-baud must be set",
 		},
 	}
 
@@ -81,12 +69,6 @@ func TestUartEndpointOptions(t *testing.T) {
 			}
 
 			got, err := getUartEndpointOptions(cmd)
-			if test.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), test.wantErr) {
-					t.Fatalf("getUartEndpointOptions error = %v, want error containing %q", err, test.wantErr)
-				}
-				return
-			}
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -94,5 +76,14 @@ func TestUartEndpointOptions(t *testing.T) {
 				t.Fatalf("getUartEndpointOptions = %#v, want %#v", got, test.want)
 			}
 		})
+	}
+}
+
+func TestFirmwareCommandsDoNotHaveUartEndpointRxFlag(t *testing.T) {
+	commands := []*cobra.Command{FlashCmd(), FirmwareUpdateCmd(), FirmwareExtractCmd()}
+	for _, command := range commands {
+		if command.Flags().Lookup("uart-endpoint-rx") != nil {
+			t.Fatalf("%s has --uart-endpoint-rx flag", command.CommandPath())
+		}
 	}
 }

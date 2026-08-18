@@ -561,23 +561,12 @@ func getUartEndpointOptions(cmd *cobra.Command) (map[string]interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	uartEndpointRx, err := cmd.Flags().GetInt("uart-endpoint-rx")
-	if err != nil {
-		return nil, err
-	}
 	if uartBaud == 0 {
-		if uartEndpointRx >= 0 {
-			return nil, fmt.Errorf("--uart-endpoint-baud must be set when --uart-endpoint-rx is used")
-		}
 		return nil, nil
 	}
-	uartEndpointOptions := map[string]interface{}{
+	return map[string]interface{}{
 		"baud": uartBaud,
-	}
-	if uartEndpointRx >= 0 {
-		uartEndpointOptions["rx"] = uartEndpointRx
-	}
-	return uartEndpointOptions, nil
+	}, nil
 }
 
 // isLikelyRunningOnBuildbot returns true if the current process is running on a buildbot.

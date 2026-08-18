@@ -29,8 +29,6 @@ func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
 	cmd.Flags().Bool("disable-udp", false, "disable UDP device discovery advertisements")
 	cmd.Flags().Bool("exclude-jaguar", false, "don't install the Jaguar service")
-	cmd.Flags().Int("uart-endpoint-rx", -1, "use the given pin instead of the console RX for the UART endpoint")
-	cmd.Flags().MarkHidden("uart-endpoint-rx")
 	cmd.Flags().Uint("uart-endpoint-baud", 0, "enable the UART endpoint at the given baud rate")
 	cmd.Flags().MarkHidden("uart-endpoint-baud")
 }

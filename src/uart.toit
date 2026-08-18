@@ -24,23 +24,10 @@ class EndpointUart implements Endpoint:
   run device/Device -> none:
     logger.debug "starting endpoint"
     baud-rate := config_["baud"]
-    rx := config_.get "rx"
-    port := rx != null
-        ? uart.Port --rx=rx --tx=null --baud-rate=baud-rate
-        : uart.Port.console --large-buffers
+    port := uart.Port.console --large-buffers
 
     try:
-      // Responses are written to stdout, which uses the console UART. If
-      // requests arrive on a separate UART, configure the console UART to use
-      // the same baud rate before releasing its receive resources again.
-      if rx != null:
-        console-port := uart.Port.console
-        try:
-          console-port.baud-rate = baud-rate
-        finally:
-          console-port.close
-      else:
-        port.baud-rate = baud-rate
+      port.baud-rate = baud-rate
 
       client := UartClient
           --reader=port.in
