@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>jag debug</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <span id="status" class="status">connecting…</span>
+    <span id="location" class="location"></span>
+    <span class="controls">
+      <button id="btn-continue" title="continue (c)">▶ Continue</button>
+      <button id="btn-in" title="step into the next call (one source line)">↳ In</button>
+      <button id="btn-over" title="step over the next call (one source line)">⤵ Over</button>
+      <button id="btn-out" title="run until the current method returns">⤴ Out</button>
+    </span>
+  </header>
+  <main>
+    <section id="source-pane">
+      <div id="banner" class="banner" hidden></div>
+      <div id="source" class="source">source unavailable</div>
+    </section>
+    <aside id="vars-pane">
+      <h2>Variables</h2>
+      <table id="vars"><tbody></tbody></table>
+      <p id="notice" class="notice"></p>
+    </aside>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
