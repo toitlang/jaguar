@@ -24,7 +24,10 @@ class EndpointUart implements Endpoint:
   run device/Device -> none:
     logger.debug "starting endpoint"
     baud-rate := config_["baud"]
-    port := uart.Port.console --large-buffers
+    // Bulk images use stop-and-wait chunks of at most 512 bytes. The default
+    // 768-byte receive buffer can hold one complete chunk and its framing;
+    // larger command frames are drained incrementally by the reader.
+    port := uart.Port.console
 
     try:
       logger.info "switching baud rate to $baud-rate"
