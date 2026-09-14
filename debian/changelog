@@ -1,7 +1,7 @@
 jaguar (1.72.0-1) unstable; urgency=medium
 
   * Update SDK to v2.0.0-alpha.199.
-  * Enlarge ESP32-C3 OTA partitions to fit the firmware.
+  * Enlarge ESP32-C3 and ESP32-C6 OTA partitions to fit the firmware.
 
  -- Toit contributors <contact@toit.io>  Mon, 14 Sep 2026 17:20:11 +0200
 

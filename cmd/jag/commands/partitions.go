@@ -22,12 +22,13 @@ var partitionTables embed.FS
 // chipsWithPartitionOverride maps a chip type to the embedded partition table
 // that Jaguar should use instead of the one shipped in the envelope.
 //
-// This is a workaround for SDK v2.0.0-alpha.199, where the firmware image for
-// the ESP32-C3 grew past the 0x1a0000 OTA partitions of the envelope's default
-// table. See partitions/esp32c3.csv for details. Remove the affected entries
+// This is a workaround for SDK v2.0.0-alpha.199, where the firmware images for
+// the ESP32-C3 and ESP32-C6 exceed their envelopes' default OTA partitions.
+// See partitions/*.csv for details. Remove the affected entries
 // once the envelopes/SDK ship large enough OTA partitions.
 var chipsWithPartitionOverride = map[string]string{
 	"esp32c3": "partitions/esp32c3.csv",
+	"esp32c6": "partitions/esp32c6.csv",
 }
 
 // getPartitionTableURL returns the URL of a partition table that is published
