@@ -40,8 +40,17 @@ jobs:
           cp -r build/assets/* "$ASSETS_PATH"
 
       - name: Run tests
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          make test
+          SDK_VERSION="$(build/jag toit version)"
+          VARIANTS="$(gh release view "$SDK_VERSION" --repo toitlang/envelopes --json assets --jq '
+            .assets | map(.name |
+              select(startswith("firmware-esp32") and endswith(".envelope.gz")) |
+              ltrimstr("firmware-") | rtrimstr(".envelope.gz")) | join(" ")
+          ')"
+          test -n "$VARIANTS"
+          make test FIRMWARE_TEST_VARIANTS="$VARIANTS"
 
       - name: Install Toit QEMU
         if: runner.os == 'Linux'

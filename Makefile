@@ -21,6 +21,7 @@ SDK_PATH := $(BUILD_SDK_DIR)
 endif
 
 JAG_BINARY := jag$(EXE_SUFFIX)
+FIRMWARE_TEST_VARIANTS ?= esp32 esp32c3 esp32c6 esp32s2 esp32s3
 JAG_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
 JAG_TOIT_SOURCES := $(shell find src -name '*.toit') package.lock package.yaml
 JAG_GO_SOURCES := $(shell find cmd -name '*.go')
@@ -45,7 +46,7 @@ clean:
 .PHONY: jag
 jag: $(BUILD_DIR)/$(JAG_BINARY)
 
-$(BUILD_DIR)/$(JAG_BINARY): $(JAG_GO_SOURCES)
+$(BUILD_DIR)/$(JAG_BINARY): $(JAG_GO_SOURCES) $(wildcard cmd/jag/commands/partitions/*.csv)
 	$(GO_BUILD_FLAGS) go build -ldflags "$(GO_LINK_FLAGS)" -o $@ ./cmd/jag
 
 #############################
@@ -115,13 +116,19 @@ test: $(BUILD_DIR)/$(JAG_BINARY)
 	go test ./...
 	$(BUILD_DIR)/$(JAG_BINARY) toit run tests/uart-proxy-timeout-test.toit
 	@# For now just try to extract images for all chips.
-	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
-		set -e; \
-		tmp_dir=$$(mktemp -d); \
-		$(BUILD_DIR)/$(JAG_BINARY) \
+	@failed=0; \
+	for variant in $(FIRMWARE_TEST_VARIANTS); do \
+		tmp_dir=$$(mktemp -d) || exit 1; \
+		if $(BUILD_DIR)/$(JAG_BINARY) \
 				--no-analytics \
 				--wifi-ssid=test --wifi-password=test \
-				firmware extract $$chip \
-				-o $$tmp_dir/$$chip.snapshot; \
+				firmware extract $$variant \
+				-o $$tmp_dir/firmware.bin; then \
+			echo "PASS: $$variant firmware extraction"; \
+		else \
+			echo "FAIL: $$variant firmware extraction"; \
+			failed=1; \
+		fi; \
 		rm -rf $$tmp_dir; \
-	done
+	done; \
+	exit $$failed
