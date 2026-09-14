@@ -21,7 +21,6 @@ SDK_PATH := $(BUILD_SDK_DIR)
 endif
 
 JAG_BINARY := jag$(EXE_SUFFIX)
-FIRMWARE_TEST_VARIANTS ?= esp32 esp32c3 esp32c6 esp32s2 esp32s3
 JAG_ENTRY_POINT := $(CURDIR)/src/jaguar.toit
 JAG_TOIT_SOURCES := $(shell find src -name '*.toit') package.lock package.yaml
 JAG_GO_SOURCES := $(shell find cmd -name '*.go')
@@ -115,9 +114,9 @@ download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
 test: $(BUILD_DIR)/$(JAG_BINARY)
 	go test ./...
 	$(BUILD_DIR)/$(JAG_BINARY) toit run tests/uart-proxy-timeout-test.toit
-	@# For now just try to extract images for all chips.
+	@# Extract images for the standard chip variants.
 	@failed=0; \
-	for variant in $(FIRMWARE_TEST_VARIANTS); do \
+	for variant in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
 		tmp_dir=$$(mktemp -d) || exit 1; \
 		if $(BUILD_DIR)/$(JAG_BINARY) \
 				--no-analytics \
