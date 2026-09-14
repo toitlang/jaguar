@@ -6,6 +6,7 @@ package commands
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,21 @@ import (
 
 	"github.com/toitlang/jaguar/cmd/jag/directory"
 )
+
+//go:embed partitions/*.csv
+var partitionTables embed.FS
+
+// chipsWithPartitionOverride maps a chip type to the embedded partition table
+// that Jaguar should use instead of the one shipped in the envelope.
+//
+// This is a workaround for SDK v2.0.0-alpha.199, where the firmware images for
+// the ESP32-C3 and ESP32-C6 exceed their envelopes' default OTA partitions.
+// See partitions/*.csv for details. Remove the affected entries
+// once the envelopes/SDK ship large enough OTA partitions.
+var chipsWithPartitionOverride = map[string]string{
+	"esp32c3": "partitions/esp32c3.csv",
+	"esp32c6": "partitions/esp32c6.csv",
+}
 
 // getPartitionTableURL returns the URL of a partition table that is published
 // in the Toit envelopes repository for the given SDK version.
@@ -26,21 +42,46 @@ func getPartitionTableURL(version string, name string) string {
 // the arguments are no longer needed.
 //
 // If the user explicitly requested a partition table (via '--partition-table'),
-// it is resolved just like an envelope: a path or URL is used as-is, and a bare
-// name is fetched from the Toit envelopes repository. Otherwise no override is
-// applied and the partition table shipped in the envelope is used.
-func partitionOverrideArgs(ctx context.Context, partitionTable string, jagVersion string, sdkVersion string) (args []string, cleanup func(), err error) {
+// that table takes precedence and is resolved just like an envelope: a path or
+// URL is used as-is, and a bare name is fetched from the Toit envelopes
+// repository. Otherwise we fall back to the per-chip embedded override (if any).
+func partitionOverrideArgs(ctx context.Context, chip string, partitionTable string, jagVersion string, sdkVersion string) (args []string, cleanup func(), err error) {
 	noop := func() {}
 
-	if partitionTable == "" {
+	if partitionTable != "" {
+		path, cleanup, err := resolvePartitionTable(ctx, partitionTable, jagVersion, sdkVersion)
+		if err != nil {
+			return nil, noop, err
+		}
+		return []string{"--partitions", path}, cleanup, nil
+	}
+
+	asset, ok := chipsWithPartitionOverride[chip]
+	if !ok {
 		return nil, noop, nil
 	}
 
-	path, cleanup, err := resolvePartitionTable(ctx, partitionTable, jagVersion, sdkVersion)
+	contents, err := partitionTables.ReadFile(asset)
 	if err != nil {
 		return nil, noop, err
 	}
-	return []string{"--partitions", path}, cleanup, nil
+
+	file, err := os.CreateTemp("", "*.partitions.csv")
+	if err != nil {
+		return nil, noop, err
+	}
+	if _, err := file.Write(contents); err != nil {
+		file.Close()
+		os.Remove(file.Name())
+		return nil, noop, err
+	}
+	if err := file.Close(); err != nil {
+		os.Remove(file.Name())
+		return nil, noop, err
+	}
+
+	cleanup = func() { os.Remove(file.Name()) }
+	return []string{"--partitions", file.Name()}, cleanup, nil
 }
 
 // resolvePartitionTable turns the value of the '--partition-table' flag into a
