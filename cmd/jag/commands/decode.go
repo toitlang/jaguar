@@ -221,6 +221,7 @@ func crashDecode(ctx context.Context, envelope string, backtrace string) error {
 	if err != nil {
 		return err
 	}
+	defer os.Remove(firmwareElf.Name())
 	defer firmwareElf.Close()
 
 	objdump, err := exec.LookPath("xtensa-esp32-elf-objdump")

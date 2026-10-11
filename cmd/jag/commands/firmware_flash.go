@@ -375,6 +375,7 @@ func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, conf
 
 	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, arguments...); err != nil {
 		binaryFile.Close()
+		os.Remove(binaryFile.Name())
 		return nil, err
 	}
 	return binaryFile, nil
@@ -389,6 +390,7 @@ func ExtractFirmware(ctx context.Context, sdk *SDK, envelopePath string, format 
 	arguments = append(arguments, extraArgs...)
 	if err := runFirmwareToolWithConfig(ctx, sdk, envelopePath, config, arguments...); err != nil {
 		outputFile.Close()
+		os.Remove(outputFile.Name())
 		return nil, err
 	}
 	return outputFile, nil
