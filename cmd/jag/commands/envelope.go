@@ -29,10 +29,10 @@ func GetCachedFirmwareEnvelopePath(ctx context.Context, jagVersion string, versi
 		if err := downloadPublishedFirmware(ctx, jagVersion, version, model); err != nil {
 			fmt.Printf("Failed to download firmware: %v\n", err)
 			switch model {
-			case "esp32", "esp32c3", "esp32c6", "esp32s2", "esp32s3":
+			case "esp32", "esp32c3", "esp32c6", "esp32s2", "esp32s3", "esp32s31":
 				// These names are correct. Simply return the error.
-			case "ESP32-C3", "ESP32-C6", "ESP32-S2", "ESP32-S3":
-				fmt.Printf("Chip model names must be lowercase without dashes. Please try again with 'esp32c3', 'esp32c6', 'esp32s2', or 'esp32s3'.\n")
+			case "ESP32-C3", "ESP32-C6", "ESP32-S2", "ESP32-S3", "ESP32-S31":
+				fmt.Printf("Chip model names must be lowercase without dashes. Please try again with 'esp32c3', 'esp32c6', 'esp32s2', 'esp32s3', or 'esp32s31'.\n")
 			default:
 				fmt.Printf("Make sure the model name is correct. You can find supported models at\n")
 				fmt.Printf("https://github.com/toitlang/envelopes/releases/tag/%s.\n", version)

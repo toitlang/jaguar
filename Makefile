@@ -93,6 +93,7 @@ $(SDK_BUILD_MARKER):
 all-chips:
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c3 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c6 esp32
+	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s31 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s2 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s3 esp32
 
@@ -115,7 +116,7 @@ test: $(BUILD_DIR)/$(JAG_BINARY)
 	go test ./...
 	$(BUILD_DIR)/$(JAG_BINARY) toit run tests/uart-proxy-timeout-test.toit
 	@# For now just try to extract images for all chips.
-	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \
+	@for chip in esp32 esp32c3 esp32c6 esp32s2 esp32s3 esp32s31; do \
 		set -e; \
 		tmp_dir=$$(mktemp -d); \
 		$(BUILD_DIR)/$(JAG_BINARY) \
