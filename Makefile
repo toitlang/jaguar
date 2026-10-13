@@ -91,6 +91,7 @@ $(SDK_BUILD_MARKER):
 
 .PHONY: all-chips
 all-chips:
+	$(JAG_TOIT_REPO_PATH)/tools/setup-idf-s31.sh --install
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c3 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32c6 esp32
 	make -C $(JAG_TOIT_REPO_PATH) ESP32_CHIP=esp32s31 esp32
