@@ -186,10 +186,11 @@ class EndpointHttp implements Endpoint:
 
       // Handle listing containers.
       else if path == "/list" and request.method == http.GET:
-        result := ubjson.encode registry_.entries
-        writer.headers.set "Content-Type" "application/ubjson"
-        writer.headers.set "Content-Length" result.size.stringify
-        writer.out.write result
+        respond-ubjson writer registry_.entries
+
+      // Handle config requests.
+      else if path == "/config" and request.method == http.GET:
+        respond-ubjson writer (config-payload device)
 
       // Handle uninstalling containers.
       else if path == "/uninstall" and request.method == http.PUT:
@@ -241,6 +242,12 @@ class EndpointHttp implements Endpoint:
     if header := headers.single HEADER-CONTAINER-INTERVAL:
       defines[JAG-INTERVAL] = header
     return defines
+
+  respond-ubjson writer/http.ResponseWriter value/any -> none:
+    result := ubjson.encode value
+    writer.headers.set "Content-Type" "application/ubjson"
+    writer.headers.set "Content-Length" result.size.stringify
+    writer.out.write result
 
   respond-ok writer/http.ResponseWriter -> none:
     writer.headers.set "Content-Type" "application/json"

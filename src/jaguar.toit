@@ -10,6 +10,7 @@ import uuid
 import monitor
 
 import encoding.tison
+import encoding.ubjson
 
 import system
 import system.assets
@@ -177,6 +178,19 @@ validate-firmware --reason/string -> none:
         firmware-is-validation-pending = false
       else:
         logger.error "firmware update failed to validate"
+
+/// The firmware config and the Jaguar config of the $device.
+config-payload device/Device -> Map:
+  return {
+    "firmware": get-firmware-config_,
+    "jaguar": device.config,
+  }
+
+/// The decoded firmware config, or an empty map if there is none.
+get-firmware-config_ -> Map:
+  encoded := firmware.config.ubjson
+  if encoded.is-empty: return {:}
+  return ubjson.decode encoded
 
 class Device:
   id/uuid.Uuid

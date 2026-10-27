@@ -39,10 +39,16 @@ type Device interface {
 	Ping(ctx context.Context, sdk *SDK) bool
 	SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error
 	ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error)
+	GetConfig(ctx context.Context, sdk *SDK) (*DeviceConfig, error)
 	ContainerUninstall(ctx context.Context, sdk *SDK, name string) error
 	UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error
 
 	ToJson() map[string]interface{}
+}
+
+type DeviceConfig struct {
+	Firmware map[string]interface{} `json:"firmware" yaml:"firmware"`
+	Jaguar   map[string]interface{} `json:"jaguar" yaml:"jaguar"`
 }
 
 type Devices struct {

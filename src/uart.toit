@@ -87,6 +87,7 @@ class UartClient:
   static COMMAND-FIRMWARE_ ::= 5
   static COMMAND-INSTALL_ ::= 6
   static COMMAND-RUN_ ::= 7
+  static COMMAND-CONFIG_ ::= 8
   static COMMAND-UNKNOWN_ ::= 99
 
   static ACK-RESPONSE_ ::= 255
@@ -193,6 +194,9 @@ class UartClient:
     if command == COMMAND-RUN_:
       handle-install-run data --run
       return
+    if command == COMMAND-CONFIG_:
+      handle-config data
+      return
     send-response COMMAND-UNKNOWN_ #[]
     throw "Unknown command: $command"
 
@@ -222,6 +226,10 @@ class UartClient:
   handle-list-containers data/ByteArray -> none:
     result := ubjson.encode registry_.entries
     send-response COMMAND-LIST-CONTAINERS_ result
+
+  handle-config data/ByteArray -> none:
+    logger.debug "handle config request"
+    send-response COMMAND-CONFIG_ (ubjson.encode (config-payload device))
 
   handle-uninstall data/ByteArray -> none:
     logger.debug "handle uninstall request"

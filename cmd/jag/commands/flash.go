@@ -110,7 +110,7 @@ func FlashCmd() *cobra.Command {
 	cmd.Flags().StringP("port", "p", ConfiguredPort(), "serial port to flash via")
 	cmd.Flags().Uint("baud", 921600, "baud rate used for the serial flashing")
 	cmd.Flags().Bool("skip-port-check", false, "accept the given port without checking")
-	addFirmwareFlashFlags(cmd, "name for the device, if not set a name will be auto generated")
+	addFirmwareFlashFlags(cmd, "name for the device, if not set a name will be auto generated", "hostname for the device; defaults to the device name")
 	addPartitionTableFlag(cmd)
 	return cmd
 }

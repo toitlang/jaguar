@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-version"
 
@@ -22,8 +23,9 @@ import (
 type callback func(id string, envelopeFile *os.File, config map[string]interface{}, partitionArgs []string) error
 type probeChip func(ctx context.Context, sdk *SDK) (string, error)
 
-func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string) {
+func addFirmwareFlashFlags(cmd *cobra.Command, nameHelp string, hostnameHelp string) {
 	cmd.Flags().String("name", "", nameHelp)
+	cmd.Flags().String("hostname", "", hostnameHelp)
 	cmd.Flags().StringP("chip", "c", "auto", "chip of the target device")
 	cmd.Flags().String("wifi-ssid", "", "default WiFi network name")
 	cmd.Flags().String("wifi-password", "", "default WiFi password")
@@ -114,6 +116,21 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 	} else {
 		name = GetRandomName(id[:])
 	}
+	var hostname string
+	if cmd.Flags().Changed("hostname") {
+		hostname, err = cmd.Flags().GetString("hostname")
+		if err != nil {
+			return err
+		}
+		if hostname == "" || toHostname(hostname) != hostname {
+			return fmt.Errorf("invalid hostname '%s': use letters, digits and hyphens, at most %d characters", hostname, hostnameMaxSize)
+		}
+	} else if device != nil && !cmd.Flags().Changed("name") {
+		hostname = currentHostname(ctx, sdk, device)
+	}
+	if hostname == "" {
+		hostname = toHostname(name)
+	}
 
 	var envelopePath string
 	if len(args) == 1 {
@@ -169,6 +186,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 	deviceOptions := DeviceOptions{
 		Id:           id.String(),
 		Name:         name,
+		Hostname:     hostname,
 		Chip:         chip,
 		WifiSsid:     wifiSSID,
 		WifiPassword: wifiPassword,
@@ -192,7 +210,7 @@ func withFirmware(cmd *cobra.Command, args []string, probeChip probeChip, device
 	}
 	defer os.Remove(envelopeFile.Name())
 
-	config := deviceOptions.GetConfig()
+	config := deviceOptions.buildFirmwareConfig()
 
 	// The '--partition-table' flag is only registered for commands that produce
 	// a full flashable image ('flash' and 'firmware extract'). For others (e.g.
@@ -245,7 +263,7 @@ func BuildFirmwareEnvelope(ctx context.Context, envelope EnvelopeOptions, device
 			return nil, err
 		}
 
-		configAssetMap := device.getJaguarConfig()
+		configAssetMap := device.buildJaguarConfig()
 		if uartEndpointOptions != nil {
 			configAssetMap["endpointUart"] = uartEndpointOptions
 		}
@@ -324,6 +342,7 @@ func GetFirmwareChip(ctx context.Context, sdk *SDK, envelopePath string) (string
 type DeviceOptions struct {
 	Id           string
 	Name         string
+	Hostname     string
 	Chip         string
 	WifiSsid     string
 	WifiPassword string
@@ -336,7 +355,7 @@ type EnvelopeOptions struct {
 	ExcludeJaguar bool
 }
 
-func (d DeviceOptions) getJaguarConfig() map[string]interface{} {
+func (d DeviceOptions) buildJaguarConfig() map[string]interface{} {
 	config := map[string]interface{}{
 		"id":   d.Id,
 		"name": d.Name,
@@ -351,13 +370,62 @@ func (d DeviceOptions) getJaguarConfig() map[string]interface{} {
 	return config
 }
 
-func (d DeviceOptions) GetConfig() map[string]interface{} {
-	return map[string]interface{}{
+func (d DeviceOptions) buildFirmwareConfig() map[string]interface{} {
+	config := map[string]interface{}{
 		"wifi": map[string]string{
 			"wifi.ssid":     d.WifiSsid,
 			"wifi.password": d.WifiPassword,
 		},
 	}
+	if d.Hostname != "" {
+		config["hostname"] = d.Hostname
+	}
+	return config
+}
+
+// currentHostname returns the hostname in the device's firmware config, or ""
+// if there is none.
+func currentHostname(ctx context.Context, sdk *SDK, device Device) string {
+	config, err := device.GetConfig(ctx, sdk)
+	if err != nil {
+		// Older Jaguar versions don't support /config.
+		fmt.Fprintf(os.Stderr, "Could not read the current device config, not keeping its hostname: %v\n", err)
+		return ""
+	}
+	hostname, _ := config.Firmware["hostname"].(string)
+	if toHostname(hostname) != hostname {
+		return ""
+	}
+	return hostname
+}
+
+// Max hostname length accepted by the ESP-IDF netif.
+const hostnameMaxSize = 32
+
+// toHostname derives a network hostname from a device name: letters, digits
+// and hyphens only, no leading or trailing hyphen, at most hostnameMaxSize
+// characters. Runs of other characters become a single hyphen. Returns "" if
+// nothing usable is left.
+func toHostname(name string) string {
+	var b strings.Builder
+	pendingHyphen := false
+	for _, r := range name {
+		valid := ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z') || ('0' <= r && r <= '9')
+		if !valid {
+			pendingHyphen = b.Len() > 0
+			continue
+		}
+		if pendingHyphen {
+			b.WriteByte('-')
+			pendingHyphen = false
+		}
+		b.WriteRune(r)
+	}
+	hostname := b.String()
+	if len(hostname) > hostnameMaxSize {
+		hostname = strings.TrimRight(hostname[:hostnameMaxSize], "-")
+	}
+	return hostname
 }
 
 func ExtractFirmwareBin(ctx context.Context, sdk *SDK, envelopePath string, config map[string]interface{}, extraArgs ...string) (*os.File, error) {
