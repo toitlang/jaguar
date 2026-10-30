@@ -2,6 +2,7 @@
 // Use of this source code is governed by an MIT-style license that can be
 // found in the LICENSE file.
 
+import encoding.json
 import encoding.ubjson
 import http
 import log
@@ -79,19 +80,18 @@ class EndpointHttp implements Endpoint:
       network.close
 
   identity-payload device/Device address/string -> ByteArray:
-    identity := """
-      { "method": "jaguar.identify",
-        "payload": {
-          "name": "$device.name",
-          "id": "$device.id",
-          "chip": "$device.chip",
-          "sdkVersion": "$system.vm-sdk-version",
-          "address": "$address",
-          "wordSize": $system.BYTES-PER-WORD
-        }
-      }
-    """
-    return identity.to-byte-array
+    identity := {
+      "method": "jaguar.identify",
+      "payload": {
+        "name": device.name,
+        "id": device.id,
+        "chip": device.chip,
+        "sdkVersion": system.vm-sdk-version,
+        "address": address,
+        "wordSize": system.BYTES-PER-WORD,
+      },
+    }
+    return json.encode identity
 
   broadcast-identity network/net.Interface device/Device address/string -> none:
     payload ::= identity-payload device address
