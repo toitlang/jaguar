@@ -84,7 +84,7 @@ class EndpointHttp implements Endpoint:
       "method": "jaguar.identify",
       "payload": {
         "name": device.name,
-        "id": device.id,
+        "id": "$device.id",
         "chip": device.chip,
         "sdkVersion": system.vm-sdk-version,
         "address": address,
