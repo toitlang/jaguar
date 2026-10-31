@@ -133,6 +133,19 @@ func runProxyServer(ud *uartDevice, identity *uartIdentity) error {
 		w.Header().Add("Content-Length", strconv.Itoa(len(encodedContainers)))
 		w.Write(encodedContainers)
 	})
+	mux.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		if !checkValidDeviceId(w, r) {
+			return
+		}
+		encodedConfig, err := ud.Config()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("Content-Type", "application/ubjson")
+		w.Header().Add("Content-Length", strconv.Itoa(len(encodedConfig)))
+		w.Write(encodedConfig)
+	})
 	mux.HandleFunc("/uninstall", func(w http.ResponseWriter, r *http.Request) {
 		if !checkValidDeviceId(w, r) || !checkIsPut(w, r) {
 			return

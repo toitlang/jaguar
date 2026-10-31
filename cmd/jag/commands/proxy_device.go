@@ -27,6 +27,7 @@ const (
 	commandFirmware       = 5
 	commandInstall        = 6
 	commandRun            = 7
+	commandConfig         = 8
 
 	responseAck = 255
 
@@ -190,6 +191,12 @@ func (d *uartDevice) Identify() (*uartIdentity, error) {
 		return nil, err
 	}
 	return &identity, nil
+}
+
+func (d *uartDevice) Config() ([]byte, error) {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	return d.sendRequest(commandConfig, []byte{})
 }
 
 func (d *uartDevice) ListContainers() ([]byte, error) {

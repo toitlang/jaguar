@@ -5,6 +5,7 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -44,6 +45,47 @@ func FirmwareCmd() *cobra.Command {
 	}
 	cmd.AddCommand(FirmwareUpdateCmd())
 	cmd.AddCommand(FirmwareExtractCmd())
+	cmd.AddCommand(FirmwareConfigCmd())
+	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
+	return cmd
+}
+
+func FirmwareConfigCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Show the configuration of a Jaguar device",
+		Long: "Show the firmware and Jaguar configuration of a Jaguar device.",
+		Args:         cobra.NoArgs,
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			deviceSelect, err := parseDeviceFlag(cmd)
+			if err != nil {
+				return err
+			}
+
+			sdk, err := GetSDK(ctx)
+			if err != nil {
+				return err
+			}
+
+			device, err := GetDevice(ctx, sdk, true, deviceSelect)
+			if err != nil {
+				return err
+			}
+
+			config, err := device.GetConfig(ctx, sdk)
+			if err != nil {
+				return err
+			}
+			encoded, err := json.MarshalIndent(config, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(encoded))
+			return nil
+		},
+	}
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
 	return cmd
 }
@@ -109,7 +151,7 @@ func FirmwareUpdateCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
-	addFirmwareFlashFlags(cmd, "new name of the device, if given")
+	addFirmwareFlashFlags(cmd, "new name of the device, if given", "new hostname of the device; defaults to the current hostname, or to one derived from the device name if there is none or --name is given")
 	return cmd
 }
 
@@ -164,7 +206,7 @@ func FirmwareExtractCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringP("device", "d", "", "use device with a given name, id, or address")
-	addFirmwareFlashFlags(cmd, "name of the device")
+	addFirmwareFlashFlags(cmd, "name of the device", "hostname of the device; defaults to the device name")
 	addPartitionTableFlag(cmd)
 	cmd.Flags().StringP("output", "o", "", "write the firmware image to a file")
 	return cmd

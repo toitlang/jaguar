@@ -73,7 +73,9 @@ const (
 	pingTimeout = 3000 * time.Millisecond
 )
 
-func (d DeviceNetwork) newRequest(ctx context.Context, method string, path string, body io.Reader) (*http.Request, error) {
+// newRequest creates a request to the device, with the device ID and SDK
+// version headers set.
+func (d DeviceNetwork) newRequest(ctx context.Context, sdk *SDK, method string, path string, body io.Reader) (*http.Request, error) {
 	lanIp, err := getLanIp()
 	if err != nil {
 		return nil, err
@@ -84,18 +86,22 @@ func (d DeviceNetwork) newRequest(ctx context.Context, method string, path strin
 	if strings.HasPrefix(address, "http://"+lanIp+":") {
 		address = "http://localhost:" + strings.TrimPrefix(address, "http://"+lanIp+":")
 	}
-	return http.NewRequestWithContext(ctx, method, address+path, body)
+	req, err := http.NewRequestWithContext(ctx, method, address+path, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(JaguarDeviceIDHeader, d.ID())
+	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
+	return req, nil
 }
 
 func (d DeviceNetwork) Ping(ctx context.Context, sdk *SDK) bool {
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
-	req, err := d.newRequest(ctx, "GET", "/ping", nil)
+	req, err := d.newRequest(ctx, sdk, "GET", "/ping", nil)
 	if err != nil {
 		return false
 	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID())
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return false
@@ -106,12 +112,10 @@ func (d DeviceNetwork) Ping(ctx context.Context, sdk *SDK) bool {
 }
 
 func (d DeviceNetwork) SendCode(ctx context.Context, sdk *SDK, request string, b []byte, headersMap map[string]string) error {
-	req, err := d.newRequest(ctx, "PUT", request, bytes.NewReader(b))
+	req, err := d.newRequest(ctx, sdk, "PUT", request, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID())
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	for key, value := range headersMap {
 		req.Header.Set(key, value)
 	}
@@ -132,12 +136,10 @@ func (d DeviceNetwork) SendCode(ctx context.Context, sdk *SDK, request string, b
 }
 
 func (d DeviceNetwork) ContainerList(ctx context.Context, sdk *SDK) (map[string]string, error) {
-	req, err := d.newRequest(ctx, "GET", "/list", nil)
+	req, err := d.newRequest(ctx, sdk, "GET", "/list", nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID())
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -161,13 +163,36 @@ func (d DeviceNetwork) ContainerList(ctx context.Context, sdk *SDK) (map[string]
 	return unmarshalled, nil
 }
 
+func (d DeviceNetwork) GetConfig(ctx context.Context, sdk *SDK) (*DeviceConfig, error) {
+	req, err := d.newRequest(ctx, sdk, "GET", "/config", nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got non-OK from device: %s", res.Status)
+	}
+
+	var config DeviceConfig
+	if err = ubjson.Unmarshal(body, &config); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
 func (d DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name string) error {
-	req, err := d.newRequest(ctx, "PUT", "/uninstall", nil)
+	req, err := d.newRequest(ctx, sdk, "PUT", "/uninstall", nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set(JaguarDeviceIDHeader, d.ID())
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	req.Header.Set(JaguarContainerNameHeader, name)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -186,13 +211,11 @@ func (d DeviceNetwork) ContainerUninstall(ctx context.Context, sdk *SDK, name st
 
 func (d DeviceNetwork) UpdateFirmware(ctx context.Context, sdk *SDK, b []byte) error {
 	var reader = NewProgressReader(bytes.NewReader(b), int64(len(b)))
-	req, err := d.newRequest(ctx, "PUT", "/firmware", reader)
+	req, err := d.newRequest(ctx, sdk, "PUT", "/firmware", reader)
 	if err != nil {
 		return err
 	}
 	req.ContentLength = int64(len(b))
-	req.Header.Set(JaguarDeviceIDHeader, d.ID())
-	req.Header.Set(JaguarSDKVersionHeader, sdk.Version)
 	defer fmt.Print("\n\n")
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

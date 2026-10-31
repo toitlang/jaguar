@@ -113,7 +113,10 @@ download-sdk: $(BUILD_DIR)/$(JAG_BINARY)
 .PHONY: test
 test: $(BUILD_DIR)/$(JAG_BINARY)
 	go test ./...
-	$(BUILD_DIR)/$(JAG_BINARY) toit run tests/uart-proxy-timeout-test.toit
+	@for test in tests/*-test.toit; do \
+		echo "$(BUILD_DIR)/$(JAG_BINARY) toit run $$test"; \
+		$(BUILD_DIR)/$(JAG_BINARY) toit run $$test || exit 1; \
+	done
 	@# Extract images for the standard chip variants.
 	@failed=0; \
 	for variant in esp32 esp32c3 esp32c6 esp32s2 esp32s3; do \

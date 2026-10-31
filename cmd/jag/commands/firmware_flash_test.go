@@ -35,24 +35,24 @@ func TestFirmwareCommandsHaveDisableUDPFlag(t *testing.T) {
 }
 
 func TestDeviceOptionsJaguarConfigDisableUDP(t *testing.T) {
-	withoutFlag := (DeviceOptions{}).getJaguarConfig()
+	withoutFlag := (DeviceOptions{}).buildJaguarConfig()
 	if _, ok := withoutFlag["jag.disable-udp"]; ok {
 		t.Fatal("jag.disable-udp is present without --disable-udp")
 	}
 
-	withFlag := (DeviceOptions{DisableUDP: true}).getJaguarConfig()
+	withFlag := (DeviceOptions{DisableUDP: true}).buildJaguarConfig()
 	if value, ok := withFlag["jag.disable-udp"]; !ok || value != true {
 		t.Fatalf("jag.disable-udp is %#v, want true", value)
 	}
 }
 
 func TestDeviceOptionsJaguarConfigUartOnly(t *testing.T) {
-	withoutFlag := (DeviceOptions{}).getJaguarConfig()
+	withoutFlag := (DeviceOptions{}).buildJaguarConfig()
 	if _, ok := withoutFlag["jag.uart-only"]; ok {
 		t.Fatal("jag.uart-only is present without --uart-only")
 	}
 
-	withFlag := (DeviceOptions{UartOnly: true}).getJaguarConfig()
+	withFlag := (DeviceOptions{UartOnly: true}).buildJaguarConfig()
 	if value, ok := withFlag["jag.uart-only"]; !ok || value != true {
 		t.Fatalf("jag.uart-only is %#v, want true", value)
 	}
@@ -85,7 +85,7 @@ func TestUartEndpointOptions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			cmd := &cobra.Command{}
-			addFirmwareFlashFlags(cmd, "device name")
+			addFirmwareFlashFlags(cmd, "device name", "hostname")
 			if err := cmd.ParseFlags(test.args); err != nil {
 				t.Fatal(err)
 			}
@@ -103,7 +103,7 @@ func TestUartEndpointOptions(t *testing.T) {
 
 func TestUartOnlyRejectsDisabledEndpoint(t *testing.T) {
 	cmd := &cobra.Command{}
-	addFirmwareFlashFlags(cmd, "device name")
+	addFirmwareFlashFlags(cmd, "device name", "hostname")
 	if err := cmd.ParseFlags([]string{"--uart-only", "--uart-endpoint-baud=0"}); err != nil {
 		t.Fatal(err)
 	}
@@ -133,5 +133,39 @@ func TestFirmwareCommandsDoNotHaveUartEndpointRxFlag(t *testing.T) {
 		if command.Flags().Lookup("uart-endpoint-rx") != nil {
 			t.Fatalf("%s has --uart-endpoint-rx flag", command.CommandPath())
 		}
+	}
+}
+
+func TestToHostname(t *testing.T) {
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"brave-otter", "brave-otter"},
+		{"Brave Otter 42", "Brave-Otter-42"},
+		{"my_device.local", "my-device-local"},
+		{"--toit--", "toit"},
+		{"a!!b", "a-b"},
+		{"nö", "n"},
+		{"", ""},
+		{"!!!", ""},
+		{"abcdefghij-abcdefghij-abcdefghij-abcdefghij", "abcdefghij-abcdefghij-abcdefghij"},
+		{"abcdefghij-abcdefghij-abcdefghi--abcdefghij", "abcdefghij-abcdefghij-abcdefghi"},
+	}
+	for _, test := range tests {
+		if got := toHostname(test.name); got != test.expected {
+			t.Errorf("toHostname(%q) = %q, want %q", test.name, got, test.expected)
+		}
+	}
+}
+
+func TestDeviceOptionsConfigHostname(t *testing.T) {
+	config := DeviceOptions{Hostname: "brave-otter"}.buildFirmwareConfig()
+	if config["hostname"] != "brave-otter" {
+		t.Errorf("hostname = %v, want brave-otter", config["hostname"])
+	}
+	config = DeviceOptions{Name: "brave-otter"}.buildFirmwareConfig()
+	if _, ok := config["hostname"]; ok {
+		t.Errorf("unexpected hostname %v", config["hostname"])
 	}
 }
