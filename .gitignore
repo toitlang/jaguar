@@ -11,3 +11,6 @@ debian/*.substvars
 debian/*.debhelper.log
 debian/jaguar/
 debian/tmp/
+
+# Stray host build of the jag CLI (use build/jag)
+/jag
